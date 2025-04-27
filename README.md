@@ -199,7 +199,8 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     powers = np.power.outer(base, np.arange(1, len(weights) + 1))
     
     # Weighted sum for each element
-    result = np.remainder(base, 99991, dtype=np.int64)
+    result = base
+    np.remainder(base, 99991, out=result)
     np.add(result, np.dot(powers, weights), out=result)
     
     # Modulo the result with the bound to ensure it's always within the requested range
