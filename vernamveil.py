@@ -129,7 +129,7 @@ class VernamVeil:
         """
         if self._vectorise:
             # Vectorised generation using numpy
-            indices = np.arange(1, length + 1, dtype=np.int64)
+            indices = np.arange(1, length + 1, dtype=np.uint64)
             keystream = self._fx(indices, seed, 256)
             # Ensure output is a numpy array of integers in [0, 255]
             return keystream.astype(np.uint8).tobytes()
@@ -529,7 +529,7 @@ def generate_secret_fx(
 
     Args:
         n (int): Degree of the polynomial.
-        max_weight (int, optional): Maximum absolute value for polynomial coefficients. Defaults to 10 ** 5.
+        max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
         base_modulus (int, optional): Modulus to prevent large intermediate values. Defaults to 10 ** 9.
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
 
@@ -543,30 +543,30 @@ def generate_secret_fx(
         raise ImportError("Numpy is required for vectorised mode but is not installed.")
 
     # Generate random weights for each term in the polynomial
-    weights = [secrets.randbelow(2 * max_weight + 1) - max_weight for _ in range(n)]
+    weights = [secrets.randbelow(max_weight + 1) for _ in range(n)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
-        int64_bound = 2 ** 63
+        uint64_bound = 2 ** 64
         function_code = f"""
 def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     # Implements a polynomial of {n} degree
-    weights = [{", ".join(str(w) for w in weights)}]
+    weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    int64_bound = {int64_bound}
+    uint64_bound = {uint64_bound}
     seed_len = len(seed)
     i_bytes_arr = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4")
     entropy = np.fromiter(
-        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % int64_bound for x in i_bytes_arr),
-        dtype=np.int64
+        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % uint64_bound for x in i_bytes_arr),
+        dtype=np.uint64
     )
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
     # Compute all powers in one go: shape (len(i), n)
-    powers = np.power.outer(base, np.arange(1, len(weights) + 1))
+    powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
     
     # Weighted sum for each element
     result = base

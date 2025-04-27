@@ -153,7 +153,7 @@ import hashlib
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Implements a polynomial of 10 degree
-    weights = [21663, 5116, -83367, -80908, 61353, -54860, 47252, 67022, 41229, 45510]
+    weights = [68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy
@@ -181,22 +181,22 @@ import numpy as np
 
 def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     # Implements a polynomial of 10 degree
-    weights = [21663, 5116, -83367, -80908, 61353, -54860, 47252, 67022, 41229, 45510]
+    weights = np.array([68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy
-    int64_bound = 9223372036854775808
+    uint64_bound = 9223372036854775808
     seed_len = len(seed)
     i_bytes_arr = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4")
     entropy = np.fromiter(
-        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % int64_bound for x in i_bytes_arr),
-        dtype=np.int64
+        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % uint64_bound for x in i_bytes_arr),
+        dtype=np.uint64
     )
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
     
     # Compute all powers in one go: shape (len(i), n)
-    powers = np.power.outer(base, np.arange(1, len(weights) + 1))
+    powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
     
     # Weighted sum for each element
     result = base
