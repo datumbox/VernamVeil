@@ -565,12 +565,12 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
-    # Compute all powers in one go: shape (len(i), n)
+    # Compute all powers in one go
     powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
     
     # Weighted sum for each element
     result = base
-    np.remainder(base, 99991, out=result)
+    np.remainder(result, 99991, out=result)
     np.add(result, np.dot(powers, weights), out=result)
     
     # Modulo the result with the bound to ensure it's always within the requested range
