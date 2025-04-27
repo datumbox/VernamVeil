@@ -6,13 +6,15 @@
 
 ## 🔎 Overview
 
-**VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP. 
+**VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
-Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int, seed: bytes, bound: int | None) -> int`:
+Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.array, seed: bytes, bound: int | None) -> int | np.array`:
 - `i`: the index of the byte in the stream  
 - `seed`: a byte string that provides context and state  
 - `bound`: an optional integer used to modulo the function output into the desired range (usually 256; 1 byte)
-- **Output**: an integer representing the key stream value
+- **Output**: an integer or Numpy array representing the key stream value
+
+_Note: `numpy` is an optional dependency, used to accelerate vectorised operations when available._
 
 ```python
 from vernamveil import VernamVeil
@@ -60,7 +62,7 @@ If you're curious about how encryption works, or just want to mess with math and
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering.
 - **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding.
-
+- **Vectorisation**: Some operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
 ---
 
 ## ⚠️ Caveats & Best Practices
@@ -73,7 +75,7 @@ If you're curious about how encryption works, or just want to mess with math and
 - **The seed replaces the need for IVs/nonces**: While this implementation doesn’t use a nonce or IV in the traditional cryptographic sense, the seed serves a similar role by maintaining state between operations. Each new seed evolves from the previous one, ensuring unique keystreams and preventing key stream reuse.
 - **MAC Limitations**: Tampering is detected before decryption using a message authentication code (MAC) derived from the initial seed. While this improves safety by preventing padding oracle-style issues, its overall cryptographic design remains experimental.
 - **Message Ordering & Replay**: If transmitting encrypted chunks over time, ensure that any external metadata (e.g., message order, timestamps) is securely handled. While the evolving seed prevents keystream reuse, maintaining proper ordering and anti-replay mechanisms might still be necessary in some cases.
-- **Performance is not optimised**: The algorithm is relatively slow due to lack of threading, absence of vectorised operations, and being implemented entirely in high-level Python.
+- **Performance is not optimised**: The algorithm is relatively slow due to lack of threading. Use `vectorise=True` if `numpy` is available to speed up operations.
 
 ---
 
@@ -171,11 +173,43 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     return result
 ```
 
+### 🏎️ A vectorised `fx` that uses Numpy
+
+```python
+import hashlib
+import numpy as np
+
+def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
+    # Implements a polynomial of 10 degree
+
+    weights = [21663, 5116, -83367, -80908, 61353, -54860, 47252, 67022, 41229, 45510]
+    base_modulus = 1000000000
+    # Hash the input with the seed to get entropy
+    int64_bound = 9223372036854775808
+    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.sha256(seed + int(x).to_bytes(4, "big")).digest(), "big") % int64_bound)(i)
+    entropy = entropy.astype(np.int64)
+    
+    base = i + entropy
+    np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
+    # Compute all powers in one go: shape (len(i), n)
+    powers = np.power.outer(base, np.arange(1, len(weights) + 1))
+    
+    # Weighted sum for each element
+    combined_result = np.dot(powers, weights)
+    result = np.add(combined_result, np.remainder(base, 99991), dtype=np.int64)
+    
+    # Modulo the result with the bound to ensure it's always within the requested range
+    if bound is not None:
+        np.remainder(result, bound, out=result)
+    
+    return result
+```
+
 ---
 
 ## 🛠️ Technical Details
 
 - **Compact Implementation**: About 200 lines of code, excluding comments and documentation.
-- **No External Dependencies**: Built using only Python's standard library.
-- **Tested with**: Python 3.10.
+- **External Dependencies**: Built using only Python's standard library with Numpy being optional for vectorisation.
+- **Tested with**: Python 3.10 and Numpy 2.2.5.
 
