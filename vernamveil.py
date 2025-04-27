@@ -79,7 +79,7 @@ class VernamVeil:
             data (bytes, optional): Additional data to influence seed update.
 
         Returns:
-            bytes: A new BLAKE2b-derived seed.
+            bytes: A new refreshed seed.
         """
         m = hashlib.blake2b(seed, digest_size=len(seed))
         if data is not None:
@@ -557,8 +557,11 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     # Hash the input with the seed to get entropy
     int64_bound = {int64_bound}
     seed_len = len(seed)
-    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.blake2b(seed + int(x).to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % int64_bound)(i)
-    entropy = entropy.astype(np.int64)
+    i_bytes_arr = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4")
+    entropy = np.fromiter(
+        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % int64_bound for x in i_bytes_arr),
+        dtype=np.int64
+    )
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
@@ -566,8 +569,8 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     powers = np.power.outer(base, np.arange(1, len(weights) + 1))
     
     # Weighted sum for each element
-    combined_result = np.dot(powers, weights)
-    result = np.add(combined_result, np.remainder(base, 99991), dtype=np.int64)
+    result = np.remainder(base, 99991, dtype=np.int64)
+    np.add(result, np.dot(powers, weights), out=result)
     
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -587,10 +590,9 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base = (i + entropy) % base_modulus
 
     # Combine terms of the polynomial using weights and powers of the base
-    combined_result = 0
+    result = base % 99991
     for power, weight in enumerate(weights, start=1):
-        combined_result += weight * pow(base, power)
-    result = combined_result + (base % 99991)
+        result += weight * pow(base, power)
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
