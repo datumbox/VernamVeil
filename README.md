@@ -182,7 +182,6 @@ import numpy as np
 
 def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     # Implements a polynomial of 10 degree
-
     weights = [21663, 5116, -83367, -80908, 61353, -54860, 47252, 67022, 41229, 45510]
     base_modulus = 1000000000
     # Hash the input with the seed to get entropy
