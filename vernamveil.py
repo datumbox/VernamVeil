@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import math
 import secrets
-from typing import Callable, Literal
+from typing import Callable, Iterator, Literal
 
 try:
     import numpy as np
@@ -149,7 +149,7 @@ class VernamVeil:
         seed = self._refresh_seed(seed, b"delimiter")
         return delimiter, seed
 
-    def _generate_chunk_ranges(self, message_len: int) -> list[tuple[int, int]]:
+    def _generate_chunk_ranges(self, message_len: int) -> Iterator[tuple[int, int]]:
         """
         Splits a message into chunk index ranges based on the configured chunk size.
 
@@ -157,9 +157,9 @@ class VernamVeil:
             message_len (int): Length of the message in bytes.
 
         Returns:
-            list[tuple[int, int]]: List of (start, end) indices for each chunk.
+            Iterator[tuple[int, int]]: An iterator with (start, end) indices for each chunk.
         """
-        return [(i, min(i + self._chunk_size, message_len)) for i in range(0, message_len, self._chunk_size)]
+        return ((i, min(i + self._chunk_size, message_len)) for i in range(0, message_len, self._chunk_size))
 
     def _obfuscate(self, message: bytes, seed: bytes, delimiter: bytes) -> bytes:
         """
@@ -183,10 +183,10 @@ class VernamVeil:
         shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
 
         # Use the randomness of the positions to shuffle the chunks
-        chunk_ranges = iter(self._generate_chunk_ranges(message_len))
+        chunk_ranges_iter = self._generate_chunk_ranges(message_len)
         shuffled_chunk_ranges = [None] * total_count
         for i in shuffled_positions:
-            shuffled_chunk_ranges[i] = next(chunk_ranges)
+            shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
         # Build the noisy message by combining fake and shuffled real chunks
         noisy_blocks = bytearray()
