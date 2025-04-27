@@ -157,7 +157,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy
-    entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
+    seed_len = len(seed)
+    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big")
     base = (i + entropy) % base_modulus
     
     # Combine terms of the polynomial using weights and powers of the base
@@ -186,7 +187,8 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     base_modulus = 1000000000
     # Hash the input with the seed to get entropy
     int64_bound = 9223372036854775808
-    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.sha256(seed + int(x).to_bytes(4, "big")).digest(), "big") % int64_bound)(i)
+    seed_len = len(seed)
+    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.blake2b(seed + int(x).to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % int64_bound)(i)
     entropy = entropy.astype(np.int64)
     
     base = i + entropy

@@ -78,9 +78,9 @@ class VernamVeil:
             data (bytes, optional): Additional data to influence seed update.
 
         Returns:
-            bytes: A new SHA-256-derived seed.
+            bytes: A new BLAKE2b-derived seed.
         """
-        m = hashlib.sha256(seed)
+        m = hashlib.blake2b(seed, digest_size=len(seed))
         if data is not None:
             m.update(data)
         return m.digest()
@@ -102,9 +102,10 @@ class VernamVeil:
         positions = list(range(total_count))
 
         # Shuffle deterministically based on the hashed seed
+        seed_len = len(seed)
         for i in range(len(positions) - 1, 0, -1):
             # Create a random number between 0 and i
-            j = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big") % (i + 1)
+            j = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % (i + 1)
 
             # Swap elements at positions i and j
             positions[i], positions[j] = positions[j], positions[i]
@@ -344,8 +345,8 @@ class VernamVeil:
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            hash = hashlib.sha256(ciphertext).digest()
-            tag, _ = self._xor_with_key(hash, auth_seed, True)
+            blake_hash = hashlib.blake2b(ciphertext).digest()
+            tag, _ = self._xor_with_key(blake_hash, auth_seed, True)
             result = bytearray(ciphertext)
             result.extend(tag)
 
@@ -366,15 +367,15 @@ class VernamVeil:
         if self._auth_encrypt:
             # Split the data
             data = memoryview(ciphertext)
-            sha256_len = 32
-            encrypted_data, expected_tag = data[:-sha256_len], data[-sha256_len:]
+            blake2b_len = 64
+            encrypted_data, expected_tag = data[:-blake2b_len], data[-blake2b_len:]
 
             # Produce a unique seed for Authenticated Encryption
             auth_seed = self._refresh_seed(seed, b"MAC")
 
             # Estimate the tag and compare it with the expected
-            hash = hashlib.sha256(encrypted_data).digest()
-            tag, _ = self._xor_with_key(hash, auth_seed, True)
+            blake_hash = hashlib.blake2b(encrypted_data).digest()
+            tag, _ = self._xor_with_key(blake_hash, auth_seed, True)
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
@@ -549,12 +550,14 @@ def generate_secret_fx(
         int64_bound = 2 ** 63
         function_code = f"""
 def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
+    # Implements a polynomial of {n} degree
     weights = [{", ".join(str(w) for w in weights)}]
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
     int64_bound = {int64_bound}
-    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.sha256(seed + int(x).to_bytes(4, "big")).digest(), "big") % int64_bound)(i)
+    seed_len = len(seed)
+    entropy = np.vectorize(lambda x: int.from_bytes(hashlib.blake2b(seed + int(x).to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % int64_bound)(i)
     entropy = entropy.astype(np.int64)
     
     base = i + entropy
@@ -580,7 +583,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
+    seed_len = len(seed)
+    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big")
     base = (i + entropy) % base_modulus
 
     # Combine terms of the polynomial using weights and powers of the base

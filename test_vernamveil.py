@@ -52,7 +52,6 @@ class TestVernamVeil(unittest.TestCase):
 
         for vectorise, mode in [(False, "scalar")] + ([(True, "vectorised")] if HAS_NUMPY else []):
             with self.subTest(mode=mode):
-                pass
                 fx = generate_secret_fx(20, vectorise=vectorise)
 
                 # Encrypt and decrypt the file
@@ -62,12 +61,12 @@ class TestVernamVeil(unittest.TestCase):
                                         buffer_size=1024,
                                         chunk_size=128, vectorise=vectorise)
 
-                # Compare SHA256 checksums
+                # Compare checksums
                 with open(input_file, "rb") as f1, open(decoded_file, "rb") as f2:
-                    sha256_original = hashlib.sha256(f1.read()).hexdigest()
-                    sha256_decoded = hashlib.sha256(f2.read()).hexdigest()
+                    checksum_original = hashlib.blake2b(f1.read()).hexdigest()
+                    checksum_decoded = hashlib.blake2b(f2.read()).hexdigest()
 
-                self.assertEqual(sha256_original, sha256_decoded)
+                self.assertEqual(checksum_original, checksum_decoded)
 
                 # Clean up test files
                 os.remove(output_file)
