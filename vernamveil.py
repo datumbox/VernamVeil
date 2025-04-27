@@ -6,6 +6,7 @@ from typing import Callable, Iterator, Literal
 
 try:
     import numpy as np
+
     _IntOrArray = int | np.ndarray
 except ImportError:
     np = None
@@ -105,7 +106,8 @@ class VernamVeil:
         seed_len = len(seed)
         for i in range(len(positions) - 1, 0, -1):
             # Create a random number between 0 and i
-            j = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % (i + 1)
+            j = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % (
+                    i + 1)
 
             # Swap elements at positions i and j
             positions[i], positions[j] = positions[j], positions[i]
@@ -517,10 +519,10 @@ class VernamVeil:
 
 
 def generate_secret_fx(
-    n: int, max_weight:
-    int = 10 ** 5,
-    base_modulus: int = 10 ** 9,
-    vectorise: bool = False
+        n: int, max_weight:
+        int = 10 ** 5,
+        base_modulus: int = 10 ** 9,
+        vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
     Generates a polynomial-based secret function to act as a deterministic key stream generator. Though any
