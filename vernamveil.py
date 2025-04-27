@@ -561,7 +561,6 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     seed_len = len(seed)
     entropy = np.vectorize(lambda x: int.from_bytes(hashlib.blake2b(seed + int(x).to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % int64_bound)(i)
     entropy = entropy.astype(np.int64)
-    
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 

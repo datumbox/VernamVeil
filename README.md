@@ -184,14 +184,15 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
     # Implements a polynomial of 10 degree
     weights = [21663, 5116, -83367, -80908, 61353, -54860, 47252, 67022, 41229, 45510]
     base_modulus = 1000000000
+    
     # Hash the input with the seed to get entropy
     int64_bound = 9223372036854775808
     seed_len = len(seed)
     entropy = np.vectorize(lambda x: int.from_bytes(hashlib.blake2b(seed + int(x).to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % int64_bound)(i)
     entropy = entropy.astype(np.int64)
-    
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
+    
     # Compute all powers in one go: shape (len(i), n)
     powers = np.power.outer(base, np.arange(1, len(weights) + 1))
     
