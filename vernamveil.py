@@ -439,6 +439,10 @@ class VernamVeil:
             buffer_size (int, optional): Bytes to read from the file at a time. Defaults to 1MB.
             mode (Literal["encode", "decode"], optional): Operation mode. Defaults to "encode".
             **vernamveil_kwargs: Additional parameters for VernamVeil configuration.
+
+        Raises:
+            ValueError: If `mode` is not "encode" or "decode".
+            ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
         """
         # Define default VernamVeil parameters suitable for large files
         defaults = {
@@ -482,37 +486,31 @@ class VernamVeil:
             elif mode == "decode":
                 buffer = bytearray()
                 while True:
-                    # Read from the file
                     block = infile.read(buffer_size)
+                    if not block and not buffer:
+                        break  # End of file and nothing left to process
 
-                    # Append it to the buffer, even if it's empty
                     buffer.extend(block)
+                    while True:
+                        delim_index = buffer.find(block_delimiter)
+                        if delim_index == -1:
+                            break  # No complete block in buffer yet
 
-                    # Search for the delimiter in the entire buffer. This is required for corner-cases where
-                    # the delimiter was split between blocks.
-                    delim_index = buffer.find(block_delimiter)
-                    if delim_index == -1:
-                        # No delimiter found.
-                        if not block:
-                            # End of file, exit the loop
-                            break
-                        else:
-                            # Continue reading to find the complete block
-                            continue
+                        # Extract the complete block up to the delimiter
+                        complete_block = memoryview(buffer)[:delim_index]
 
-                    # Extract the complete block up to the last delimiter
-                    complete_block = memoryview(buffer)[:delim_index]
+                        # Decode the complete block
+                        processed_block, current_seed = cipher.decode(complete_block, current_seed)
+                        outfile.write(processed_block)
 
-                    # Seek back to the start of the leftover data
-                    leftover = len(buffer) - delim_index - block_delimiter_size
-                    infile.seek(-leftover, 1)
-                    buffer = bytearray()
+                        # Remove the processed block and delimiter from the buffer
+                        buffer = buffer[delim_index + block_delimiter_size:]
 
-                    # Decode the complete block
-                    processed_block, current_seed = cipher.decode(complete_block, current_seed)
-
-                    # Write the processed buffer to the output file
-                    outfile.write(processed_block)
+                    if not block:
+                        # No more data to read, but there may be leftover data without a delimiter
+                        if buffer:
+                            raise ValueError("Incomplete block at end of file: missing delimiter.")
+                        break
 
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
