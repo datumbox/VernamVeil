@@ -211,7 +211,7 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
 
 ## 🛠️ Technical Details
 
-- **Compact Implementation**: About 200 lines of code, excluding comments and documentation.
+- **Compact Implementation**: Less than 300 lines of code, excluding comments and documentation.
 - **External Dependencies**: Built using only Python's standard library with Numpy being optional for vectorisation.
 - **Tested with**: Python 3.10 and Numpy 2.2.5.
 
