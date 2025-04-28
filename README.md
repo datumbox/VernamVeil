@@ -8,11 +8,11 @@
 
 **VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
-Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.array, seed: bytes, bound: int | None) -> int | np.array`:
+Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
 - `i`: the index of the byte in the stream  
 - `seed`: a byte string that provides context and state  
 - `bound`: an optional integer used to modulo the function output into the desired range (usually 256; 1 byte)
-- **Output**: an integer or Numpy array representing the key stream value
+- **Output**: an integer or NumPy array representing the key stream value
 
 _Note: `numpy` is an optional dependency, used to accelerate vectorised operations when available._
 
@@ -61,8 +61,9 @@ If you're curious about how encryption works, or just want to mess with math and
   - Chunk delimiters are randomly generated, encrypted and not exposed
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering.
-- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding.
+- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
 - **Vectorisation**: Some operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
+- **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`npsha256`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_polynomial_fx`. See [`npsha256/README.md`](npsha256/README.md) for build and usage details.
 ---
 
 ## ⚠️ Caveats & Best Practices
@@ -75,7 +76,6 @@ If you're curious about how encryption works, or just want to mess with math and
 - **The seed replaces the need for IVs/nonces**: While this implementation doesn’t use a nonce or IV in the traditional cryptographic sense, the seed serves a similar role by maintaining state between operations. Each new seed evolves from the previous one, ensuring unique keystreams and preventing key stream reuse.
 - **MAC Limitations**: Tampering is detected before decryption using a message authentication code (MAC) derived from the initial seed. While this improves safety by preventing padding oracle-style issues, its overall cryptographic design remains experimental.
 - **Message Ordering & Replay**: If transmitting encrypted chunks over time, ensure that any external metadata (e.g., message order, timestamps) is securely handled. While the evolving seed prevents keystream reuse, maintaining proper ordering and anti-replay mechanisms might still be necessary in some cases.
-- **Performance is not optimised**: The algorithm is relatively slow due to lack of threading. Use `vectorise=True` if `numpy` is available to speed up operations.
 
 ---
 
@@ -151,14 +151,14 @@ VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode
 ```python
 import hashlib
 
+
 def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Implements a polynomial of 10 degree
     weights = [68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy
-    seed_len = len(seed)
-    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big")
+    entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
     base = (i + entropy) % base_modulus
     
     # Combine terms of the polynomial using weights and powers of the base
@@ -173,25 +173,20 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     return result
 ```
 
-### 🏎️ A vectorised `fx` that uses Numpy
+### 🏎️ A fast `fx` that uses NumPy vectorisation and the `npsha256` C module
 
 ```python
-import hashlib
+from npsha256 import numpy_sha256
 import numpy as np
 
-def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
+
+def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     # Implements a polynomial of 10 degree
     weights = np.array([68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy
-    uint64_bound = 9223372036854775808
-    seed_len = len(seed)
-    i_bytes_arr = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4")
-    entropy = np.fromiter(
-        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % uint64_bound for x in i_bytes_arr),
-        dtype=np.uint64
-    )
+    entropy = numpy_sha256(i, seed)  # uses C module if available, else NumPy fallback
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
     
@@ -212,9 +207,104 @@ def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
 
 ---
 
+## 🔧 Provided `fx` Utilities
+
+VernamVeil includes helper tools to make working with key stream functions easier:
+
+- `generate_polynomial_fx`: Quickly create deterministic polynomial-based `fx` functions for testing or experimentation. Supports both scalar and vectorised (NumPy) modes.
+- `check_fx_sanity`: Run basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
+
+These utilities help you prototype and validate your own key stream functions before using them in encryption.
+
+Example:
+
+```python
+from vernamveil import generate_polynomial_fx, check_fx_sanity
+
+
+# Generate a vectorised polynomial fx function of degree 4
+fx = generate_polynomial_fx(4, max_weight=1000, vectorise=True)
+
+# Show the generated function's source code
+print("Generated fx source code:\n", fx._source_code)
+
+# Check if the generated fx passes basic sanity checks
+seed = b"mysecretseed"
+bound = 256
+num_samples = 100
+passed = check_fx_sanity(fx, seed, bound, num_samples)
+print("Sanity check passed:", passed)
+```
+
+---
+
+## 🖥️ Command-Line Interface (CLI)
+
+VernamVeil provides a convenient CLI for file encryption and decryption. The CLI supports both encoding (encryption) and decoding (decryption) operations, allowing you to specify custom key stream functions (`fx`) and seeds, or have them generated automatically.
+
+### Features
+
+- **Encrypt and decrypt files** using a user-defined or auto-generated `fx` function and seed.
+- **Auto-generate `fx.py` and `seed.bin`** during encoding if not provided; these files are saved in the current working directory.
+- **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.bin` for both encoding and decoding.
+- **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more.
+- **Sanity checks**: Optionally verify that your `fx` function is suitable for cryptographic use.
+
+### Usage
+
+```commandline
+# Encrypt a file with auto-generated fx and seed
+vernamveil encode --infile plain.txt --outfile encrypted.dat
+
+# Encrypt a file with a custom fx function and seed
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin
+
+# Decrypt a file (requires the same fx and seed used for encryption)
+vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin
+
+# Enable fx sanity check during encoding or decoding
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin --check-fx-sanity
+vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin --check-fx-sanity
+```
+
+### File Handling
+
+- When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current directory. **Store these files securely**; they are required for decryption.
+- When decoding, you **must** provide both `--fx-file` and `--seed-file` pointing to the originals used for encryption.
+- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command.
+
+See `vernamveil encode --help` and `vernamveil decode --help` for all available options.
+
+---
+
 ## 🛠️ Technical Details
 
-- **Compact Implementation**: Less than 300 lines of code, excluding comments and documentation.
-- **External Dependencies**: Built using only Python's standard library with Numpy being optional for vectorisation.
-- **Tested with**: Python 3.10 and Numpy 2.2.5.
+- **Compact Implementation**: The cipher implementation is less than 300 lines of code, excluding comments and documentation.
+- **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
+- **Optional C Module for Fast Hashing**: Includes an optional C module (`npsha256`) built with [cffi](https://cffi.readthedocs.io/), enabling fast SHA-256 estimations for vectorised `fx` functions. See the [`npsha256` README](npsha256/README.md) for details.
+- **Tested with**: Python 3.10 and NumPy 2.2.5.
 
+### 🔧 Installation
+
+To install the library with all optional dependencies (NumPy for vectorisation, cffi for the C module, and development tools):
+```
+    pip install .[numpy,cffi,dev]
+```
+
+- The `[numpy]` extra enables fast vectorised operations.
+- The `[cffi]` extra builds the `npsha256` C extension for accelerated SHA-256 in NumPy-based `fx` functions.
+- The `[dev]` extra installs development and testing dependencies.
+
+### ⚡ Fast Vectorised `fx` Functions
+
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `npsha256` C module provides a high-performance SHA-256 estimator for NumPy arrays, which is automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure-Python fallback is used.
+
+For more details on the C module and its usage, see [`npsha256/README.md`](npsha256/README.md).
+
+---
+
+## 📄 Copyright & License
+
+Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/). 
+
+The code is licensed under the [Apache License, Version 2.0](./LICENSE).

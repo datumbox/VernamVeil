@@ -1,3 +1,10 @@
 .venv
 .idea
-__pycache__
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.env
+npsha256/_npsha256ffi*

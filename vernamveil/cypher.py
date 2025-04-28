@@ -22,14 +22,14 @@ class VernamVeil:
     """
 
     def __init__(
-            self,
-            fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
-            chunk_size: int = 32,
-            delimiter_size: int = 8,
-            padding_range: tuple[int, int] = (5, 15),
-            decoy_ratio: float = 0.1,
-            auth_encrypt: bool = True,
-            vectorise: bool = False,
+        self,
+        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+        chunk_size: int = 32,
+        delimiter_size: int = 8,
+        padding_range: tuple[int, int] = (5, 15),
+        decoy_ratio: float = 0.1,
+        auth_encrypt: bool = True,
+        vectorise: bool = False,
     ):
         """
         Initializes the VernamVeil encryption cipher with configurable parameters.
@@ -40,7 +40,8 @@ class VernamVeil:
                 to ensure unpredictability.
             chunk_size (int, optional): Size of message chunks. Defaults to 32.
             delimiter_size (int, optional): Length of the delimiter used for separating chunks. Defaults to 8.
-            padding_range (tuple[int, int], optional): Range for padding length before and after chunks. Defaults to (5, 15).
+            padding_range (tuple[int, int], optional): Range for padding length before and after
+                chunks. Defaults to (5, 15).
             decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
             auth_encrypt (bool, optional): Enables authenticated encryption with integrity check. Defaults to True.
             vectorise (bool, optional): Whether to use numpy for vectorised operations. If True, numpy must be
@@ -52,17 +53,22 @@ class VernamVeil:
             ImportError: If `vectorise` is True but numpy is not installed.
         """
         # Validate input
-        if not (isinstance(padding_range, tuple) and len(padding_range) == 2 and
-                all(isinstance(x, int) for x in padding_range)):
+        if not (
+            isinstance(padding_range, tuple)
+            and len(padding_range) == 2
+            and all(isinstance(x, int) for x in padding_range)
+        ):
             raise ValueError("padding_range must be a tuple of two integers.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and np is None:
-            raise ImportError("Numpy is required for vectorised mode but is not installed.")
+            raise ImportError("NumPy is required for vectorised mode but is not installed.")
 
         # Initialise instance variables
         self._fx = fx
-        self._chunk_size = chunk_size  # Default chosen for balance between performance and memory usage
+        self._chunk_size = (
+            chunk_size  # Default chosen for balance between performance and memory usage
+        )
         self._delimiter_size = delimiter_size  # Default ensures delimiters are not easily guessable
         self._padding_range = padding_range
         self._decoy_ratio = decoy_ratio
@@ -106,8 +112,10 @@ class VernamVeil:
         seed_len = len(seed)
         for i in range(len(positions) - 1, 0, -1):
             # Create a random number between 0 and i
-            j = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big") % (
-                    i + 1)
+            j = int.from_bytes(
+                hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(),
+                "big",
+            ) % (i + 1)
 
             # Swap elements at positions i and j
             positions[i], positions[j] = positions[j], positions[i]
@@ -161,7 +169,10 @@ class VernamVeil:
         Returns:
             Iterator[tuple[int, int]]: An iterator with (start, end) indices for each chunk.
         """
-        return ((i, min(i + self._chunk_size, message_len)) for i in range(0, message_len, self._chunk_size))
+        return (
+            (i, min(i + self._chunk_size, message_len))
+            for i in range(0, message_len, self._chunk_size)
+        )
 
     def _obfuscate(self, message: bytes, seed: bytes, delimiter: bytes) -> bytes:
         """
@@ -302,7 +313,9 @@ class VernamVeil:
             if self._vectorise:
                 ks_arr = np.frombuffer(keystream, dtype=np.uint8)
                 processed[start:end] = np.bitwise_xor(arr[start:end], ks_arr)
-                seed_data = arr[start:end].tobytes() if is_encode else processed[start:end].tobytes()
+                seed_data = (
+                    arr[start:end].tobytes() if is_encode else processed[start:end].tobytes()
+                )
             else:
                 for i in range(chunk_len):
                     pos = start + i
@@ -420,13 +433,13 @@ class VernamVeil:
 
     @staticmethod
     def process_file(
-            input_file: str,
-            output_file: str,
-            fx: Callable[[int, bytes, int | None], int],
-            seed: bytes,
-            buffer_size: int = 1024 * 1024,
-            mode: Literal["encode", "decode"] = "encode",
-            **vernamveil_kwargs,
+        input_file: str,
+        output_file: str,
+        fx: Callable[[int, bytes, int | None], int],
+        seed: bytes,
+        buffer_size: int = 1024 * 1024,
+        mode: Literal["encode", "decode"] = "encode",
+        **vernamveil_kwargs,
     ):
         """
         Processes a file in blocks using VernamVeil encryption or decryption.
@@ -504,7 +517,7 @@ class VernamVeil:
                         outfile.write(processed_block)
 
                         # Remove the processed block and delimiter from the buffer
-                        buffer = buffer[delim_index + block_delimiter_size:]
+                        buffer = buffer[delim_index + block_delimiter_size :]
 
                     if not block:
                         # No more data to read, but there may be leftover data without a delimiter
@@ -514,100 +527,3 @@ class VernamVeil:
 
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
-
-
-def generate_secret_fx(
-        n: int, max_weight:
-        int = 10 ** 5,
-        base_modulus: int = 10 ** 9,
-        vectorise: bool = False
-) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
-    """
-    Generates a polynomial-based secret function to act as a deterministic key stream generator. Though any
-    mathematical function with domain the positive integers can be used, this utility only supports polynomials and is
-    used for testing.
-
-    Args:
-        n (int): Degree of the polynomial.
-        max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
-        base_modulus (int, optional): Modulus to prevent large intermediate values. Defaults to 10 ** 9.
-        vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
-
-    Returns:
-        Callable[[int | np.array, bytes, int | None], int | np.array]: A function that returns pseudo-random integers from polynomial evaluation.
-        
-    Raises:
-        ImportError: If `vectorise` is True but numpy is not installed.
-    """
-    if vectorise and np is None:
-        raise ImportError("Numpy is required for vectorised mode but is not installed.")
-
-    # Generate random weights for each term in the polynomial
-    weights = [secrets.randbelow(max_weight + 1) for _ in range(n)]
-
-    # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
-    if vectorise:
-        uint64_bound = 2 ** 64
-        function_code = f"""
-def fx(i: np.array, seed: bytes, bound: int | None) -> np.array:
-    # Implements a polynomial of {n} degree
-    weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
-    base_modulus = {base_modulus}
-
-    # Hash the input with the seed to get entropy
-    uint64_bound = {uint64_bound}
-    seed_len = len(seed)
-    i_bytes_arr = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4")
-    entropy = np.fromiter(
-        (int.from_bytes(hashlib.blake2b(seed + x, digest_size=seed_len).digest(), "big") % uint64_bound for x in i_bytes_arr),
-        dtype=np.uint64
-    )
-    base = i + entropy
-    np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
-
-    # Compute all powers in one go
-    powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
-    
-    # Weighted sum for each element
-    result = base
-    np.remainder(result, 99991, out=result)
-    np.add(result, np.dot(powers, weights), out=result)
-    
-    # Modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        np.remainder(result, bound, out=result)
-    
-    return result
-"""
-    else:
-        function_code = f"""
-def fx(i: int, seed: bytes, bound: int | None) -> int:
-    weights = [{", ".join(str(w) for w in weights)}]
-    base_modulus = {base_modulus}
-
-    # Hash the input with the seed to get entropy
-    seed_len = len(seed)
-    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(), "big")
-    base = (i + entropy) % base_modulus
-
-    # Combine terms of the polynomial using weights and powers of the base
-    result = base % 99991
-    for power, weight in enumerate(weights, start=1):
-        result += weight * pow(base, power)
-
-    # Modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        result %= bound
-
-    return result
-""".strip()
-
-    # Execute the string to define fx in a local namespace
-    local_vars = {}
-    exec(function_code, {"hashlib": hashlib, "np": np}, local_vars)
-    fx = local_vars["fx"]
-
-    # Attach the code string directly to the function object for later reference
-    fx._source_code = function_code
-
-    return fx
