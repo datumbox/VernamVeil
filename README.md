@@ -278,7 +278,7 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx
 > vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.bin --chunk-size 1024
 > ```
 >
-> **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure and `Authentication failed: MAC tag mismatch.` error.
+> **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure.
 
 ### File Handling
 
