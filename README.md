@@ -267,6 +267,19 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py 
 vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin --check-fx-sanity
 ```
 
+> ⚠️ **Warning: CLI Parameter Consistency**
+>
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
+>
+> For example, the following will **fail** with a `MAC tag mismatch` error because the chunk size differs between encoding and decoding:
+>
+> ```commandline
+> vernamveil encode --infile plain.txt --outfile encrypted.dat
+> vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.bin --chunk-size 1024
+> ```
+>
+> **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure and `Authentication failed: MAC tag mismatch.` error.
+
 ### File Handling
 
 - When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current directory. **Store these files securely**; they are required for decryption.
