@@ -2,6 +2,7 @@ import hashlib
 import os
 import random
 import string
+import tempfile
 import unittest
 from contextlib import nullcontext
 from unittest.mock import patch
@@ -78,12 +79,20 @@ class TestVernamVeil(unittest.TestCase):
 
         self.for_all_modes(10, test)
 
-    @unittest.skipIf(not os.path.exists("/usr/bin/ls"), "Input file does not exist")
     def test_file_encryption(self):
         """Test file encryption and decryption, verifying file integrity via checksum."""
-        input_file = "/usr/bin/ls"
-        output_file = "/tmp/ls.encoded"
-        decoded_file = "/tmp/ls.decoded"
+        with (
+            tempfile.NamedTemporaryFile(delete=False) as input_tmp,
+            tempfile.NamedTemporaryFile(delete=False) as output_tmp,
+            tempfile.NamedTemporaryFile(delete=False) as decoded_tmp,
+        ):
+            input_file = input_tmp.name
+            output_file = output_tmp.name
+            decoded_file = decoded_tmp.name
+
+            # Write random data to input file
+            input_tmp.write(os.urandom(65536))
+            input_tmp.flush()
 
         def test(_, vectorise):
             fx = generate_polynomial_fx(20, vectorise=vectorise)
