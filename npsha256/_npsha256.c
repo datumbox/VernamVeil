@@ -7,21 +7,23 @@
 #include <omp.h>
 #endif
 
+// Use a stack buffer for most cases (seedlen up to 256)
+#define STACK_BUF_SIZE 260
+
 // Hashes an array of 4-byte elements with a seed using SHA256, outputs 64-bit values
 void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, uint64_t* out) {
     // Treat input as an array of 4-byte blocks
     const char (*arr4)[4] = (const char (*)[4])arr;
 
-    // Use a stack buffer for most cases (seedlen up to 256)
-    #define STACK_BUF_SIZE 260
     size_t buflen = seedlen + 4;
 
     int i;
+    int n_int = (int)n;
     #ifdef _OPENMP
     // Parallelize the loop with OpenMP to use multiple CPU cores
     #pragma omp parallel for
     #endif
-    for (i = 0; i < (int)n; ++i) {
+    for (i = 0; i < n_int; ++i) {
         unsigned char hash[32]; // Buffer for SHA256 output (32 bytes)
         unsigned char stack_buf[STACK_BUF_SIZE];
         unsigned char* buf;
