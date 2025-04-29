@@ -69,7 +69,7 @@ def fx(i, seed, bound):
             args += ["--seed-file", seed_file]
         if extra_args:
             args += extra_args
-        if not any("vectorise" in arg for arg in args):
+        if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
         main(args)
 
@@ -88,7 +88,7 @@ def fx(i, seed, bound):
         ]
         if extra_args:
             args += extra_args
-        if not any("vectorise" in arg for arg in args):
+        if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
         main(args)
 
