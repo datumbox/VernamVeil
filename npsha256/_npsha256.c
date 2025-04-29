@@ -12,19 +12,30 @@ void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, u
     // Treat input as an array of 4-byte blocks
     const char (*arr4)[4] = (const char (*)[4])arr;
 
+    // Use a stack buffer for most cases (seedlen up to 256)
+    #define STACK_BUF_SIZE 260
+    size_t buflen = seedlen + 4;
+
     int i;
     #ifdef _OPENMP
     // Parallelize the loop with OpenMP to use multiple CPU cores
     #pragma omp parallel for
     #endif
-    for (i = 0; i < n; ++i) {
+    for (i = 0; i < (int)n; ++i) {
         unsigned char hash[32]; // Buffer for SHA256 output (32 bytes)
-        // Dynamically allocate buffer for seed + 4 bytes
-        unsigned char* buf = (unsigned char*)malloc(seedlen + 4);
-        if (!buf) {
-            // Allocation failed, skip this output
-            out[i] = 0;
-            continue;
+        unsigned char stack_buf[STACK_BUF_SIZE];
+        unsigned char* buf;
+
+        // Dynamically allocate buffer for large seeds
+        if (buflen > STACK_BUF_SIZE) {
+            buf = (unsigned char*)malloc(buflen);
+            if (!buf) {
+                // Allocation failed, skip this output
+                out[i] = 0;
+                continue;
+            }
+        } else {
+            buf = stack_buf;
         }
 
         // Copy the seed into the buffer
@@ -35,7 +46,7 @@ void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, u
         memcpy(buf + seedlen, arr4[i], 4);
 
         // Compute SHA256 hash of (seed || 4-byte block)
-        SHA256(buf, seedlen + 4, hash);
+        SHA256(buf, buflen, hash);
 
         // Convert the 32-byte hash to a 64-bit integer (big-endian)
         uint64_t val = 0;
@@ -45,6 +56,10 @@ void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, u
         // Store the result in the output array
         out[i] = val;
 
-        free(buf);
+        // Free the dynamically allocated buffer if it was used
+        // (i.e., when the required buffer size exceeded the stack buffer)
+        if (buflen > STACK_BUF_SIZE) {
+            free(buf);
+        }
     }
 }
