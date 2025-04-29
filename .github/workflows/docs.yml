@@ -1,0 +1,36 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install .[dev]
+
+      - name: Generate docs with pdoc
+        run: |
+          pdoc ./vernamveil ./npsha256 --output-dir docs-html --docformat google
+
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs-html
+          publish_branch: gh-pages
+          force_orphan: true

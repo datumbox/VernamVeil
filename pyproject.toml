@@ -9,15 +9,16 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
+dev = [
+    "black>=25.1",
+    "flake8>=7.2",
+    "pdoc>=15.0",
+]
 numpy = [
     "numpy>=2.2"
 ]
 cffi = [
     "cffi>=1.15"
-]
-dev = [
-    "black>=25.1",
-    "flake8>=7.2",
 ]
 
 [project.scripts]

@@ -8,3 +8,4 @@ build/
 dist/
 .env
 npsha256/_npsha256ffi*
+docs-html/

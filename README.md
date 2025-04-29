@@ -1,8 +1,10 @@
 # 🔐 VernamVeil: A Function-Based Stream Cipher
 
-> ⚠️ **DISCLAIMER:** This is an educational encryption prototype and **not** meant for real-world use. It has **not** been audited or reviewed by cryptography experts, and **should not** be used to store, transmit, or protect sensitive data.
+[![CI](https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datumbox/VernamVeil/actions) [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://datumbox.github.io/VernamVeil/) [![License](https://img.shields.io/:license-apache-brightgreen.svg)](./LICENSE)
 
 ---
+
+> ⚠️ **DISCLAIMER:** This is an educational encryption prototype and **not** meant for real-world use. It has **not** been audited or reviewed by cryptography experts, and **should not** be used to store, transmit, or protect sensitive data.
 
 ## 🔎 Overview
 
@@ -21,6 +23,7 @@ from vernamveil import VernamVeil
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
+    # Simple but cryptographically unsafe fx
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
@@ -37,6 +40,12 @@ decrypted, _ = cipher.decode(encrypted, seed)
 This approach enables novel forms of key generation, especially for those who enjoy playing with math and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
 
 If you're curious about how encryption works, or just want to mess with math and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
+
+---
+
+## 📚 Documentation
+
+Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil/](https://datumbox.github.io/VernamVeil/)
 
 ---
 
@@ -89,6 +98,7 @@ from vernamveil import VernamVeil
 
 # Step 1: Define a custom key stream function
 def fx(i: int, seed: bytes, bound: int | None) -> int:
+    # Simple but cryptographically unsafe fx
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
@@ -129,6 +139,7 @@ from vernamveil import VernamVeil
 
 # Step 1: Define a custom key stream function
 def fx(i: int, seed: bytes, bound: int | None) -> int:
+    # Simple but cryptographically unsafe fx
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
@@ -157,7 +168,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     weights = [68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
     base_modulus = 1000000000
     
-    # Hash the input with the seed to get entropy
+    # Hash the input with the seed to get entropy`
     entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
     base = (i + entropy) % base_modulus
     
