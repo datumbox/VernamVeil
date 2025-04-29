@@ -435,7 +435,7 @@ class VernamVeil:
     def process_file(
         input_file: str,
         output_file: str,
-        fx: Callable[[int, bytes, int | None], int],
+        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
         seed: bytes,
         buffer_size: int = 1024 * 1024,
         mode: Literal["encode", "decode"] = "encode",
