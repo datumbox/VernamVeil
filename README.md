@@ -315,9 +315,9 @@ To install the library with all optional dependencies (NumPy for vectorisation, 
     pip install .[dev,numpy,cffi]
 ```
 
+- The `[dev]` extra installs development and testing dependencies.
 - The `[numpy]` extra enables fast vectorised operations.
 - The `[cffi]` extra builds the `npsha256` C extension for accelerated SHA-256 in NumPy-based `fx` functions.
-- The `[dev]` extra installs development and testing dependencies.
 
 ### ⚡ Fast Vectorised `fx` Functions
 

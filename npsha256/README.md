@@ -53,7 +53,7 @@ Before building, ensure you have the following dependencies installed:
    Run the following command in the project directory (where `build.py` is located):
 
    ```
-   python3 build.py
+   python build.py
    ```
 
    This will compile the C code and generate a Python extension module named `_npsha256ffi.*.so` (the exact filename depends on your platform and Python version).
@@ -64,12 +64,12 @@ After building, you can import and use the extension from Python code:
 
 ```python
 from npsha256 import numpy_sha256
-# numpy_sha256 will use the C extension if available, otherwise a pure Python fallback.
+# numpy_sha256 will use the C extension if available, otherwise a pure NumPy fallback.
 ```
 
 If the C extension is not built or importable, `numpy_sha256` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
 
 ## Notes
 
-- If you change the C code in `build.py`, rerun `python3 build.py` to rebuild the extension.
+- If you change the C code in `build.py`, rerun `python build.py` to rebuild the extension.
 - If you encounter errors about missing OpenMP or OpenSSL, ensure the development libraries are installed as shown above.
