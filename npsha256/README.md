@@ -32,6 +32,16 @@ Before building, ensure you have the following dependencies installed:
    sudo dnf install gcc openssl-devel python3-devel
    ```
 
+   On Mac (with Homebrew):
+   ```
+   brew install libomp openssl
+   ```
+   
+   On Windows (with Chocolatey):
+   ```
+   choco install openssl --no-progress -y
+   ```
+
 2. **Install Python dependencies**
 
    ```

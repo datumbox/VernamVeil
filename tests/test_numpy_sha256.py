@@ -25,6 +25,7 @@ class TestNumPySha256(unittest.TestCase):
             checks.append(True)
         for has_c in checks:
             with self.subTest(_HAS_C_MODULE=has_c):
+                print(f"_HAS_C_MODULE={has_c}")
                 with patch("npsha256._npsha256._HAS_C_MODULE", has_c):
                     seed = secrets.token_bytes(32)
                     i = np.arange(1, 1000, dtype=np.uint64)
@@ -54,6 +55,7 @@ class TestNumPySha256(unittest.TestCase):
             checks.append(True)
         for has_c in checks:
             with self.subTest(_HAS_C_MODULE=has_c):
+                print(f"_HAS_C_MODULE={has_c}")
                 with patch("npsha256._npsha256._HAS_C_MODULE", has_c):
                     i = np.arange(1, 100, dtype=np.uint64)
 

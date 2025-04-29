@@ -42,6 +42,7 @@ class TestVernamVeil(unittest.TestCase):
         """Run the given test function for all supported cipher modes."""
         for mode, vectorise, use_c_backend in get_test_modes():
             with self.subTest(mode=mode):
+                print(f"mode={mode}")
                 context = (
                     patch("npsha256._npsha256._HAS_C_MODULE", use_c_backend)
                     if use_c_backend is not None
