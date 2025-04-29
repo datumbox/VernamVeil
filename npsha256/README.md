@@ -39,7 +39,7 @@ Before building, ensure you have the following dependencies installed:
    
    On Windows (with Chocolatey):
    ```
-   choco install openssl --no-progress -y
+   choco install openssl
    ```
 
 2. **Install Python dependencies**
