@@ -19,18 +19,10 @@ def fx(i, seed, bound):
 """
         self.fx_strong_code = """
 import hashlib
-import numpy as np
-from npsha256 import numpy_sha256
 
 def fx(i, seed, bound):
-    if isinstance(i, np.ndarray):
-        arr = numpy_sha256(i, seed)
-        if bound is not None:
-            arr = arr % bound
-        return arr
-    else:
-        h = int.from_bytes(hashlib.sha256(seed + int(i).to_bytes(4, 'big')).digest(), 'big')
-        return h % bound if bound is not None else h
+    h = int.from_bytes(hashlib.sha256(seed + int(i).to_bytes(4, 'big')).digest(), 'big')
+    return h % bound if bound is not None else h
 """
 
     def tearDown(self):
@@ -77,6 +69,8 @@ def fx(i, seed, bound):
             args += ["--seed-file", seed_file]
         if extra_args:
             args += extra_args
+        if not any("vectorise" in arg for arg in args):
+            args += ["--no-vectorise"]
         main(args)
 
     def _decode(self, infile, outfile, fx_file, seed_file, extra_args=None):
@@ -94,6 +88,8 @@ def fx(i, seed, bound):
         ]
         if extra_args:
             args += extra_args
+        if not any("vectorise" in arg for arg in args):
+            args += ["--no-vectorise"]
         main(args)
 
     def test_encode_generates_fx_and_seed(self):
