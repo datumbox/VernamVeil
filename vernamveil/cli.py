@@ -5,7 +5,7 @@ from .cypher import VernamVeil
 from .fx_utils import generate_polynomial_fx, load_fx_from_file, check_fx_sanity
 
 
-def add_common_args(p: argparse.ArgumentParser) -> None:
+def _add_common_args(p: argparse.ArgumentParser) -> None:
     """
     Adds common CLI arguments for both encode and decode subcommands.
 
@@ -81,11 +81,11 @@ def main(args=None) -> None:
 
     # Encode subcommand
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
-    add_common_args(enc)
+    _add_common_args(enc)
 
     # Decode subcommand
     dec = subparsers.add_parser("decode", help="Decrypt a file.")
-    add_common_args(dec)
+    _add_common_args(dec)
 
     parsed_args = parser.parse_args(args)
 
