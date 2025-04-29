@@ -25,7 +25,7 @@ def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
         np.ndarray: An array of 64-bit integers derived from the SHA256 hash of each (seed || 4-byte block) or
         just the block if seed is None.
     """
-    i_bytes = np.frombuffer(i.astype(">u4").tobytes(), dtype="S4").tobytes()
+    i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
     if _HAS_C_MODULE:
         n = len(i_bytes) // 4
         out = np.empty(n, dtype=np.uint64)
