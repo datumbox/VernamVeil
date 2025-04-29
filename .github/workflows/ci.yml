@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    continue-on-error: true
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        pip-dependencies: ["dev", "dev,numpy"]
+        include:
+          - os: ubuntu-latest
+            pip-dependencies: dev,numpy,cffi
+            install: |
+              pip install .[dev,numpy,cffi]
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
+              cd npsha256
+              python build.py
+              ls -lh _npsha256ffi.*
+          - os: macos-latest
+            pip-dependencies: dev,numpy,cffi
+            install: |
+              pip install .[dev,numpy,cffi]
+              brew install libomp openssl
+              cd npsha256
+              python build.py
+              ls -lh _npsha256ffi.*
+          - os: windows-latest
+            pip-dependencies: dev,numpy,cffi
+            install: |
+              pip install .[dev,numpy,cffi]
+              choco install openssl --no-progress -y
+              cd npsha256
+              python build.py
+              dir _npsha256ffi.*
+    name: test_${{ matrix.os }}_${{ matrix['pip-dependencies'] }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies and library
+        run: ${{ matrix.install || format('pip install .[{0}]', matrix['pip-dependencies']) }}
+      - name: Run tests
+        run: python -m unittest discover -s tests/ -v
