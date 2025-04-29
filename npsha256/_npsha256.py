@@ -13,8 +13,8 @@ def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
     """
     Computes a 64-bit integer NumPy array by hashing each index (as a 4-byte big-endian block) with a seed using SHA256.
 
-    This function optionally uses cffi to call a custom C library, which wraps an optimized C implementation
-    (with OpenMP and OpenSSL) for efficient, parallelized hashing from Python. If the C module isn't available
+    This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation
+    (with OpenMP and OpenSSL) for efficient, parallelised hashing from Python. If the C module isn't available
     a NumPy fallback is used.
 
     Args:

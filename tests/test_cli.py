@@ -153,7 +153,7 @@ def fx(i, seed, bound):
         self.assertTrue(os.path.exists(outfile))
 
     def test_decode_with_check_fx_sanity(self):
-        """Test decoding with fx sanity check enabled (handles both scalar and vectorized fx)."""
+        """Test decoding with fx sanity check enabled (handles both scalar and vectorised fx)."""
         infile = self._create_input()
         encfile = os.path.join(self.temp_dir, "output.enc")
         outfile = os.path.join(self.temp_dir, "output.txt")

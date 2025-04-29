@@ -32,7 +32,7 @@ class VernamVeil:
         vectorise: bool = False,
     ):
         """
-        Initializes the VernamVeil encryption cipher with configurable parameters.
+        Initialises the VernamVeil encryption cipher with configurable parameters.
 
         Args:
             fx (Callable): Key stream generator accepting (int, bytes, int | None) and returning int.

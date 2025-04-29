@@ -3,7 +3,7 @@ npsha256/build.py
 
 Build script for the npsha256 CFFI extension.
 
-This script uses cffi to compile a C extension (_npsha256ffi) that provides a fast, parallelized
+This script uses cffi to compile a C extension (_npsha256ffi) that provides a fast, parallelised
 SHA256-based hashing function for NumPy arrays. The C implementation leverages OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 

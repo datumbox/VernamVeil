@@ -20,7 +20,7 @@ void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, u
     int i;
     int n_int = (int)n;
     #ifdef _OPENMP
-    // Parallelize the loop with OpenMP to use multiple CPU cores
+    // Parallelise the loop with OpenMP to use multiple CPU cores
     #pragma omp parallel for
     #endif
     for (i = 0; i < n_int; ++i) {
