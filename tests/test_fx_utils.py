@@ -3,14 +3,13 @@ import unittest
 import warnings
 from pathlib import Path
 
+from vernamveil.cypher import _HAS_NUMPY
 from vernamveil.fx_utils import generate_polynomial_fx, load_fx_from_file, check_fx_sanity
 
 try:
     import numpy as np
-
-    HAS_NUMPY = True
 except ImportError:
-    HAS_NUMPY = False
+    pass
 
 
 class TestFxUtils(unittest.TestCase):
@@ -31,7 +30,7 @@ class TestFxUtils(unittest.TestCase):
             self.assertGreaterEqual(out, 0)
             self.assertLess(out, self.bound)
 
-    @unittest.skipUnless(HAS_NUMPY, "NumPy not available")
+    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_generate_polynomial_fx_vectorised(self):
         """Test that generate_polynomial_fx returns a valid vectorised function."""
         fx = generate_polynomial_fx(5, max_weight=1000, vectorise=True)
@@ -95,7 +94,7 @@ class TestFxUtils(unittest.TestCase):
         self.assertTrue(passed)
         self.assertEqual(len(w), 0)
 
-    @unittest.skipUnless(HAS_NUMPY, "NumPy not available")
+    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_check_polynomial_fx_sanity_vectorised(self):
         """Test check_polynomial_fx_sanity passes for a good vectorised polynomial fx."""
         fx = generate_polynomial_fx(4, vectorise=True)
@@ -120,7 +119,7 @@ class TestFxUtils(unittest.TestCase):
         finally:
             tmp_path.unlink()
 
-    @unittest.skipUnless(HAS_NUMPY, "NumPy not available")
+    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_load_fx_from_file_vectorised(self):
         """Test that a vectorised fx function can be saved to a file and loaded back using load_fx_from_file."""
         try:
@@ -129,7 +128,7 @@ class TestFxUtils(unittest.TestCase):
             self.skipTest("NumPy not available")
 
         fx_obj = generate_polynomial_fx(3, vectorise=True)
-        fx_code = "from npsha256 import numpy_sha256\nimport numpy as np\n" + fx_obj._source_code
+        fx_code = "from vernamveil import numpy_sha256\nimport numpy as np\n" + fx_obj._source_code
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_code)

@@ -1,6 +1,6 @@
 # Building the `npsha256` C Library with `build.py`
 
-This project can optionally use a C extension called `_npsha256` to efficiently compute SHA256-based hashes from Python. Then, the Python method `numpy_sha256` can be used in `fx` methods to quickly produce required hashes in vectorised implementations. 
+This project can optionally use a C extension called `npsha256` to efficiently compute SHA256-based hashes from Python. Then, the Python method `numpy_sha256` can be used in `fx` methods to quickly produce required hashes in vectorised implementations. 
 
 The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
@@ -63,7 +63,7 @@ Before building, ensure you have the following dependencies installed:
 After building, you can import and use the extension from Python code:
 
 ```python
-from npsha256 import numpy_sha256
+from vernamveil import numpy_sha256
 # numpy_sha256 will use the C extension if available, otherwise a pure NumPy fallback.
 ```
 

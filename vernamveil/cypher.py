@@ -5,19 +5,17 @@ import secrets
 import warnings
 from typing import Callable, Iterator, Literal
 from pathlib import Path
+from .hash_utils import numpy_sha256, _UINT64_BOUND
 
 try:
     import numpy as np
 
     _IntOrArray = int | np.ndarray
+    _HAS_NUMPY = True
 except ImportError:
     np = None
     _IntOrArray = int
-
-try:
-    from npsha256 import numpy_sha256
-except ImportError:
-    numpy_sha256 = None
+    _HAS_NUMPY = False
 
 
 class VernamVeil:
@@ -26,8 +24,6 @@ class VernamVeil:
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
     """
-
-    _UINT64_BOUND = 2**64
 
     def __init__(
         self,
@@ -62,6 +58,8 @@ class VernamVeil:
             ImportError: If `vectorise` is True but numpy is not installed.
         """
         # Validate input
+        if delimiter_size < 4:
+            raise ValueError("delimiter_size must be at least 4 bytes.")
         if not (
             isinstance(padding_range, tuple)
             and len(padding_range) == 2
@@ -70,11 +68,9 @@ class VernamVeil:
             raise ValueError("padding_range must be a tuple of two integers.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
-        if vectorise and np is None:
+        if vectorise and not _HAS_NUMPY:
             raise ImportError("NumPy is required for vectorised mode but is not installed.")
-        if delimiter_size < 4:
-            raise ValueError("delimiter_size must be at least 4 bytes.")
-        if not vectorise and np is not None:
+        elif not vectorise and _HAS_NUMPY:
             warnings.warn(
                 "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
             )
@@ -125,7 +121,7 @@ class VernamVeil:
         # Create a list with all positions
         positions = list(range(total_count))
 
-        if self._vectorise and numpy_sha256 is not None:
+        if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, len(positions), dtype=np.uint64)
             hashes = numpy_sha256(i_arr, seed)
@@ -178,7 +174,7 @@ class VernamVeil:
             i = 1
             while len(result) < length:
                 # Still bound it to 8 bytes
-                val = self._fx(i, seed, self._UINT64_BOUND)
+                val = self._fx(i, seed, _UINT64_BOUND)
                 result.extend(val.to_bytes(8, "big"))
                 i += 1
             return result[:length]

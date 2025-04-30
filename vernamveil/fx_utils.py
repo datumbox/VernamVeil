@@ -11,7 +11,7 @@ except ImportError:
     np = None
 
 
-from npsha256 import numpy_sha256
+from .hash_utils import numpy_sha256
 from .cypher import _IntOrArray
 
 

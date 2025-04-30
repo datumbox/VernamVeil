@@ -7,27 +7,20 @@ from contextlib import nullcontext
 from unittest.mock import patch
 from pathlib import Path
 
-from vernamveil import VernamVeil, generate_polynomial_fx
-
-try:
-    import numpy as np  # noqa: F401
-    from npsha256._npsha256 import _HAS_C_MODULE
-
-    HAS_NUMPY = True
-except ImportError:
-    HAS_NUMPY = False
+from vernamveil.cypher import VernamVeil, _HAS_NUMPY
+from vernamveil.fx_utils import generate_polynomial_fx
+from vernamveil.hash_utils import _HAS_C_MODULE
 
 
 def get_test_modes():
     """Return available test modes based on numpy and C backend availability."""
     modes = [("scalar", False, None)]
-    if HAS_NUMPY:
-
+    if _HAS_NUMPY:
         # Always test vectorised (force fallback)
         modes.append(("vectorised", True, False))
         # Only test with C if available
         if _HAS_C_MODULE:
-            modes.append(("vectorised_with_npsha256", True, True))
+            modes.append(("vectorised_with_extension", True, True))
     return modes
 
 
@@ -45,7 +38,7 @@ class TestVernamVeil(unittest.TestCase):
             with self.subTest(mode=mode):
                 print(f"mode={mode}")
                 context = (
-                    patch("npsha256._npsha256._HAS_C_MODULE", use_c_backend)
+                    patch("vernamveil.hash_utils._HAS_C_MODULE", use_c_backend)
                     if use_c_backend is not None
                     else nullcontext()
                 )

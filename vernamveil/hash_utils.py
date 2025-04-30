@@ -2,7 +2,7 @@ import hashlib
 
 try:
     import numpy as np
-    from ._npsha256ffi import ffi, lib
+    from npsha256._npsha256ffi import ffi, lib
 
     _HAS_C_MODULE = True
 except ImportError:

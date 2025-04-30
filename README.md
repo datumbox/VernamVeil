@@ -13,7 +13,7 @@
 Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
 - `i`: the index of the byte in the stream; a scalar integer or an uint64 NumPy array for vectorised operations
 - `seed`: a byte string that provides context and state
-- `bound`: an optional integer used to modulo the function output into the desired range (usually 2**64 because we sample 8 byte at a time)
+- `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 byte at a time)
 - **Output**: an integer or an uint64 NumPy array representing the key stream value
 
 _Note: `numpy` is an optional dependency, used to accelerate vectorised operations when available._
@@ -187,7 +187,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 ### 🏎️ A fast `fx` that uses NumPy vectorisation and the `npsha256` C module
 
 ```python
-from npsha256 import numpy_sha256
+from vernamveil import numpy_sha256
 import numpy as np
 
 
