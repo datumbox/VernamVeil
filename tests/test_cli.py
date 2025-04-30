@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import unittest
 from contextlib import contextmanager
+from pathlib import Path
 
 from vernamveil.cli import main
 
@@ -13,6 +14,7 @@ class TestVernamVeilCLI(unittest.TestCase):
     def setUp(self):
         """Create a temporary directory for each test."""
         self.temp_dir = tempfile.mkdtemp()
+        self.temp_dir_path = Path(self.temp_dir)
         self.fx_code = """
 def fx(i, seed, bound):
     return (i + 1) % bound
@@ -31,8 +33,8 @@ def fx(i, seed, bound):
 
     def _write_file(self, filename, data, mode="wb"):
         """Helper to write binary or text data to a file in temp_dir."""
-        path = os.path.join(self.temp_dir, filename)
-        with open(path, mode) as f:
+        path = self.temp_dir_path / filename
+        with path.open(mode) as f:
             f.write(data)
         return path
 
@@ -52,12 +54,12 @@ def fx(i, seed, bound):
     @contextmanager
     def _in_tempdir(self):
         """Context manager to run code in the temp dir, restoring cwd and rethrowing exceptions."""
-        cwd = os.getcwd()
+        cwd = Path.cwd()
         try:
-            os.chdir(self.temp_dir)
+            os.chdir(self.temp_dir_path)
             yield
         finally:
-            if os.getcwd() != cwd:
+            if Path.cwd() != cwd:
                 os.chdir(cwd)
 
     def _encode(self, infile, outfile, fx_file=None, seed_file=None, extra_args=None):
@@ -69,6 +71,8 @@ def fx(i, seed, bound):
             args += ["--seed-file", seed_file]
         if extra_args:
             args += extra_args
+
+        args = [str(arg) for arg in args]
         if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
         main(args)
@@ -88,6 +92,8 @@ def fx(i, seed, bound):
         ]
         if extra_args:
             args += extra_args
+
+        args = [str(arg) for arg in args]
         if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
         main(args)
@@ -95,80 +101,80 @@ def fx(i, seed, bound):
     def test_encode_generates_fx_and_seed(self):
         """Test encoding with auto-generated fx and seed."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         with self._in_tempdir():
             self._encode(infile, outfile)
-        self.assertTrue(os.path.exists(outfile))
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir, "fx.py")))
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir, "seed.bin")))
+        self.assertTrue(outfile.exists())
+        self.assertTrue((self.temp_dir_path / "fx.py").exists())
+        self.assertTrue((self.temp_dir_path / "seed.bin").exists())
 
     def test_encode_with_custom_fx(self):
         """Test encoding with a user-supplied fx file."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         fx_file = self._create_fx()
         with self._in_tempdir():
             self._encode(infile, outfile, fx_file=fx_file)
-        self.assertTrue(os.path.exists(outfile))
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir, "seed.bin")))
+        self.assertTrue(outfile.exists())
+        self.assertTrue((self.temp_dir_path / "seed.bin").exists())
 
     def test_encode_with_custom_seed(self):
         """Test encoding with a user-supplied seed file."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(infile, outfile, seed_file=seed_file)
-        self.assertTrue(os.path.exists(outfile))
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir, "fx.py")))
+        self.assertTrue(outfile.exists())
+        self.assertTrue((self.temp_dir_path / "fx.py").exists())
 
     def test_encode_with_custom_fx_and_seed(self):
         """Test encoding with both custom fx and seed files."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(infile, outfile, fx_file=fx_file, seed_file=seed_file)
-        self.assertTrue(os.path.exists(outfile))
+        self.assertTrue(outfile.exists())
 
     def test_decode_requires_fx_and_seed(self):
         """Test decoding requires both fx and seed files."""
         infile = self._create_input()
-        encfile = os.path.join(self.temp_dir, "output.enc")
-        outfile = os.path.join(self.temp_dir, "output.txt")
+        encfile = self.temp_dir_path / "output.enc"
+        outfile = self.temp_dir_path / "output.txt"
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(infile, encfile, fx_file=fx_file, seed_file=seed_file)
             self._decode(encfile, outfile, fx_file, seed_file)
-        self.assertTrue(os.path.exists(outfile))
+        self.assertTrue(outfile.exists())
 
     def test_encode_with_check_fx_sanity(self):
         """Test encoding with fx sanity check enabled."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         with self._in_tempdir():
             self._encode(infile, outfile, extra_args=["--check-fx-sanity"])
-        self.assertTrue(os.path.exists(outfile))
+        self.assertTrue(outfile.exists())
 
     def test_decode_with_check_fx_sanity(self):
         """Test decoding with fx sanity check enabled (handles both scalar and vectorised fx)."""
         infile = self._create_input()
-        encfile = os.path.join(self.temp_dir, "output.enc")
-        outfile = os.path.join(self.temp_dir, "output.txt")
+        encfile = self.temp_dir_path / "output.enc"
+        outfile = self.temp_dir_path / "output.txt"
         fx_file = self._create_fx(self.fx_strong_code)
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(infile, encfile, fx_file=fx_file, seed_file=seed_file)
             self._decode(encfile, outfile, fx_file, seed_file, extra_args=["--check-fx-sanity"])
-        self.assertTrue(os.path.exists(outfile))
+        self.assertTrue(outfile.exists())
 
     def test_decode_with_check_fx_sanity_fails(self):
         """Test that fx sanity check fails if fx does not depend on seed."""
         infile = self._create_input()
-        encfile = os.path.join(self.temp_dir, "output.enc")
-        outfile = os.path.join(self.temp_dir, "output.txt")
+        encfile = self.temp_dir_path / "output.enc"
+        outfile = self.temp_dir_path / "output.txt"
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
@@ -180,7 +186,7 @@ def fx(i, seed, bound):
     def test_encode_refuses_to_overwrite_existing_fx(self):
         """Test that encoding refuses to overwrite an existing fx.py file."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         # Pre-create fx.py
         self._create_fx()
         with self._in_tempdir():
@@ -188,13 +194,13 @@ def fx(i, seed, bound):
                 self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
             # Ensure fx.py was not modified (content unchanged)
-            with open("fx.py", "rb") as f:
+            with (self.temp_dir_path / "fx.py").open("rb") as f:
                 self.assertEqual(f.read(), self.fx_code.encode())
 
     def test_encode_refuses_to_overwrite_existing_seed(self):
         """Test that encoding refuses to overwrite an existing seed.bin file."""
         infile = self._create_input()
-        outfile = os.path.join(self.temp_dir, "output.enc")
+        outfile = self.temp_dir_path / "output.enc"
         # Pre-create seed.bin
         self._create_seed()
         with self._in_tempdir():
@@ -202,7 +208,7 @@ def fx(i, seed, bound):
                 self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
             # Ensure seed.bin was not modified (content unchanged)
-            with open("seed.bin", "rb") as f:
+            with (self.temp_dir_path / "seed.bin").open("rb") as f:
                 self.assertEqual(f.read(), b"myseed")
 
     def test_encode_refuses_to_overwrite_existing_output(self):
@@ -214,13 +220,13 @@ def fx(i, seed, bound):
                 self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
             # Ensure output file was not modified
-            with open("output.enc", "rb") as f:
+            with (self.temp_dir_path / "output.enc").open("rb") as f:
                 self.assertEqual(f.read(), b"original data")
 
     def test_decode_refuses_to_overwrite_existing_output(self):
         """Test that decoding refuses to overwrite an existing output file."""
         infile = self._create_input()
-        encfile = os.path.join(self.temp_dir, "output.enc")
+        encfile = self.temp_dir_path / "output.enc"
         outfile = self._write_file("output.txt", b"original plain")
         fx_file = self._create_fx()
         seed_file = self._create_seed()
@@ -230,7 +236,7 @@ def fx(i, seed, bound):
                 self._decode(encfile, outfile, fx_file, seed_file)
             self.assertNotEqual(cm.exception.code, 0)
             # Ensure output file was not modified
-            with open("output.txt", "rb") as f:
+            with (self.temp_dir_path / "output.txt").open("rb") as f:
                 self.assertEqual(f.read(), b"original plain")
 
 

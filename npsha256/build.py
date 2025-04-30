@@ -15,7 +15,7 @@ This will generate the _npsha256ffi extension module, which can be imported from
 
 import sys
 import platform
-import os
+from pathlib import Path
 
 from cffi import FFI
 
@@ -42,14 +42,14 @@ elif sys.platform == "darwin":
     extra_link_args = ["-lomp"]
     # Add include/library dirs for both OpenSSL and libomp
     for prefix in [
-        "/opt/homebrew/opt/openssl",
-        "/usr/local/opt/openssl",
-        "/opt/homebrew/opt/libomp",
-        "/usr/local/opt/libomp",
+        Path("/opt/homebrew/opt/openssl"),
+        Path("/usr/local/opt/openssl"),
+        Path("/opt/homebrew/opt/libomp"),
+        Path("/usr/local/opt/libomp"),
     ]:
-        if os.path.exists(prefix):
-            include_dirs.append(os.path.join(prefix, "include"))
-            library_dirs.append(os.path.join(prefix, "lib"))
+        if prefix.exists():
+            include_dirs.append(prefix / "include")
+            library_dirs.append(prefix / "lib")
 elif sys.platform == "win32":
     # For MSVC: /openmp, for MinGW: -fopenmp
     if "GCC" in platform.python_compiler():
@@ -61,20 +61,20 @@ elif sys.platform == "win32":
         extra_compile_args = ["/openmp"]
     # Check all possible OpenSSL install locations
     for prefix in [
-        r"C:\Program Files\OpenSSL",
-        r"C:\Program Files\OpenSSL-Win64",
-        r"C:\Program Files\OpenSSL-Win32",
+        Path(r"C:\Program Files\OpenSSL"),
+        Path(r"C:\Program Files\OpenSSL-Win64"),
+        Path(r"C:\Program Files\OpenSSL-Win32"),
     ]:
-        if os.path.exists(prefix):
-            include_dirs.append(os.path.join(prefix, "include"))
-            library_dirs.append(os.path.join(prefix, "lib"))
+        if prefix.exists():
+            include_dirs.append(prefix / "include")
+            library_dirs.append(prefix / "lib")
             break
 else:
     raise RuntimeError("Unsupported platform")
 
 
-c_path = os.path.join(os.path.dirname(__file__), "_npsha256.c")
-with open(c_path) as f:
+c_path = Path(__file__).parent / "_npsha256.c"
+with c_path.open() as f:
     c_source = f.read()
 
 
@@ -84,8 +84,8 @@ ffibuilder.set_source(
     libraries=libraries,
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,
-    include_dirs=include_dirs,
-    library_dirs=library_dirs,
+    include_dirs=[str(p) for p in include_dirs],
+    library_dirs=[str(p) for p in library_dirs],
 )
 
 if __name__ == "__main__":
