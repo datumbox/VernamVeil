@@ -11,7 +11,7 @@ except ImportError:
     np = None
 
 
-from .hash_utils import numpy_sha256
+from .hash_utils import hash_numpy
 from .cypher import _IntOrArray
 
 
@@ -51,7 +51,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    entropy = numpy_sha256(i, seed)  # uses C module if available, else NumPy fallback
+    entropy = hash_numpy(i, seed)  # uses C module if available, else NumPy fallback
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
@@ -96,7 +96,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     local_vars = {}
     exec(
         function_code,
-        {"hashlib": hashlib, "np": np, "numpy_sha256": numpy_sha256},
+        {"hashlib": hashlib, "np": np, "hash_numpy": hash_numpy},
         local_vars,
     )
     fx = local_vars["fx"]

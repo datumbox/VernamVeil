@@ -5,7 +5,7 @@ import secrets
 import warnings
 from typing import Callable, Iterator, Literal
 from pathlib import Path
-from .hash_utils import numpy_sha256, _UINT64_BOUND
+from .hash_utils import hash_numpy, _UINT64_BOUND
 
 try:
     import numpy as np
@@ -108,7 +108,7 @@ class VernamVeil:
         Implements the Fisher–Yates shuffle algorithm, to determine the shuffled positions for real
         chunks based on a deterministic seed.
 
-        Uses `numpy_sha256` for vectorised hashing if available.
+        Uses `hash_numpy` for vectorised hashing if available.
 
         Args:
             seed (bytes): Seed for deterministic shuffling.
@@ -124,7 +124,7 @@ class VernamVeil:
         if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, len(positions), dtype=np.uint64)
-            hashes = numpy_sha256(i_arr, seed)
+            hashes = hash_numpy(i_arr, seed)
         else:
             # Standard: generate hashes one by one
             hashes = [

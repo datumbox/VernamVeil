@@ -110,7 +110,7 @@ def main(args=None) -> None:
         fx_obj = generate_polynomial_fx(parsed_args.fx_degree, vectorise=parsed_args.vectorise)
         fx_code = fx_obj._source_code
         if parsed_args.vectorise:
-            fx_code = ("from vernamveil import numpy_sha256\n" "import numpy as np\n") + fx_code
+            fx_code = ("from vernamveil import hash_numpy\n" "import numpy as np\n") + fx_code
         else:
             fx_code = "import hashlib\n" + fx_code
         fx_py.write_text(fx_code)

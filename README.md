@@ -187,33 +187,33 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 ### 🏎️ A fast `fx` that uses NumPy vectorisation and the `npsha256` C module
 
 ```python
-from vernamveil import numpy_sha256
+from vernamveil import hash_numpy
 import numpy as np
 
 
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a polynomial of 10 degree
-    weights = np.array([68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
-    base_modulus = 1000000000
-    
-    # Hash the input with the seed to get entropy
-    entropy = numpy_sha256(i, seed)  # uses C module if available, else NumPy fallback
-    base = i + entropy
-    np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
-    
-    # Compute all powers in one go
-    powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
-    
-    # Weighted sum for each element
-    result = base
-    np.remainder(result, 99991, out=result)
-    np.add(result, np.dot(powers, weights), out=result)
-    
-    # Modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        np.remainder(result, bound, out=result)
-    
-    return result
+  # Implements a polynomial of 10 degree
+  weights = np.array([68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
+  base_modulus = 1000000000
+
+  # Hash the input with the seed to get entropy
+  entropy = hash_numpy(i, seed)  # uses C module if available, else NumPy fallback
+  base = i + entropy
+  np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
+
+  # Compute all powers in one go
+  powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
+
+  # Weighted sum for each element
+  result = base
+  np.remainder(result, 99991, out=result)
+  np.add(result, np.dot(powers, weights), out=result)
+
+  # Modulo the result with the bound to ensure it's always within the requested range
+  if bound is not None:
+    np.remainder(result, bound, out=result)
+
+  return result
 ```
 
 ---

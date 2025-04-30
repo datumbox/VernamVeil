@@ -128,7 +128,7 @@ class TestFxUtils(unittest.TestCase):
             self.skipTest("NumPy not available")
 
         fx_obj = generate_polynomial_fx(3, vectorise=True)
-        fx_code = "from vernamveil import numpy_sha256\nimport numpy as np\n" + fx_obj._source_code
+        fx_code = "from vernamveil import hash_numpy\nimport numpy as np\n" + fx_obj._source_code
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_code)

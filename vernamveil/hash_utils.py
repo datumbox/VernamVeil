@@ -12,7 +12,7 @@ except ImportError:
 _UINT64_BOUND = 2**64
 
 
-def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
+def hash_numpy(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
     """
     Computes a 64-bit integer NumPy array by hashing each index (as a 4-byte big-endian block) with a seed using SHA256.
 
