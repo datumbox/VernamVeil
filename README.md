@@ -174,8 +174,10 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     
     # Combine terms of the polynomial using weights and powers of the base
     result = base % 99991
-    for power, weight in enumerate(weights, start=1):
-        result += weight * pow(base, power)
+    current_pow = base
+    for weight in weights:
+        result += weight * current_pow
+        current_pow *= base
     
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
