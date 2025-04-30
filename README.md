@@ -321,7 +321,7 @@ To install the library with all optional dependencies (development tools, NumPy 
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `npsha256` C module provides a high-performance SHA-256 estimator for NumPy arrays, which is automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure-Python fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `npsha256` C module provides a high-performance SHA-256 estimator for NumPy arrays, which is automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 For more details on the C module and its usage, see [`npsha256/README.md`](npsha256/README.md).
 
