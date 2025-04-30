@@ -28,7 +28,7 @@ class TestHashUtils(unittest.TestCase):
                     seed = secrets.token_bytes(32)
                     i = np.arange(1, 1000, dtype=np.uint64)
 
-                    output = hash_numpy(i, seed)
+                    output = hash_numpy(i, seed, "sha256")
 
                     i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
                     expected = np.fromiter(
@@ -56,7 +56,7 @@ class TestHashUtils(unittest.TestCase):
                 with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
                     i = np.arange(1, 100, dtype=np.uint64)
 
-                    output = hash_numpy(i, None)
+                    output = hash_numpy(i, None, "sha256")
 
                     i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
                     expected = np.fromiter(

@@ -51,7 +51,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    entropy = hash_numpy(i, seed)  # uses C module if available, else NumPy fallback
+    entropy = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
