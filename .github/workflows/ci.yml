@@ -12,33 +12,32 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        pip-dependencies: ["dev", "dev,numpy"]
+        pip-dependencies:
+          - [dev]
+          - [dev, numpy]
         include:
           - os: ubuntu-latest
-            pip-dependencies: dev,numpy,cffi
-            install: |
-              pip install .[dev,numpy,cffi]
+            pip-dependencies: [dev, numpy, cffi]
+            build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npsha256ffi.*
           - os: macos-latest
-            pip-dependencies: dev,numpy,cffi
-            install: |
-              pip install .[dev,numpy,cffi]
+            pip-dependencies: [dev, numpy, cffi]
+            build-steps: |
               brew install libomp openssl
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npsha256ffi.*
           - os: windows-latest
-            pip-dependencies: dev,numpy,cffi
-            install: |
-              pip install .[dev,numpy,cffi]
+            pip-dependencies: [dev, numpy, cffi]
+            build-steps: |
               choco install openssl --no-progress -y
               cd nphash
               python build.py
               dir _npblake2bffi.* _npsha256ffi.*
-    name: test_${{ matrix.os }}_${{ matrix['pip-dependencies'] }}
+    name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +45,20 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: Install dependencies and library
-        run: ${{ matrix.install || format('pip install .[{0}]', matrix['pip-dependencies']) }}
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.os == 'ubuntu-latest' && '~/.cache/pip' 
+            || matrix.os == 'macos-latest' && '~/Library/Caches/pip'
+            || matrix.os == 'windows-latest' && '~\\AppData\\Local\\pip\\Cache'
+            || '' }}
+          key: ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
+          restore-keys: |
+            ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
+      - name: Install Python dependencies and library
+        run: pip install .[${{ join(matrix.pip-dependencies, ',') }}]
+      - name: Build/package steps
+        if: matrix.build-steps != ''
+        run: ${{ matrix.build-steps }}
       - name: Run tests
         run: python -m unittest discover -s tests/ -v
