@@ -1,7 +1,7 @@
 [project]
 name = "vernamveil"
 version = "0.1.0"
-description = "A modular, function-based stream cipher inspired by the One-Time Pad. VernamVeil lets you define custom mathematical keystream functions and supports authenticated encryption, obfuscation, and vectorised operations with optional NumPy acceleration. For fast hashing, an optional C-backed SHA256 extension is available via cffi. Designed for educational and experimental use, not for production security."
+description = "A modular, function-based stream cipher inspired by the One-Time Pad. VernamVeil lets you define custom mathematical keystream functions and supports authenticated encryption, obfuscation, and vectorised operations with optional NumPy acceleration. For fast hashing, an optional C-backed extension is available via cffi. Designed for educational and experimental use, not for production security."
 authors = [
     { name = "Vasilis Vryniotis", email = "datumbox@github.com" }
 ]

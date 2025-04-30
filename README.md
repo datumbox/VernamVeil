@@ -72,7 +72,7 @@ Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering.
 - **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
 - **Vectorisation**: Some operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
-- **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_polynomial_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
+- **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_polynomial_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
 ---
 
 ## ⚠️ Caveats & Best Practices
@@ -169,7 +169,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy`
-    entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
+    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big")).digest(), "big")
     base = (i + entropy) % base_modulus
     
     # Combine terms of the polynomial using weights and powers of the base
@@ -197,7 +197,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
   base_modulus = 1000000000
 
   # Hash the input with the seed to get entropy
-  entropy = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
+  entropy = hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
   base = i + entropy
   np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
@@ -305,7 +305,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 - **Compact Implementation**: The cipher implementation is less than 300 lines of code, excluding comments and documentation.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
-- **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
+- **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
@@ -317,11 +317,11 @@ To install the library with all optional dependencies (development tools, NumPy 
 
 - The `[dev]` extra installs development and testing dependencies.
 - The `[numpy]` extra enables fast vectorised operations.
-- The `[cffi]` extra builds the `nphash` C extension for accelerated SHA-256 in NumPy-based `fx` functions.
+- The `[cffi]` extra builds the `nphash` C extension for accelerated BLAKE2b and SHA-256 in NumPy-based `fx` functions.
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides a high-performance SHA-256 estimator for NumPy arrays, which is automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 For more details on the C module and its usage, see [`nphash/README.md`](nphash/README.md).
 

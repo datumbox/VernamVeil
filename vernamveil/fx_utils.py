@@ -51,7 +51,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    entropy = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
+    entropy = hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
     base = i + entropy
     np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
 
@@ -77,7 +77,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base_modulus = {base_modulus}
 
     # Hash the input with the seed to get entropy
-    entropy = int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest(), "big")
+    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big")).digest(), "big")
     base = (i + entropy) % base_modulus
 
     # Combine terms of the polynomial using weights and powers of the base

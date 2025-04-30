@@ -8,3 +8,4 @@ build/
 dist/
 .env
 nphash/_npsha256ffi*
+nphash/_npblake2bffi*

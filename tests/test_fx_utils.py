@@ -115,7 +115,7 @@ class TestFxUtils(unittest.TestCase):
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
-            self.assertTrue(isinstance(fx_loaded(1, bytes(), 256), int))
+            self.assertTrue(isinstance(fx_loaded(1, bytes(), self.bound), int))
         finally:
             tmp_path.unlink()
 
@@ -137,7 +137,9 @@ class TestFxUtils(unittest.TestCase):
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
-            self.assertTrue(isinstance(fx_loaded(np.arange(1, 10), bytes(), 256), np.ndarray))
+            self.assertTrue(
+                isinstance(fx_loaded(np.arange(1, 10), bytes(), self.bound), np.ndarray)
+            )
         finally:
             tmp_path.unlink()
 

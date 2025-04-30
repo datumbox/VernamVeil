@@ -124,11 +124,11 @@ class VernamVeil:
         if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, len(positions), dtype=np.uint64)
-            hashes = hash_numpy(i_arr, seed, "sha256")
+            hashes = hash_numpy(i_arr, seed, "blake2b")
         else:
             # Standard: generate hashes one by one
             hashes = [
-                int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest()[:8], "big")
+                int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big")).digest()[:8], "big")
                 for i in range(1, len(positions))
             ]
 

@@ -21,7 +21,7 @@ jobs:
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
               cd nphash
               python build.py
-              ls -lh _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npsha256ffi.*
           - os: macos-latest
             pip-dependencies: dev,numpy,cffi
             install: |
@@ -29,7 +29,7 @@ jobs:
               brew install libomp openssl
               cd nphash
               python build.py
-              ls -lh _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npsha256ffi.*
           - os: windows-latest
             pip-dependencies: dev,numpy,cffi
             install: |
@@ -37,7 +37,7 @@ jobs:
               choco install openssl --no-progress -y
               cd nphash
               python build.py
-              dir _npsha256ffi.*
+              dir _npblake2bffi.* _npsha256ffi.*
     name: test_${{ matrix.os }}_${{ matrix['pip-dependencies'] }}
     runs-on: ${{ matrix.os }}
     steps:

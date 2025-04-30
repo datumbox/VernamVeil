@@ -15,34 +15,44 @@ except ImportError:
 class TestHashUtils(unittest.TestCase):
     """Unit tests for the has_utils.py utilities."""
 
+    def _get_hash_method_for_test(self, hash_name):
+        """Returns the appropriate hashlib function for the given hash_name."""
+        if hash_name == "sha256":
+            return hashlib.sha256
+        elif hash_name == "blake2b":
+            return hashlib.blake2b
+        else:
+            raise ValueError(f"Unsupported hash_name '{hash_name}'.")
+
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_correctness(self):
-        """Check that hash_numpy output matches expected SHA-256 values for a range of inputs."""
+        """Check that hash_numpy output matches expected hash values for a range of inputs."""
         checks = [False]
         if _HAS_C_MODULE:
             checks.append(True)
         for has_c in checks:
-            with self.subTest(_HAS_C_MODULE=has_c):
-                print(f"_HAS_C_MODULE={has_c}")
-                with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
-                    seed = secrets.token_bytes(32)
-                    i = np.arange(1, 1000, dtype=np.uint64)
+            for hash_name in ("sha256", "blake2b"):
+                with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
+                    print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
+                    with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
+                        seed = secrets.token_bytes(32)
+                        i = np.arange(1, 1000, dtype=np.uint64)
 
-                    output = hash_numpy(i, seed, "sha256")
+                        output = hash_numpy(i, seed, hash_name)
 
-                    i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
-                    expected = np.fromiter(
-                        (
-                            int.from_bytes(
-                                hashlib.sha256(seed + i_bytes[j : j + 4]).digest(), "big"
-                            )
-                            % _UINT64_BOUND
-                            for j in range(0, len(i_bytes), 4)
-                        ),
-                        dtype=np.uint64,
-                    )
+                        i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
+                        method = self._get_hash_method_for_test(hash_name)
 
-                    np.testing.assert_array_equal(expected, output)
+                        expected = np.fromiter(
+                            (
+                                int.from_bytes(method(seed + i_bytes[j : j + 4]).digest(), "big")
+                                % _UINT64_BOUND
+                                for j in range(0, len(i_bytes), 4)
+                            ),
+                            dtype=np.uint64,
+                        )
+
+                        np.testing.assert_array_equal(expected, output)
 
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_no_seed(self):
@@ -51,24 +61,27 @@ class TestHashUtils(unittest.TestCase):
         if _HAS_C_MODULE:
             checks.append(True)
         for has_c in checks:
-            with self.subTest(_HAS_C_MODULE=has_c):
-                print(f"_HAS_C_MODULE={has_c}")
-                with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
-                    i = np.arange(1, 100, dtype=np.uint64)
+            for hash_name in ("sha256", "blake2b"):
+                with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
+                    print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
+                    with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
+                        i = np.arange(1, 100, dtype=np.uint64)
 
-                    output = hash_numpy(i, None, "sha256")
+                        output = hash_numpy(i, None, hash_name)
 
-                    i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
-                    expected = np.fromiter(
-                        (
-                            int.from_bytes(hashlib.sha256(i_bytes[j : j + 4]).digest(), "big")
-                            % _UINT64_BOUND
-                            for j in range(0, len(i_bytes), 4)
-                        ),
-                        dtype=np.uint64,
-                    )
+                        i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
+                        method = self._get_hash_method_for_test(hash_name)
 
-                    np.testing.assert_array_equal(expected, output)
+                        expected = np.fromiter(
+                            (
+                                int.from_bytes(method(i_bytes[j : j + 4]).digest(), "big")
+                                % _UINT64_BOUND
+                                for j in range(0, len(i_bytes), 4)
+                            ),
+                            dtype=np.uint64,
+                        )
+
+                        np.testing.assert_array_equal(expected, output)
 
 
 if __name__ == "__main__":
