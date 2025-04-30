@@ -13,6 +13,11 @@ except ImportError:
     np = None
     _IntOrArray = int
 
+try:
+    from npsha256 import numpy_sha256
+except ImportError:
+    numpy_sha256 = None
+
 
 class VernamVeil:
     """
@@ -99,10 +104,14 @@ class VernamVeil:
             m.update(data)
         return m.digest()
 
-    @staticmethod
-    def _determine_shuffled_indices(seed: bytes, real_count: int, total_count: int) -> list[int]:
+    def _determine_shuffled_indices(
+        self, seed: bytes, real_count: int, total_count: int
+    ) -> list[int]:
         """
-        Determines the shuffled positions for real chunks based on a deterministic seed.
+        Implements the Fisher–Yates shuffle algorithm, to determine the shuffled positions for real
+        chunks based on a deterministic seed.
+
+        Uses `numpy_sha256` for vectorised hashing if available.
 
         Args:
             seed (bytes): Seed for deterministic shuffling.
@@ -115,14 +124,21 @@ class VernamVeil:
         # Create a list with all positions
         positions = list(range(total_count))
 
+        if self._vectorise and numpy_sha256 is not None:
+            # Vectorised: generate all hashes at once
+            i_arr = np.arange(1, len(positions), dtype=np.uint64)
+            hashes = numpy_sha256(i_arr, seed)
+        else:
+            # Standard: generate hashes one by one
+            hashes = [
+                int.from_bytes(hashlib.sha256(seed + i.to_bytes(4, "big")).digest()[:8], "big")
+                for i in range(1, len(positions))
+            ]
+
         # Shuffle deterministically based on the hashed seed
-        seed_len = len(seed)
         for i in range(len(positions) - 1, 0, -1):
             # Create a random number between 0 and i
-            j = int.from_bytes(
-                hashlib.blake2b(seed + i.to_bytes(4, "big"), digest_size=seed_len).digest(),
-                "big",
-            ) % (i + 1)
+            j = int(hashes[i - 1]) % (i + 1)
 
             # Swap elements at positions i and j
             positions[i], positions[j] = positions[j], positions[i]
