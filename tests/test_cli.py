@@ -15,7 +15,8 @@ class TestVernamVeilCLI(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.fx_code = """
 def fx(i, seed, bound):
-    return (i + 1) % bound
+    h = i + 1
+    return h % bound if bound is not None else h
 """
         self.fx_strong_code = """
 import hashlib

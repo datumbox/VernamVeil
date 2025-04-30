@@ -35,7 +35,7 @@ class TestFxUtils(unittest.TestCase):
     def test_generate_polynomial_fx_vectorised(self):
         """Test that generate_polynomial_fx returns a valid vectorised function."""
         fx = generate_polynomial_fx(5, max_weight=1000, vectorise=True)
-        arr = np.arange(10, dtype=np.uint32)
+        arr = np.arange(10, dtype=np.uint64)
         out = fx(arr, self.seed, self.bound)
         self.assertIsInstance(out, np.ndarray)
         self.assertEqual(out.shape, arr.shape)

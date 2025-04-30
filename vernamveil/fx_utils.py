@@ -153,18 +153,23 @@ def check_fx_sanity(
 
     # Try to detect if fx supports numpy arrays
     try:
-        test_input = np.arange(num_samples, dtype=np.uint32)
+        test_input = np.arange(num_samples, dtype=np.uint64)
         test_output = fx(test_input, seed, bound)
         is_vectorised = isinstance(test_output, np.ndarray)
     except Exception:
         is_vectorised = False
 
     if is_vectorised:
-        arr = np.arange(num_samples, dtype=np.uint32)
+        arr = np.arange(num_samples, dtype=np.uint64)
         outputs = fx(arr, seed, bound)
         if isinstance(outputs, np.ndarray):
+            if outputs.dtype != np.uint64:
+                warnings.warn("fx output is not an uint64 NumPy array.")
+                passed = False
             outputs = outputs.tolist()
         else:
+            warnings.warn("fx output is not a NumPy array.")
+            passed = False
             outputs = list(outputs)
     else:
         outputs = [fx(i, seed, bound) for i in range(num_samples)]
@@ -177,9 +182,9 @@ def check_fx_sanity(
     # 2. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if is_vectorised:
-        arr = np.arange(num_samples, dtype=np.uint32)
+        arr = np.arange(num_samples, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed, bound)
-        if hasattr(outputs_alt, "tolist"):
+        if isinstance(outputs_alt, np.ndarray):
             outputs_alt = outputs_alt.tolist()
         else:
             outputs_alt = list(outputs_alt)

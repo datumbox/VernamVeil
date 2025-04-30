@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import math
 import secrets
+import warnings
 from typing import Callable, Iterator, Literal
 
 try:
@@ -19,6 +20,8 @@ class VernamVeil:
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
     """
+
+    _UINT64_BOUND = 2**64
 
     def __init__(
         self,
@@ -38,7 +41,8 @@ class VernamVeil:
                 This function is critical for the encryption process and should be carefully designed
                 to ensure unpredictability.
             chunk_size (int, optional): Size of message chunks. Defaults to 32.
-            delimiter_size (int, optional): Length of the delimiter used for separating chunks. Defaults to 8.
+            delimiter_size (int, optional): The delimiter size in bytes used for separating chunks; must be
+                at least 4. Defaults to 8.
             padding_range (tuple[int, int], optional): Range for padding length before and after
                 chunks. Defaults to (5, 15).
             decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
@@ -62,13 +66,17 @@ class VernamVeil:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and np is None:
             raise ImportError("NumPy is required for vectorised mode but is not installed.")
+        if delimiter_size < 4:
+            raise ValueError("delimiter_size must be at least 4 bytes.")
+        if not vectorise and np is not None:
+            warnings.warn(
+                "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
+            )
 
         # Initialise instance variables
         self._fx = fx
-        self._chunk_size = (
-            chunk_size  # Default chosen for balance between performance and memory usage
-        )
-        self._delimiter_size = delimiter_size  # Default ensures delimiters are not easily guessable
+        self._chunk_size = chunk_size
+        self._delimiter_size = delimiter_size
         self._padding_range = padding_range
         self._decoy_ratio = decoy_ratio
         self._auth_encrypt = auth_encrypt
@@ -127,6 +135,9 @@ class VernamVeil:
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
 
+        It samples 8 bytes at a time from the generator function, which is expected to return a Python int
+        or an uint64 NumPy array.
+
         Args:
             length (int): Number of bytes to generate.
             seed (bytes): Seed for key generation.
@@ -136,13 +147,24 @@ class VernamVeil:
         """
         if self._vectorise:
             # Vectorised generation using numpy
-            indices = np.arange(1, length + 1, dtype=np.uint64)
-            keystream = self._fx(indices, seed, 256)
+            # Generate enough uint64s to cover the length
+            n_uint64 = math.ceil(length / 8)
+            indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
+            # Unbounded, get the full uint64 range
+            keystream = self._fx(indices, seed, None)
             # Ensure output is a numpy array of integers in [0, 255]
-            return keystream.astype(np.uint8).tobytes()
+            keystream_bytes = keystream.view(np.uint8)[:length].tobytes()
+            return keystream_bytes
         else:
             # Standard generation using python
-            return bytes(self._fx(i, seed, 256) for i in range(1, length + 1))
+            result = bytearray()
+            i = 1
+            while len(result) < length:
+                # Still bound it to 8 bytes
+                val = self._fx(i, seed, self._UINT64_BOUND)
+                result.extend(val.to_bytes(8, "big"))
+                i += 1
+            return result[:length]
 
     def _generate_delimiter(self, seed: bytes) -> tuple[bytes, bytes]:
         """
@@ -458,8 +480,8 @@ class VernamVeil:
         """
         # Define default VernamVeil parameters suitable for large files
         defaults = {
-            "chunk_size": 512,
-            "delimiter_size": 10,
+            "chunk_size": 4096,
+            "delimiter_size": 8,
             "padding_range": (10, 20),
             "decoy_ratio": 0.05,
             "auth_encrypt": True,

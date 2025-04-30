@@ -9,6 +9,9 @@ except ImportError:
     _HAS_C_MODULE = False
 
 
+_UINT64_BOUND = 2**64
+
+
 def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
     """
     Computes a 64-bit integer NumPy array by hashing each index (as a 4-byte big-endian block) with a seed using SHA256.
@@ -38,7 +41,6 @@ def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
         )
         return out
     else:
-        uint64_bound = 2**64
         return np.fromiter(
             (
                 int.from_bytes(
@@ -47,7 +49,7 @@ def numpy_sha256(i: "np.ndarray", seed: bytes | None = None) -> "np.ndarray":
                     ).digest(),
                     "big",
                 )
-                % uint64_bound
+                % _UINT64_BOUND
                 for j in range(0, len(i_bytes), 4)
             ),
             dtype=np.uint64,
