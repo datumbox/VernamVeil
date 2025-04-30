@@ -1,6 +1,6 @@
 import argparse
 import sys
-import os
+from pathlib import Path
 from .cypher import VernamVeil
 from .fx_utils import generate_polynomial_fx, load_fx_from_file, check_fx_sanity
 
@@ -12,10 +12,10 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     Args:
         p (argparse.ArgumentParser): The argument parser to which the arguments will be added.
     """
-    p.add_argument("--infile", type=str, required=True, help="Input file path (required).")
-    p.add_argument("--outfile", type=str, required=True, help="Output file path (required).")
-    p.add_argument("--fx-file", type=str, help="Path to Python file containing the fx function.")
-    p.add_argument("--seed-file", type=str, help="Path to file containing the seed (bytes).")
+    p.add_argument("--infile", type=Path, required=True, help="Input file path (required).")
+    p.add_argument("--outfile", type=Path, required=True, help="Output file path (required).")
+    p.add_argument("--fx-file", type=Path, help="Path to Python file containing the fx function.")
+    p.add_argument("--seed-file", type=Path, help="Path to file containing the seed (bytes).")
     p.add_argument(
         "--fx-degree",
         type=int,
@@ -89,18 +89,22 @@ def main(args=None) -> None:
 
     parsed_args = parser.parse_args(args)
 
+    infile = parsed_args.infile
+    outfile = parsed_args.outfile
+    fx_file = parsed_args.fx_file
+    seed_file = parsed_args.seed_file
+
     # Check if output file exists
-    if os.path.exists(parsed_args.outfile):
-        print(
-            f"Error: {parsed_args.outfile} already exists. Refusing to overwrite.", file=sys.stderr
-        )
+    if outfile.exists():
+        print(f"Error: {outfile} already exists. Refusing to overwrite.", file=sys.stderr)
         sys.exit(1)
 
     # Handle fx function
-    if parsed_args.fx_file:
-        fx = load_fx_from_file(parsed_args.fx_file)
+    if fx_file:
+        fx = load_fx_from_file(fx_file)
     elif parsed_args.command == "encode":
-        if os.path.exists("fx.py"):
+        fx_py = Path("fx.py")
+        if fx_py.exists():
             print("Error: fx.py already exists. Refusing to overwrite.", file=sys.stderr)
             sys.exit(1)
         fx_obj = generate_polynomial_fx(parsed_args.fx_degree, vectorise=parsed_args.vectorise)
@@ -109,8 +113,7 @@ def main(args=None) -> None:
             fx_code = ("from npsha256 import numpy_sha256\n" "import numpy as np\n") + fx_code
         else:
             fx_code = "import hashlib\n" + fx_code
-        with open("fx.py", "w") as f:
-            f.write(fx_code)
+        fx_py.write_text(fx_code)
         print("Generated fx.py in current directory. Store securely.", file=sys.stderr)
         fx = fx_obj
     else:
@@ -118,16 +121,15 @@ def main(args=None) -> None:
         sys.exit(1)
 
     # Handle seed
-    if parsed_args.seed_file:
-        with open(parsed_args.seed_file, "rb") as f:
-            seed = f.read()
+    if seed_file:
+        seed = seed_file.read_bytes()
     elif parsed_args.command == "encode":
-        if os.path.exists("seed.bin"):
+        seed_bin = Path("seed.bin")
+        if seed_bin.exists():
             print("Error: seed.bin already exists. Refusing to overwrite.", file=sys.stderr)
             sys.exit(1)
         seed = VernamVeil.get_initial_seed()
-        with open("seed.bin", "wb") as f:
-            f.write(seed)
+        seed_bin.write_bytes(seed)
         print("Generated seed.bin in current directory. Store securely.", file=sys.stderr)
     else:
         print("seed-file is required for decode.", file=sys.stderr)
@@ -151,8 +153,8 @@ def main(args=None) -> None:
 
     # Only file-to-file mode is supported
     VernamVeil.process_file(
-        parsed_args.infile,
-        parsed_args.outfile,
+        infile,
+        outfile,
         fx,
         seed,
         mode=parsed_args.command,

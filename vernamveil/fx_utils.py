@@ -2,6 +2,7 @@ import hashlib
 import secrets
 import warnings
 from typing import Callable
+from pathlib import Path
 
 
 try:
@@ -106,19 +107,19 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     return fx
 
 
-def load_fx_from_file(path: str) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
+def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
     Loads the fx function from a Python file.
 
     Args:
-        path (str): Path to the Python file containing fx.
+        path (str | Path): Path to the Python file containing fx.
 
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: The loaded fx function.
     """
     global_vars = {}
-    with open(path, "r") as f:
-        code = f.read()
+    path_obj = Path(path)
+    code = path_obj.read_text()
     exec(code, global_vars)
     return global_vars["fx"]
 

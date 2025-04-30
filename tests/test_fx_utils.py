@@ -1,7 +1,7 @@
-import os
 import tempfile
 import unittest
 import warnings
+from pathlib import Path
 
 from vernamveil.fx_utils import generate_polynomial_fx, load_fx_from_file, check_fx_sanity
 
@@ -111,14 +111,14 @@ class TestFxUtils(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_code)
-            tmp_path = tmp.name
+            tmp_path = Path(tmp.name)
 
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
             self.assertTrue(isinstance(fx_loaded(1, bytes(), 256), int))
         finally:
-            os.remove(tmp_path)
+            tmp_path.unlink()
 
     @unittest.skipUnless(HAS_NUMPY, "NumPy not available")
     def test_load_fx_from_file_vectorised(self):
@@ -133,14 +133,14 @@ class TestFxUtils(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_code)
-            tmp_path = tmp.name
+            tmp_path = Path(tmp.name)
 
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
             self.assertTrue(isinstance(fx_loaded(np.arange(1, 10), bytes(), 256), np.ndarray))
         finally:
-            os.remove(tmp_path)
+            tmp_path.unlink()
 
 
 if __name__ == "__main__":

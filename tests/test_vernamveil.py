@@ -1,11 +1,11 @@
 import hashlib
-import os
 import random
 import string
 import tempfile
 import unittest
 from contextlib import nullcontext
 from unittest.mock import patch
+from pathlib import Path
 
 from vernamveil import VernamVeil, generate_polynomial_fx
 
@@ -86,12 +86,12 @@ class TestVernamVeil(unittest.TestCase):
             tempfile.NamedTemporaryFile(delete=False) as output_tmp,
             tempfile.NamedTemporaryFile(delete=False) as decoded_tmp,
         ):
-            input_file = input_tmp.name
-            output_file = output_tmp.name
-            decoded_file = decoded_tmp.name
+            input_file = Path(input_tmp.name)
+            output_file = Path(output_tmp.name)
+            decoded_file = Path(decoded_tmp.name)
 
             # Write random data to input file
-            input_tmp.write(os.urandom(65536))
+            input_tmp.write(random.randbytes(65536))
             input_tmp.flush()
 
         def test(_, vectorise):
@@ -117,12 +117,12 @@ class TestVernamVeil(unittest.TestCase):
                 chunk_size=128,
                 **cipher_args,
             )
-            with open(input_file, "rb") as f1, open(decoded_file, "rb") as f2:
+            with input_file.open("rb") as f1, decoded_file.open("rb") as f2:
                 checksum_original = hashlib.blake2b(f1.read()).hexdigest()
                 checksum_decoded = hashlib.blake2b(f2.read()).hexdigest()
             self.assertEqual(checksum_original, checksum_decoded)
-            os.remove(output_file)
-            os.remove(decoded_file)
+            output_file.unlink()
+            decoded_file.unlink()
 
         self.for_all_modes(20, test)
 

@@ -4,6 +4,7 @@ import math
 import secrets
 import warnings
 from typing import Callable, Iterator, Literal
+from pathlib import Path
 
 try:
     import numpy as np
@@ -470,8 +471,8 @@ class VernamVeil:
 
     @staticmethod
     def process_file(
-        input_file: str,
-        output_file: str,
+        input_file: str | Path,
+        output_file: str | Path,
         fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
         seed: bytes,
         buffer_size: int = 1024 * 1024,
@@ -482,8 +483,8 @@ class VernamVeil:
         Processes a file in blocks using VernamVeil encryption or decryption.
 
         Args:
-            input_file (str): Path to the input file.
-            output_file (str): Path to write the output.
+            input_file (str | Path): Path to the input file.
+            output_file (str | Path): Path to write the output.
             fx (Callable): Key stream generator function.
             seed (bytes): Initial seed for processing.
             buffer_size (int, optional): Bytes to read from the file at a time. Defaults to 1MB.
@@ -509,8 +510,12 @@ class VernamVeil:
         # Initialise the VernamVeil object
         cipher = VernamVeil(fx, **defaults)
 
+        # Convert to Path if necessary
+        input_path = Path(input_file)
+        output_path = Path(output_file)
+
         # Open the input and output files
-        with open(input_file, "rb") as infile, open(output_file, "wb") as outfile:
+        with input_path.open("rb") as infile, output_path.open("wb") as outfile:
             current_seed = seed
 
             # Unencrypted fixed-size delimiter to separate encoded blocks
