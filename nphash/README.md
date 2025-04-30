@@ -1,6 +1,6 @@
-# Building the `npsha256` C Library with `build.py`
+# Building the `nphash` C Library with `build.py`
 
-This project can optionally use a C extension called `npsha256` to efficiently compute SHA256-based hashes from Python. Then, the Python method `hash_numpy` can be used in `fx` methods to quickly produce required hashes in vectorised implementations. 
+This project can optionally use a C extension called `nphash` to efficiently compute SHA256-based hashes from Python. Then, the Python method `hash_numpy` can be used in `fx` methods to quickly produce required hashes in vectorised implementations. 
 
 The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
@@ -56,7 +56,7 @@ Before building, ensure you have the following dependencies installed:
    python build.py
    ```
 
-   This will compile the C code and generate a Python extension module named `_npsha256ffi.*.so` (the exact filename depends on your platform and Python version).
+   This will compile the C code and generate a library named `_npsha256ffi.*.so` (the exact filename depends on your platform and Python version).
 
 ## Usage
 
