@@ -218,7 +218,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
 ---
 
-## 🔧 Provided `fx` Utilities
+## 🧰 Provided `fx` Utilities
 
 VernamVeil includes helper tools to make working with key stream functions easier:
 
@@ -253,7 +253,7 @@ print("Sanity check passed:", passed)
 
 VernamVeil provides a convenient CLI for file encryption and decryption. The CLI supports both encoding (encryption) and decoding (decryption) operations, allowing you to specify custom key stream functions (`fx`) and seeds, or have them generated automatically.
 
-### Features
+### ⚙️ Features
 
 - **Encrypt and decrypt files** using a user-defined or auto-generated `fx` function and seed.
 - **Auto-generate `fx.py` and `seed.bin`** during encoding if not provided; these files are saved in the current working directory.
@@ -261,7 +261,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more.
 - **Sanity checks**: Optionally verify that your `fx` function is suitable for cryptographic use.
 
-### Usage
+### 💻 Usage
 
 ```commandline
 # Encrypt a file with auto-generated fx and seed
@@ -291,7 +291,7 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx
 >
 > **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure.
 
-### File Handling
+### 🗄️ File Handling
 
 - When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current directory. **Store these files securely**; they are required for decryption.
 - When decoding, you **must** provide both `--fx-file` and `--seed-file` pointing to the originals used for encryption.
