@@ -3,7 +3,7 @@ from typing import Literal
 
 try:
     import numpy as np
-    from nphash._npsha256ffi import ffi as ffi_sha256, lib as lib_sha256
+    from nphash import _npsha256ffi
 
     _HAS_C_MODULE = True
 except ImportError:
@@ -43,12 +43,12 @@ def hash_numpy(
     if _HAS_C_MODULE:
         n = len(i_bytes) // 4
         out = np.empty(n, dtype=np.uint64)
-        lib_sha256.numpy_sha256(
-            ffi_sha256.from_buffer(i_bytes),
+        _npsha256ffi.lib.numpy_sha256(
+            _npsha256ffi.ffi.from_buffer(i_bytes),
             n,
-            ffi_sha256.from_buffer(seed) if seed is not None else ffi_sha256.NULL,
+            _npsha256ffi.ffi.from_buffer(seed) if seed is not None else _npsha256ffi.ffi.NULL,
             len(seed) if seed is not None else 0,
-            ffi_sha256.cast("uint64_t*", out.ctypes.data),
+            _npsha256ffi.ffi.cast("uint64_t*", out.ctypes.data),
         )
         return out
     else:
