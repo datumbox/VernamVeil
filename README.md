@@ -165,7 +165,7 @@ import hmac
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a customizable fx function based on a 10-degree polynomial transformation of the index,
+    # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output. 
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
@@ -196,7 +196,7 @@ import numpy as np
 
 
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a customizable fx function based on a 10-degree polynomial transformation of the index,
+    # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output. 
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.

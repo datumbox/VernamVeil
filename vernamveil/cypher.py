@@ -20,7 +20,7 @@ except ImportError:
 
 class VernamVeil:
     """
-    VernamVeil is a modular, symmetric cipher inspired by One-Time Pad principles, featuring customizable keystream
+    VernamVeil is a modular, symmetric cipher inspired by One-Time Pad principles, featuring customisable keystream
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
     """
