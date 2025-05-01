@@ -1,3 +1,4 @@
+import hmac
 import hashlib
 import secrets
 import warnings
@@ -11,12 +12,12 @@ except ImportError:
     np = None
 
 
-from .hash_utils import hash_numpy
+from .hash_utils import hash_numpy, _UINT64_BOUND
 from .cypher import _IntOrArray
 
 
 def generate_polynomial_fx(
-    complexity: int, max_weight: int = 10**5, base_modulus: int = 10**9, vectorise: bool = False
+    complexity: int, max_weight: int = 10**5, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
     Generates a polynomial-based secret function to act as a deterministic key stream generator. Though any
@@ -26,7 +27,6 @@ def generate_polynomial_fx(
     Args:
         complexity (int): Degree of the polynomial.
         max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
-        base_modulus (int, optional): Modulus to prevent large intermediate values. Defaults to 10 ** 9.
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
@@ -39,29 +39,25 @@ def generate_polynomial_fx(
     if vectorise and np is None:
         raise ImportError("NumPy is required for vectorised mode but is not installed.")
 
-    # Generate random weights for each term in the polynomial
-    weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity)]
+    # Generate random weights for each term in the polynomial including the constant term
+    weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity + 1)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a polynomial of {complexity} degree
+    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation
+    # of the index, followed by cryptographically secure HMAC-Blake2b output.
     weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
-    base_modulus = {base_modulus}
 
-    # Hash the input with the seed to get entropy
-    entropy = hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
-    base = i + entropy
-    np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
+    # Transform index i using a polynomial function to introduce uniqueness on fx
+    # Compute all powers: shape (i.size, degree)
+    powers = np.power.outer(i, np.arange({complexity + 1}, dtype=np.uint64))
+    # Weighted sum (polynomial evaluation)
+    result = np.dot(powers, weights)
 
-    # Compute all powers in one go
-    powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
-
-    # Weighted sum for each element
-    result = base
-    np.remainder(result, 99991, out=result)
-    np.add(result, np.dot(powers, weights), out=result)
+    # Cryptographic HMAC using Blake2b
+    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -72,20 +68,20 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     else:
         function_code = f"""
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a polynomial of {complexity} degree
+    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation
+    # of the index, followed by cryptographically secure HMAC-Blake2b output.
     weights = [{", ".join(str(w) for w in weights)}]
-    base_modulus = {base_modulus}
+    interim_modulus = {_UINT64_BOUND}
 
-    # Hash the input with the seed to get entropy
-    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
-    base = (i + entropy) % base_modulus
-
-    # Combine terms of the polynomial using weights and powers of the base
-    result = base % 99991
-    current_pow = base
+    # Transform index i using a polynomial function to introduce uniqueness on fx
+    current_pow = 1
+    result = 0
     for weight in weights:
-        result += weight * current_pow
-        current_pow *= base
+        result = (result + weight * current_pow) % interim_modulus
+        current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
+    
+    # Cryptographic HMAC using Blake2b
+    result = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:

@@ -24,7 +24,7 @@ def fx(i, seed, bound):
 import hashlib
 
 def fx(i, seed, bound):
-    h = int.from_bytes(hashlib.blake2b(seed + int(i).to_bytes(4, 'big')).digest(), 'big')
+    h = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
     return h % bound if bound is not None else h
 """
 

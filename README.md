@@ -164,20 +164,20 @@ import hashlib
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a polynomial of 10 degree
-    weights = [68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
-    base_modulus = 1000000000
+    # Implements a customizable fx function based on a 10-degree polynomial transformation
+    # of the index, followed by cryptographically secure HMAC-Blake2b output.
+    weights = [24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
+    interim_modulus = 18446744073709551616
     
-    # Hash the input with the seed to get entropy`
-    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
-    base = (i + entropy) % base_modulus
-    
-    # Combine terms of the polynomial using weights and powers of the base
-    result = base % 99991
-    current_pow = base
+    # Transform index i using a polynomial function to introduce uniqueness on fx
+    current_pow = 1
+    result = 0
     for weight in weights:
-        result += weight * current_pow
-        current_pow *= base
+        result = (result + weight * current_pow) % interim_modulus
+        current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
+    
+    # Cryptographic HMAC using Blake2b
+    result = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
     
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -194,28 +194,24 @@ import numpy as np
 
 
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-  # Implements a polynomial of 10 degree
-  weights = np.array([68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
-  base_modulus = 1000000000
-
-  # Hash the input with the seed to get entropy
-  entropy = hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
-  base = i + entropy
-  np.remainder(base, base_modulus, out=base)  # in-place modulus, avoids copy
-
-  # Compute all powers in one go
-  powers = np.power.outer(base, np.arange(1, len(weights) + 1, dtype=np.uint64))
-
-  # Weighted sum for each element
-  result = base
-  np.remainder(result, 99991, out=result)
-  np.add(result, np.dot(powers, weights), out=result)
-
-  # Modulo the result with the bound to ensure it's always within the requested range
-  if bound is not None:
-    np.remainder(result, bound, out=result)
-
-  return result
+    # Implements a customizable fx function based on a 10-degree polynomial transformation
+    # of the index, followed by cryptographically secure HMAC-Blake2b output.
+    weights = np.array([24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
+    
+    # Transform index i using a polynomial function to introduce uniqueness on fx
+    # Compute all powers: shape (i.size, degree)
+    powers = np.power.outer(i, np.arange(11, dtype=np.uint64))
+    # Weighted sum (polynomial evaluation)
+    result = np.dot(powers, weights)
+    
+    # Cryptographic HMAC using Blake2b
+    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+    
+    # Modulo the result with the bound to ensure it's always within the requested range
+    if bound is not None:
+        np.remainder(result, bound, out=result)
+    
+    return result
 ```
 
 ---

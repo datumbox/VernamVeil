@@ -69,7 +69,7 @@ def hash_numpy(
         return np.fromiter(
             (
                 int.from_bytes(
-                    method((seed if seed is not None else b"") + i_bytes[j : j + 4]).digest(),
+                    method((seed + i_bytes[j : j + 4] if seed is not None else i_bytes[j : j + 4])).digest(),
                     "big",
                 )
                 % _UINT64_BOUND
