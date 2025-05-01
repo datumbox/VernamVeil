@@ -96,7 +96,7 @@ class VernamVeil:
         Returns:
             bytes: A new refreshed seed.
         """
-        m = hashlib.blake2b(seed, digest_size=len(seed))
+        m = hashlib.blake2b(seed)
         if data is not None:
             m.update(data)
         return m.digest()
@@ -128,7 +128,7 @@ class VernamVeil:
         else:
             # Standard: generate hashes one by one
             hashes = [
-                int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big")).digest()[:8], "big")
+                int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
                 for i in range(1, len(positions))
             ]
 
@@ -446,7 +446,7 @@ class VernamVeil:
         return message, last_seed
 
     @staticmethod
-    def get_initial_seed(num_bytes: int = 32) -> bytes:
+    def get_initial_seed(num_bytes: int = 64) -> bytes:
         """
         Generates a cryptographically secure initial random seed.
 
@@ -455,7 +455,7 @@ class VernamVeil:
 
         Args:
             num_bytes (int, optional): The number of bytes to generate for the seed.
-                Defaults to 32 bytes if not provided.
+                Defaults to 64 bytes if not provided.
 
         Returns:
             bytes: A random byte string of the specified length.

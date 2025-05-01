@@ -169,7 +169,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     base_modulus = 1000000000
     
     # Hash the input with the seed to get entropy`
-    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(4, "big")).digest(), "big")
+    entropy = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
     base = (i + entropy) % base_modulus
     
     # Combine terms of the polynomial using weights and powers of the base
