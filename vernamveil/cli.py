@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 from .cypher import VernamVeil
-from .fx_utils import generate_polynomial_fx, load_fx_from_file, check_fx_sanity
+from .fx_utils import generate_default_fx, load_fx_from_file, check_fx_sanity
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
@@ -17,10 +17,10 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--fx-file", type=Path, help="Path to Python file containing the fx function.")
     p.add_argument("--seed-file", type=Path, help="Path to file containing the seed (bytes).")
     p.add_argument(
-        "--fx-degree",
+        "--fx-complexity",
         type=int,
         default=20,
-        help="Degree for random polynomial fx (if fx-file omitted). Default: 20.",
+        help="Complexity for random fx (if fx-file omitted). Default: 20.",
     )
     p.add_argument(
         "--vectorise",
@@ -107,7 +107,7 @@ def main(args=None) -> None:
         if fx_py.exists():
             print("Error: fx.py already exists. Refusing to overwrite.", file=sys.stderr)
             sys.exit(1)
-        fx_obj = generate_polynomial_fx(parsed_args.fx_degree, vectorise=parsed_args.vectorise)
+        fx_obj = generate_default_fx(parsed_args.fx_complexity, vectorise=parsed_args.vectorise)
         fx_code = fx_obj._source_code
         if parsed_args.vectorise:
             fx_code = ("from vernamveil import hash_numpy\n" "import numpy as np\n") + fx_code

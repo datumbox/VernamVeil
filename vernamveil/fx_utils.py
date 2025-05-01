@@ -16,7 +16,7 @@ from .cypher import _IntOrArray
 
 
 def generate_polynomial_fx(
-    n: int, max_weight: int = 10**5, base_modulus: int = 10**9, vectorise: bool = False
+    complexity: int, max_weight: int = 10**5, base_modulus: int = 10**9, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
     Generates a polynomial-based secret function to act as a deterministic key stream generator. Though any
@@ -24,7 +24,7 @@ def generate_polynomial_fx(
     used for testing.
 
     Args:
-        n (int): Degree of the polynomial.
+        complexity (int): Degree of the polynomial.
         max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
         base_modulus (int, optional): Modulus to prevent large intermediate values. Defaults to 10 ** 9.
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
@@ -40,13 +40,13 @@ def generate_polynomial_fx(
         raise ImportError("NumPy is required for vectorised mode but is not installed.")
 
     # Generate random weights for each term in the polynomial
-    weights = [secrets.randbelow(max_weight + 1) for _ in range(n)]
+    weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a polynomial of {n} degree
+    # Implements a polynomial of {complexity} degree
     weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
     base_modulus = {base_modulus}
 
@@ -72,7 +72,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     else:
         function_code = f"""
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a polynomial of {n} degree
+    # Implements a polynomial of {complexity} degree
     weights = [{", ".join(str(w) for w in weights)}]
     base_modulus = {base_modulus}
 
@@ -107,6 +107,10 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     fx._source_code = function_code
 
     return fx
+
+
+# Default function for key stream generation
+generate_default_fx = generate_polynomial_fx
 
 
 def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:

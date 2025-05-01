@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from vernamveil.cypher import VernamVeil, _HAS_NUMPY
-from vernamveil.fx_utils import generate_polynomial_fx
+from vernamveil.fx_utils import generate_default_fx
 from vernamveil.hash_utils import _HAS_C_MODULE
 
 
@@ -32,7 +32,7 @@ class TestVernamVeil(unittest.TestCase):
         """Set up a reusable initial seed for all tests."""
         cls.initial_seed = VernamVeil.get_initial_seed()
 
-    def for_all_modes(self, fx_degree, test_func):
+    def for_all_modes(self, fx_complexity, test_func):
         """Run the given test function for all supported cipher modes."""
         for mode, vectorise, use_c_backend in get_test_modes():
             with self.subTest(mode=mode):
@@ -43,7 +43,7 @@ class TestVernamVeil(unittest.TestCase):
                     else nullcontext()
                 )
                 with context:
-                    fx = generate_polynomial_fx(fx_degree, vectorise=vectorise)
+                    fx = generate_default_fx(fx_complexity, vectorise=vectorise)
                     cipher = VernamVeil(fx, vectorise=vectorise) if vectorise else VernamVeil(fx)
                     test_func(cipher, vectorise)
 
@@ -88,7 +88,7 @@ class TestVernamVeil(unittest.TestCase):
             input_tmp.flush()
 
         def test(_, vectorise):
-            fx = generate_polynomial_fx(20, vectorise=vectorise)
+            fx = generate_default_fx(20, vectorise=vectorise)
             cipher_args = dict(vectorise=vectorise)
             VernamVeil.process_file(
                 input_file,

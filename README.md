@@ -72,7 +72,7 @@ Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering.
 - **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
 - **Vectorisation**: Some operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
-- **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_polynomial_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
+- **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
 ---
 
 ## ⚠️ Caveats & Best Practices
@@ -224,7 +224,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
 VernamVeil includes helper tools to make working with key stream functions easier:
 
-- `generate_polynomial_fx`: Quickly create deterministic polynomial-based `fx` functions for testing or experimentation. Supports both scalar and vectorised (NumPy) modes.
+- `generate_default_fx`: Quickly create deterministic `fx` functions for testing or experimentation. Supports both scalar and vectorised (NumPy) modes.
 - `check_fx_sanity`: Run basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
@@ -232,11 +232,11 @@ These utilities help you prototype and validate your own key stream functions be
 Example:
 
 ```python
-from vernamveil import generate_polynomial_fx, check_fx_sanity
+from vernamveil import generate_default_fx, check_fx_sanity
 
 
-# Generate a vectorised polynomial fx function of degree 4
-fx = generate_polynomial_fx(4, max_weight=1000, vectorise=True)
+# Generate a vectorised fx function of degree 4
+fx = generate_default_fx(4, max_weight=1000, vectorise=True)
 
 # Show the generated function's source code
 print("Generated fx source code:\n", fx._source_code)
@@ -323,7 +323,7 @@ To install the library with all optional dependencies (development tools, NumPy 
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_polynomial_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 For more details on the C module and its usage, see [`nphash/README.md`](nphash/README.md).
 
