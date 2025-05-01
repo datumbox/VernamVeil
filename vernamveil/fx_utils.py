@@ -46,8 +46,10 @@ def generate_polynomial_fx(
     if vectorise:
         function_code = f"""
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation
-    # of the index, followed by cryptographically secure HMAC-Blake2b output.
+    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation of the index,
+    # followed by a cryptographically secure HMAC-Blake2b output. 
+    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+    # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
 
     # Transform index i using a polynomial function to introduce uniqueness on fx
@@ -68,8 +70,10 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     else:
         function_code = f"""
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation
-    # of the index, followed by cryptographically secure HMAC-Blake2b output.
+    # Implements a customizable fx function based on a {complexity}-degree polynomial transformation of the index,
+    # followed by a cryptographically secure HMAC-Blake2b output. 
+    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+    # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [{", ".join(str(w) for w in weights)}]
     interim_modulus = {_UINT64_BOUND}
 
@@ -81,7 +85,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
 
     # Cryptographic HMAC using Blake2b
-    result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
+    result = int.from_bytes(hmac.new(seed, result.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
