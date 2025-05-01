@@ -23,14 +23,14 @@ from cffi import FFI
 ffibuilder_blake2b = FFI()
 ffibuilder_blake2b.cdef(
     """
-    void numpy_blake2b(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* const out);
+    void numpy_blake2b(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* restrict out);
 """
 )
 
 ffibuilder_sha256 = FFI()
 ffibuilder_sha256.cdef(
     """
-    void numpy_sha256(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* const out);
+    void numpy_sha256(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* restrict out);
 """
 )
 
