@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 from typing import Literal
 
 try:
@@ -18,21 +19,20 @@ def hash_numpy(
     i: "np.ndarray", seed: bytes | None = None, hash_name: Literal["blake2b", "sha256"] = "blake2b"
 ) -> "np.ndarray":
     """
-    Computes a 64-bit integer NumPy array by hashing each index (as a 4-byte big-endian block) with a seed using
+    Computes a 64-bit integer NumPy array by HMAC-ing each index (as a 4-byte big-endian block) with a seed using
     a hashing algorithm.
 
     This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation
-    (with OpenMP and OpenSSL) for efficient, parallelised hashing from Python. If the C module isn't available
+    (with OpenMP and OpenSSL) for efficient, parallelised HMAC hashing from Python. If the C module isn't available
     a NumPy fallback is used.
 
     Args:
         i (np.ndarray): NumPy array of indices (dtype should be unsigned 64-bit integer).
-        seed (bytes, optional): The seed bytes used to influence the hash result. If None, hashes only the index.
+        seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index (not recommended).
         hash_name (Literal["blake2b", "sha256"], optional): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        np.ndarray: An array of 64-bit integers derived from the hash of each (seed || 4-byte block) or
-        just the block if seed is None.
+        np.ndarray: An array of 64-bit integers derived from the HMAC of each 4-byte block.
 
     Raises:
         ValueError: If a hash algorithm is not supported.
@@ -69,7 +69,11 @@ def hash_numpy(
         return np.fromiter(
             (
                 int.from_bytes(
-                    method((seed + i_bytes[j : j + 4] if seed is not None else i_bytes[j : j + 4])).digest(),
+                    (
+                        hmac.new(seed, i_bytes[j : j + 4], method).digest()
+                        if seed is not None
+                        else method(i_bytes[j : j + 4]).digest()
+                    ),
                     "big",
                 )
                 % _UINT64_BOUND

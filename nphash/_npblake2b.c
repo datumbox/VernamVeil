@@ -2,86 +2,63 @@
 #include <string.h>
 #include <stdlib.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include "fold_bytes.h"
 
 #ifdef _OPENMP
+// Enable parallelisation with OpenMP for multi-core performance
 #include <omp.h>
 #endif
 
-// Use a stack buffer for most cases (seedlen up to 516)
-#define STACK_BUF_SIZE 516
+#define BLOCK_SIZE 4  // Each input element is a 4-byte block
 
-// Hashes an array of 4-byte elements with a seed using BLAKE2b, outputs 64-bit values
-void numpy_blake2b(const char* arr, size_t n, const char* seed, size_t seedlen, uint64_t* out) {
-    // Treat input as an array of 4-byte blocks
-    const char (*arr4)[4] = (const char (*)[4])arr;
+// HMACs or hashes an array of 4-byte elements with a seed using BLAKE2b, outputs 64-bit values
+// - If a seed is provided, HMAC is used for cryptographic safety.
+// - If no seed is provided, a plain hash is used (not recommended for security).
+void numpy_blake2b(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* restrict out) {
+    // Treat input as an array of 4-byte blocks for hashing/HMAC
+    const unsigned char (*arr4)[BLOCK_SIZE] = (const unsigned char (*)[BLOCK_SIZE])arr;
+    const int n_int = (int)n;
 
-    size_t buflen = seedlen + 4;
+    if (seed != NULL && seedlen > 0) {
+        int i;
+        const int seedlen_int = (int)seedlen;
 
-    int i;
-    int n_int = (int)n;
-    #ifdef _OPENMP
-    // Parallelise the loop with OpenMP to use multiple CPU cores
-    #pragma omp parallel for
-    #endif
-    for (i = 0; i < n_int; ++i) {
-        unsigned char hash[64]; // Buffer for BLAKE2b output (64 bytes)
-        unsigned char stack_buf[STACK_BUF_SIZE];
-        unsigned char* buf;
+        // HMAC mode: Use HMAC with BLAKE2b (cryptographically safer)
+        #ifdef _OPENMP
+        // Parallelise the loop with OpenMP to use multiple CPU cores
+        #pragma omp parallel for schedule(static)
+        #endif
+        for (i = 0; i < n_int; ++i) {
+            unsigned char hash[64]; // Buffer for BLAKE2b output (64 bytes)
+            unsigned int hash_len = 64;
+            // Compute HMAC-BLAKE2b using OpenSSL: key=seed, msg=arr4[i]
+            HMAC(EVP_blake2b512(), seed, seedlen_int, arr4[i], BLOCK_SIZE, hash, &hash_len);
+            // Fold the hash into a uint64 for output
+            out[i] = fold_bytes_to_uint64(hash, 64);
+        }
+    } else {
+        // No-seed mode: Just hash the block (not recommended)
+        int i;
 
-        // Dynamically allocate buffer for large seeds
-        if (buflen > STACK_BUF_SIZE) {
-            buf = (unsigned char*)malloc(buflen);
-            if (!buf) {
-                // Allocation failed, skip this output
-                out[i] = 0;
-                continue;
+        #ifdef _OPENMP
+        // Parallelise the loop with OpenMP to use multiple CPU cores
+        #pragma omp parallel for schedule(static)
+        #endif
+        for (i = 0; i < n_int; ++i) {
+            unsigned char hash[64]; // Buffer for BLAKE2b output (64 bytes)
+            // Create a new digest context for each hash computation
+            EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+            // Compute BLAKE2b hash of the 4-byte block
+            // Chain all hash steps and check for failure
+            if (ctx != NULL &&
+                EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1 &&
+                EVP_DigestUpdate(ctx, arr4[i], BLOCK_SIZE) == 1 &&
+                EVP_DigestFinal_ex(ctx, hash, NULL) == 1) {
+                // Fold the hash into a uint64 for output
+                out[i] = fold_bytes_to_uint64(hash, 64);
             }
-        } else {
-            buf = stack_buf;
-        }
-
-        // Copy the seed into the buffer
-        if (seedlen > 0 && seed != NULL) {
-            memcpy(buf, seed, seedlen);
-        }
-        // Append the current 4-byte block to the buffer
-        memcpy(buf + seedlen, arr4[i], 4);
-
-        // Compute BLAKE2b hash of (seed || 4-byte block)
-        EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-        if (ctx == NULL) {
-            out[i] = 0;
-            if (buflen > STACK_BUF_SIZE) {
-                free(buf);
-            }
-            continue;
-        }
-
-        if (EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) != 1 ||
-            EVP_DigestUpdate(ctx, buf, buflen) != 1 ||
-            EVP_DigestFinal_ex(ctx, hash, NULL) != 1) {
-            out[i] = 0;
             EVP_MD_CTX_free(ctx);
-            if (buflen > STACK_BUF_SIZE) {
-                free(buf);
-            }
-            continue;
-        }
-
-        EVP_MD_CTX_free(ctx);
-
-        // Convert the 64-byte hash to a 64-bit integer (big-endian)
-        uint64_t val = 0;
-        for (size_t j = 0; j < 64; ++j) {
-            val = (val << 8) | hash[j];
-        }
-        // Store the result in the output array
-        out[i] = val;
-
-        // Free the dynamically allocated buffer if it was used
-        // (i.e., when the required buffer size exceeded the stack buffer)
-        if (buflen > STACK_BUF_SIZE) {
-            free(buf);
         }
     }
 }

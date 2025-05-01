@@ -161,6 +161,7 @@ VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode
 
 ```python
 import hashlib
+import hmac
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
@@ -177,7 +178,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
     
     # Cryptographic HMAC using Blake2b
-    result = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
+    result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
     
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:

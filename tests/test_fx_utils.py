@@ -106,7 +106,7 @@ class TestFxUtils(unittest.TestCase):
     def test_load_fx_from_file_scalar(self):
         """Test that a scalar fx function can be saved to a file and loaded back using load_fx_from_file."""
         fx_obj = generate_default_fx(3, vectorise=False)
-        fx_code = "import hashlib\n" + fx_obj._source_code
+        fx_code = "import hashlib\nimport hmac\n" + fx_obj._source_code
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_code)

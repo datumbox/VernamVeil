@@ -112,7 +112,7 @@ def main(args=None) -> None:
         if parsed_args.vectorise:
             fx_code = ("from vernamveil import hash_numpy\n" "import numpy as np\n") + fx_code
         else:
-            fx_code = "import hashlib\n" + fx_code
+            fx_code = "import hashlib\nimport hmac\n" + fx_code
         fx_py.write_text(fx_code)
         print("Generated fx.py in current directory. Store securely.", file=sys.stderr)
         fx = fx_obj

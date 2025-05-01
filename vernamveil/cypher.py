@@ -96,9 +96,10 @@ class VernamVeil:
         Returns:
             bytes: A new refreshed seed.
         """
-        m = hashlib.blake2b(seed)
         if data is not None:
-            m.update(data)
+            m = hmac.new(seed, data, hashlib.blake2b)
+        else:
+            m = hashlib.blake2b(seed)
         return m.digest()
 
     def _determine_shuffled_indices(
@@ -128,7 +129,9 @@ class VernamVeil:
         else:
             # Standard: generate hashes one by one
             hashes = [
-                int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
+                int.from_bytes(
+                    hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big"
+                )
                 for i in range(1, len(positions))
             ]
 

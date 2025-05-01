@@ -22,9 +22,10 @@ def fx(i, seed, bound):
 """
         self.fx_strong_code = """
 import hashlib
+import hmac
 
 def fx(i, seed, bound):
-    h = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
+    h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
     return h % bound if bound is not None else h
 """
 

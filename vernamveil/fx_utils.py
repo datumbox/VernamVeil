@@ -79,9 +79,9 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     for weight in weights:
         result = (result + weight * current_pow) % interim_modulus
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
-    
+
     # Cryptographic HMAC using Blake2b
-    result = int.from_bytes(hashlib.blake2b(seed + i.to_bytes(8, "big")).digest(), "big")
+    result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -94,7 +94,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     local_vars = {}
     exec(
         function_code,
-        {"hashlib": hashlib, "np": np, "hash_numpy": hash_numpy},
+        {"hashlib": hashlib, "np": np, "hash_numpy": hash_numpy, "hmac": hmac},
         local_vars,
     )
     fx = local_vars["fx"]

@@ -23,14 +23,14 @@ from cffi import FFI
 ffibuilder_blake2b = FFI()
 ffibuilder_blake2b.cdef(
     """
-    void numpy_blake2b(const char* arr, size_t n, const char* seed, size_t seedlen, uint64_t* out);
+    void numpy_blake2b(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* const out);
 """
 )
 
 ffibuilder_sha256 = FFI()
 ffibuilder_sha256.cdef(
     """
-    void numpy_sha256(const char* arr, size_t n, const char* seed, size_t seedlen, uint64_t* out);
+    void numpy_sha256(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* const out);
 """
 )
 
@@ -43,10 +43,10 @@ library_dirs = []
 
 if sys.platform.startswith("linux"):
     libraries = ["ssl", "crypto", "gomp"]
-    extra_compile_args = ["-std=c99", "-fopenmp"]
+    extra_compile_args = ["-std=c99", "-fopenmp", "-O3"]
 elif sys.platform == "darwin":
     libraries = ["ssl", "crypto"]
-    extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp"]
+    extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3"]
     extra_link_args = ["-lomp"]
     # Add include/library dirs for both OpenSSL and libomp
     for prefix in [
@@ -62,11 +62,11 @@ elif sys.platform == "win32":
     # For MSVC: /openmp, for MinGW: -fopenmp
     if "GCC" in platform.python_compiler():
         libraries = ["libssl", "libcrypto", "gomp"]
-        extra_compile_args = ["-std=c99", "-fopenmp"]
+        extra_compile_args = ["-std=c99", "-fopenmp", "-O3"]
     else:
         # MSVC
         libraries = ["libssl", "libcrypto"]
-        extra_compile_args = ["/openmp"]
+        extra_compile_args = ["/openmp", "-O2"]
     # Check all possible OpenSSL install locations
     for prefix in [
         Path(r"C:\Program Files\OpenSSL"),
