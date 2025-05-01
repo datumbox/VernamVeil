@@ -13,8 +13,6 @@ Before building, ensure you have the following dependencies installed:
 - **gcc** (GNU Compiler Collection)
 - **OpenMP** (usually included with gcc)
 - **OpenSSL development libraries**
-  - On Ubuntu/Debian: `libssl-dev`
-  - On Fedora: `openssl-devel`
 - **cffi** and **numpy** Python packages
 
 ## Installation Steps
