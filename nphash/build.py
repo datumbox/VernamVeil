@@ -3,14 +3,14 @@ nphash/build.py
 
 Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npsha256ffi and _npblake2bffi C extensions that provide fast, parallelised
-SHA256-based and BLAKE2b-based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
+This script uses cffi to compile the _npblake2bffi and _npsha256ffi C extensions that provide fast, parallelised
+BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python nphash/build.py
 
-This will generate the _npsha256ffi and _npblake2bffi extension modules, which can be imported from Python code.
+This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import sys
