@@ -23,7 +23,7 @@ from vernamveil import VernamVeil
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Simple but cryptographically unsafe fx
+    # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
@@ -98,7 +98,7 @@ from vernamveil import VernamVeil
 
 # Step 1: Define a custom key stream function
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Simple but cryptographically unsafe fx
+    # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
@@ -139,7 +139,7 @@ from vernamveil import VernamVeil
 
 # Step 1: Define a custom key stream function
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Simple but cryptographically unsafe fx
+    # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
     if bound is not None:
