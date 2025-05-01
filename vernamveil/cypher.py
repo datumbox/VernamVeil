@@ -55,7 +55,7 @@ class VernamVeil:
         Raises:
             ValueError: If `padding_range` is not a tuple of two integers.
             ValueError: If `decoy_ratio` is negative.
-            ImportError: If `vectorise` is True but numpy is not installed.
+            ValueError: If `vectorise` is True but numpy is not installed.
         """
         # Validate input
         if delimiter_size < 4:
@@ -69,7 +69,7 @@ class VernamVeil:
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and not _HAS_NUMPY:
-            raise ImportError("NumPy is required for vectorised mode but is not installed.")
+            raise ValueError("NumPy is required for vectorised mode but is not installed.")
         elif not vectorise and _HAS_NUMPY:
             warnings.warn(
                 "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
