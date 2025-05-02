@@ -1,6 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
+
 from .cypher import VernamVeil
 from .fx_utils import generate_default_fx, load_fx_from_file, check_fx_sanity
 
@@ -53,7 +54,7 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     )
 
 
-def main(args=None) -> None:
+def main(args: list[str] | None = None) -> None:
     """
     Entry point for the VernamVeil CLI utility.
     Parses arguments, handles key management, and dispatches encode/decode.
@@ -108,7 +109,7 @@ def main(args=None) -> None:
             print("Error: fx.py already exists. Refusing to overwrite.", file=sys.stderr)
             sys.exit(1)
         fx_obj = generate_default_fx(parsed_args.fx_complexity, vectorise=parsed_args.vectorise)
-        fx_py.write_text(fx_obj._source_code)
+        fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
         print("Generated fx.py in current directory. Store securely.", file=sys.stderr)
         fx = fx_obj
     else:

@@ -12,6 +12,7 @@ requires-python = ">=3.10"
 dev = [
     "black>=25.1",
     "flake8>=7.2",
+    "mypy>=1.15",
     "pdoc>=15.0",
 ]
 numpy = [
@@ -35,3 +36,8 @@ skip-string-normalization = false
 
 [tool.setuptools.packages.find]
 include = ["vernamveil", "nphash"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+strict = true

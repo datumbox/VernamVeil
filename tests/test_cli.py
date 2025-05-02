@@ -1,6 +1,6 @@
 import os
-import tempfile
 import shutil
+import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
@@ -21,11 +21,10 @@ def fx(i, seed, bound):
     return h % bound if bound is not None else h
 """
         self.fx_strong_code = """
-import hashlib
 import hmac
 
 def fx(i, seed, bound):
-    h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
+    h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
     return h % bound if bound is not None else h
 """
 

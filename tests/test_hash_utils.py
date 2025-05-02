@@ -1,7 +1,7 @@
-import unittest
 import hashlib
-import secrets
 import hmac
+import secrets
+import unittest
 from unittest.mock import patch
 
 from vernamveil.cypher import _HAS_NUMPY
@@ -47,7 +47,8 @@ class TestHashUtils(unittest.TestCase):
                         expected = np.fromiter(
                             (
                                 int.from_bytes(
-                                    hmac.new(seed, i_bytes[j : j + 8], method).digest(), "big"
+                                    hmac.new(seed, i_bytes[j : j + 8], digestmod=method).digest(),
+                                    "big",
                                 )
                                 % _UINT64_BOUND
                                 for j in range(0, len(i_bytes), 8)

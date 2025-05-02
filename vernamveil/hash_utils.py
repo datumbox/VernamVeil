@@ -4,8 +4,9 @@ from typing import Literal
 
 try:
     import numpy as np
-    from nphash import _npblake2bffi
-    from nphash import _npsha256ffi
+    from numpy.typing import NDArray
+    from nphash import _npblake2bffi  # type: ignore[attr-defined]
+    from nphash import _npsha256ffi  # type: ignore[attr-defined]
 
     _HAS_C_MODULE = True
 except ImportError:
@@ -16,8 +17,10 @@ _UINT64_BOUND = 2**64
 
 
 def hash_numpy(
-    i: "np.ndarray", seed: bytes | None = None, hash_name: Literal["blake2b", "sha256"] = "blake2b"
-) -> "np.ndarray":
+    i: "NDArray[np.uint64]",
+    seed: bytes | None = None,
+    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+) -> "NDArray[np.uint64]":
     """
     Computes a 64-bit integer NumPy array by HMAC-ing each index with a seed using a hashing algorithm.
     If no seed is provided, the index is hashed directly.
@@ -27,12 +30,12 @@ def hash_numpy(
     a NumPy fallback is used.
 
     Args:
-        i (np.ndarray): NumPy array of indices (dtype should be unsigned 64-bit integer).
+        i (NDArray[np.uint64]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index.
         hash_name (Literal["blake2b", "sha256"], optional): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        np.ndarray: An array of 64-bit integers derived from the HMAC of each index.
+        NDArray[np.uint64]: An array of 64-bit integers derived from the HMAC of each index.
 
     Raises:
         ValueError: If a hash algorithm is not supported.
@@ -70,7 +73,7 @@ def hash_numpy(
             (
                 int.from_bytes(
                     (
-                        hmac.new(seed, i_bytes[j : j + 8], method).digest()
+                        hmac.new(seed, i_bytes[j : j + 8], digestmod=method).digest()
                         if seed is not None
                         else method(i_bytes[j : j + 8]).digest()
                     ),

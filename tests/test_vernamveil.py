@@ -4,8 +4,8 @@ import string
 import tempfile
 import unittest
 from contextlib import nullcontext
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 from vernamveil.cypher import VernamVeil, _HAS_NUMPY
 from vernamveil.fx_utils import generate_default_fx

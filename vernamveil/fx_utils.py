@@ -1,10 +1,8 @@
 import hmac
-import hashlib
 import secrets
 import warnings
-from typing import Callable
 from pathlib import Path
-
+from typing import Any, Callable, cast
 
 try:
     import numpy as np
@@ -74,7 +72,6 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 """
     else:
         function_code = f"""
-import hashlib
 import hmac
 
 
@@ -94,7 +91,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
 
     # Cryptographic HMAC using Blake2b
-    result = int.from_bytes(hmac.new(seed, result.to_bytes(8, "big"), hashlib.blake2b).digest(), "big")
+    result = int.from_bytes(hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -104,18 +101,18 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 """
 
     # Execute the string to define fx in a local namespace
-    local_vars = {}
+    local_vars: dict[str, Any] = {}
     exec(
         function_code,
-        {"hashlib": hashlib, "np": np, "hash_numpy": hash_numpy, "hmac": hmac},
+        {"np": np, "hash_numpy": hash_numpy, "hmac": hmac},
         local_vars,
     )
     fx = local_vars["fx"]
 
     # Attach the code string directly to the function object for later reference
-    fx._source_code = function_code
+    fx._source_code = function_code  # type: ignore[attr-defined, unused-ignore]
 
-    return fx
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 # Default function for key stream generation
@@ -132,11 +129,12 @@ def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | N
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: The loaded fx function.
     """
-    global_vars = {}
+    global_vars: dict[str, Any] = {}
     path_obj = Path(path)
     code = path_obj.read_text()
     exec(code, global_vars)
-    return global_vars["fx"]
+    fx = global_vars["fx"]
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 def check_fx_sanity(
@@ -182,16 +180,16 @@ def check_fx_sanity(
             if outputs.dtype != np.uint64:
                 warnings.warn("fx output is not an uint64 NumPy array.")
                 passed = False
-            outputs = outputs.tolist()
+            outputs_list = outputs.tolist()
         else:
             warnings.warn("fx output is not a NumPy array.")
             passed = False
-            outputs = list(outputs)
+            outputs_list = list(outputs)  # type: ignore[arg-type]
     else:
-        outputs = [fx(i, seed, bound) for i in range(num_samples)]
+        outputs_list = [fx(i, seed, bound) for i in range(num_samples)]
 
     # 1. Non-constant output for varying i
-    if len(set(outputs)) < num_samples // 10:
+    if len(set(outputs_list)) < num_samples // 10:
         warnings.warn("fx may be constant or low-entropy for varying i.")
         passed = False
 
@@ -201,23 +199,23 @@ def check_fx_sanity(
         arr = np.arange(num_samples, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed, bound)
         if isinstance(outputs_alt, np.ndarray):
-            outputs_alt = outputs_alt.tolist()
+            outputs_alt_list = outputs_alt.tolist()
         else:
-            outputs_alt = list(outputs_alt)
+            outputs_alt_list = list(outputs_alt)  # type: ignore[arg-type]
     else:
-        outputs_alt = [fx(i, alt_seed, bound) for i in range(num_samples)]
-    if outputs == outputs_alt:
+        outputs_alt_list = [fx(i, alt_seed, bound) for i in range(num_samples)]
+    if outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
     # 3. Bound respect
-    if not all(0 <= o < bound for o in outputs):
+    if not all(0 <= o < bound for o in outputs_list):
         warnings.warn("fx output does not respect the bound.")
         passed = False
 
     # 4. Basic uniformity
-    counts = [0] * bound
-    for o in outputs:
+    counts = [0 for _ in range(bound)]
+    for o in outputs_list:
         if 0 <= o < bound:
             counts[o] += 1
     if max(counts) > num_samples * 0.2:
@@ -225,7 +223,7 @@ def check_fx_sanity(
         passed = False
 
     # 5. Type check
-    if not all(isinstance(o, int) for o in outputs):
+    if not all(isinstance(o, int) for o in outputs_list):
         warnings.warn("fx output is not int.")
         passed = False
 

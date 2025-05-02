@@ -3,18 +3,21 @@ import hmac
 import math
 import secrets
 import warnings
-from typing import Callable, Iterator, Literal
 from pathlib import Path
+from typing import Any, Callable, Iterator, Literal, TypeAlias
+
 from .hash_utils import hash_numpy, _UINT64_BOUND
 
 try:
     import numpy as np
+    from numpy.typing import NDArray
 
-    _IntOrArray = int | np.ndarray
+    _IntOrArray: TypeAlias = int | NDArray[np.uint64]
     _HAS_NUMPY = True
 except ImportError:
     np = None
-    _IntOrArray = int
+
+    _IntOrArray: TypeAlias = int  # type: ignore[misc, no-redef]
     _HAS_NUMPY = False
 
 
@@ -98,10 +101,9 @@ class VernamVeil:
             bytes: A new refreshed seed.
         """
         if data is not None:
-            m = hmac.new(seed, data, hashlib.blake2b)
+            return hmac.new(seed, data, digestmod="blake2b").digest()
         else:
-            m = hashlib.blake2b(seed)
-        return m.digest()
+            return hashlib.blake2b(seed).digest()
 
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
@@ -126,12 +128,12 @@ class VernamVeil:
         if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes = hash_numpy(i_arr, seed, "blake2b")
+            hashes: NDArray[np.uint64] = hash_numpy(i_arr, seed, "blake2b")
         else:
             # Standard: generate hashes one by one
-            hashes = [
+            hashes: list[int] = [  # type: ignore[no-redef]
                 int.from_bytes(
-                    hmac.new(seed, i.to_bytes(8, "big"), hashlib.blake2b).digest(), "big"
+                    hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big"
                 )
                 for i in range(1, total_count)
             ]
@@ -168,16 +170,17 @@ class VernamVeil:
             n_uint64 = math.ceil(length / 8)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
             # Unbounded, get the full uint64 range
-            keystream = self._fx(indices, seed, None)
+            keystream: NDArray[np.uint64] = self._fx(indices, seed, None)
             # Ensure output is a numpy array of integers in [0, 255]
-            return keystream.view(np.uint8)[:length].data
+            memview: memoryview = keystream.view(np.uint8)[:length].data
+            return memview
         else:
             # Standard generation using python
             result = bytearray()
             i = 1
             while len(result) < length:
                 # Still bound it to 8 bytes
-                val = self._fx(i, seed, _UINT64_BOUND)
+                val: int = self._fx(i, seed, _UINT64_BOUND)
                 result.extend(val.to_bytes(8, "big"))
                 i += 1
             return memoryview(result)[:length]
@@ -234,7 +237,7 @@ class VernamVeil:
 
         # Use the randomness of the positions to shuffle the chunks
         chunk_ranges_iter = self._generate_chunk_ranges(message_len)
-        shuffled_chunk_ranges = [None] * total_count
+        shuffled_chunk_ranges = [(0, 0) for _ in range(total_count)]
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
@@ -244,9 +247,9 @@ class VernamVeil:
         for i in range(total_count):
             if shuffled_chunk_ranges[i] is not None:
                 start, end = shuffled_chunk_ranges[i]
-                chunk = message[start:end]
+                chunk: memoryview = message[start:end]
             else:
-                chunk = secrets.token_bytes(self._chunk_size)
+                chunk: bytes = secrets.token_bytes(self._chunk_size)  # type: ignore[no-redef]
 
             # Pre-pad
             pre_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
@@ -285,7 +288,7 @@ class VernamVeil:
             look_start = idx + delimiter_len
 
         # Each chunk is framed by consecutive delimiters
-        all_chunk_ranges = []
+        all_chunk_ranges: list[tuple[int, int]] = []
         for i in range(0, len(delimiter_indices) - 1, 2):
             start = delimiter_indices[i] + delimiter_len
             end = delimiter_indices[i + 1]
@@ -336,11 +339,11 @@ class VernamVeil:
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
         if self._vectorise:
-            arr = np.frombuffer(data, dtype=np.uint8)
-            processed = np.empty_like(arr)
+            arr: NDArray[np.uint8] = np.frombuffer(data, dtype=np.uint8)
+            processed: NDArray[np.uint8] = np.empty_like(arr)
         else:
-            arr = data
-            processed = bytearray(data_len)
+            arr: memoryview = data  # type: ignore[no-redef]
+            processed: bytearray = bytearray(data_len)  # type: ignore[no-redef]
 
         for start, end in self._generate_chunk_ranges(data_len):
             # Generate a key using fx
@@ -350,20 +353,22 @@ class VernamVeil:
             # XOR the chunk with the key
             if self._vectorise:
                 np.bitwise_xor(arr[start:end], keystream, out=processed[start:end])
-                seed_data = (arr[start:end] if is_encode else processed[start:end]).data
+                seed_data: memoryview = (arr[start:end] if is_encode else processed[start:end]).data
             else:
                 for i in range(chunk_len):
                     pos = start + i
                     processed[pos] = arr[pos] ^ keystream[i]
-                seed_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
+                seed_data: memoryview = arr[start:end] if is_encode else memoryview(processed)[start:end]  # type: ignore[no-redef]
 
             # Refresh the seed differently for encoding and decoding
             seed = self._refresh_seed(seed, seed_data)
 
         if self._vectorise:
-            processed = bytearray(processed)
+            result: bytearray = bytearray(processed)
+        else:
+            result: bytearray = processed  # type: ignore[no-redef]
 
-        return processed, seed
+        return result, seed
 
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """
@@ -382,7 +387,7 @@ class VernamVeil:
 
         # Produce a unique seed for Authenticated Encryption
         # This ensures integrity by generating a MAC tag for the ciphertext
-        auth_seed = self._refresh_seed(seed, b"MAC") if self._auth_encrypt else None
+        auth_seed = self._refresh_seed(seed, b"MAC") if self._auth_encrypt else b""
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
@@ -480,7 +485,7 @@ class VernamVeil:
         seed: bytes,
         buffer_size: int = 1024 * 1024,
         mode: Literal["encode", "decode"] = "encode",
-        **vernamveil_kwargs,
+        **vernamveil_kwargs: dict[str, Any],
     ) -> None:
         """
         Processes a file in blocks using VernamVeil encryption or decryption.
@@ -499,7 +504,7 @@ class VernamVeil:
             ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
         """
         # Define default VernamVeil parameters suitable for large files
-        defaults = {
+        defaults: dict[str, Any] = {
             "chunk_size": 4096,
             "delimiter_size": 8,
             "padding_range": (10, 20),

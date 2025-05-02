@@ -13,8 +13,8 @@ Usage:
 This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
-import sys
 import platform
+import sys
 from pathlib import Path
 
 from cffi import FFI
@@ -37,9 +37,9 @@ ffibuilder_sha256.cdef(
 # Platform-specific build options
 libraries = []
 extra_compile_args = []
-extra_link_args = []
-include_dirs = []
-library_dirs = []
+extra_link_args: list[str] = []
+include_dirs: list[Path] = []
+library_dirs: list[Path] = []
 
 if sys.platform.startswith("linux"):
     libraries = ["ssl", "crypto", "gomp"]
