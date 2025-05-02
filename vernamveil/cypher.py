@@ -6,7 +6,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Iterator, Literal, TypeAlias
 
-from .hash_utils import hash_numpy, _UINT64_BOUND
+from .hash_utils import _UINT64_BOUND, hash_numpy
 
 try:
     import numpy as np

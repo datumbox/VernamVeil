@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from .cypher import VernamVeil
-from .fx_utils import generate_default_fx, load_fx_from_file, check_fx_sanity
+from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:

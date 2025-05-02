@@ -22,5 +22,7 @@ jobs:
         run: black . --check
       - name: Run flake8
         run: flake8 .
+      - name: Run isort
+        run: isort --check --diff .
       - name: Run mypy
         run: mypy vernamveil nphash

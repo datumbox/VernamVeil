@@ -1,9 +1,9 @@
 from .cypher import VernamVeil
 from .fx_utils import (
+    check_fx_sanity,
     generate_default_fx,
     generate_polynomial_fx,
     load_fx_from_file,
-    check_fx_sanity,
 )
 from .hash_utils import hash_numpy
 

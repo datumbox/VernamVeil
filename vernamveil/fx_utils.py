@@ -10,8 +10,8 @@ except ImportError:
     np = None
 
 
-from .hash_utils import hash_numpy, _UINT64_BOUND
 from .cypher import _IntOrArray
+from .hash_utils import _UINT64_BOUND, hash_numpy
 
 
 def generate_polynomial_fx(

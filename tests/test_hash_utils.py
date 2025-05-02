@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from vernamveil.cypher import _HAS_NUMPY
-from vernamveil.hash_utils import hash_numpy, _HAS_C_MODULE, _UINT64_BOUND
+from vernamveil.hash_utils import _HAS_C_MODULE, _UINT64_BOUND, hash_numpy
 
 try:
     import numpy as np

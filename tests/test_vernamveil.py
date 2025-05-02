@@ -7,7 +7,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
-from vernamveil.cypher import VernamVeil, _HAS_NUMPY
+from vernamveil.cypher import _HAS_NUMPY, VernamVeil
 from vernamveil.fx_utils import generate_default_fx
 from vernamveil.hash_utils import _HAS_C_MODULE
 
