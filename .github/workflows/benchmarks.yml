@@ -1,0 +1,70 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install system dependencies and build C modules
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
+          pip install .[dev,numpy,cffi]
+          cd nphash
+          python build.py
+          ls -lh _npblake2bffi.* _npsha256ffi.*
+          cd ..
+
+      - name: Create benchmark data
+        run: |
+          mkdir -p benchdata
+          head -c 1M </dev/urandom >benchdata/input_1mb.bin
+          head -c 5M </dev/urandom >benchdata/input_5mb.bin
+          head -c 50M </dev/urandom >benchdata/input_50mb.bin
+
+      - name: Run CLI benchmarks
+        run: |
+          set -e
+          NUM_RUNS=10
+          for size in 1mb 5mb 50mb; do
+            echo "Benchmarking size: $size"
+            total_enc=0
+            total_dec=0
+            for i in $(seq 1 $NUM_RUNS); do
+              cp benchdata/input_${size}.bin input.bin
+              # Clean up files each time to avoid overwrite errors
+              rm -f fx.py seed.bin output.enc output.dec
+              start_enc=$(date +%s%N)
+              python -m vernamveil.cli encode --infile input.bin --outfile output.enc
+              end_enc=$(date +%s%N)
+              enc_time=$(( (end_enc - start_enc)/1000000 ))
+              total_enc=$((total_enc + enc_time))
+
+              start_dec=$(date +%s%N)
+              python -m vernamveil.cli decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin
+              end_dec=$(date +%s%N)
+              dec_time=$(( (end_dec - start_dec)/1000000 ))
+              total_dec=$((total_dec + dec_time))
+            done
+            avg_enc=$((total_enc / NUM_RUNS))
+            avg_dec=$((total_dec / NUM_RUNS))
+            avg_total=$(( (total_enc + total_dec) / NUM_RUNS ))
+            echo "Average encode time for $size: ${avg_enc} ms"
+            echo "Average decode time for $size: ${avg_dec} ms"
+            echo "Average total time for $size: ${avg_total} ms"
+            echo "Total encode time for $size: ${total_enc} ms"
+            echo "Total decode time for $size: ${total_dec} ms"
+            echo "Total time for $size: $((total_enc + total_dec)) ms"
+          done
