@@ -1,8 +1,11 @@
 import os
 import shutil
+import sys  # noqa: F401
 import tempfile
 import unittest
+import unittest.mock
 from contextlib import contextmanager
+from io import StringIO
 from pathlib import Path
 
 from vernamveil.cli import main
@@ -166,15 +169,18 @@ def fx(i, seed, bound):
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
-            with self.assertRaises(SystemExit) as cm:
-                self._encode(
-                    infile,
-                    encfile,
-                    fx_file=fx_file,
-                    seed_file=seed_file,
-                    extra_args=["--check-fx-sanity"],
-                )
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(
+                        infile,
+                        encfile,
+                        fx_file=fx_file,
+                        seed_file=seed_file,
+                        extra_args=["--check-fx-sanity"],
+                    )
             self.assertNotEqual(cm.exception.code, 0)
+            self.assertIn("fx sanity check failed.", stderr.getvalue())
 
     def test_encode_refuses_to_overwrite_existing_fx(self):
         """Test that encoding refuses to overwrite an existing fx.py file."""
@@ -183,9 +189,12 @@ def fx(i, seed, bound):
         # Pre-create fx.py
         self._create_fx()
         with self._in_tempdir():
-            with self.assertRaises(SystemExit) as cm:
-                self._encode(infile, outfile)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
+            self.assertIn("fx.py already exists. Refusing to overwrite.", stderr.getvalue())
             # Ensure fx.py was not modified (content unchanged)
             with (self.temp_dir_path / "fx.py").open("rb") as f:
                 self.assertEqual(f.read(), self.fx_code.encode())
@@ -197,9 +206,12 @@ def fx(i, seed, bound):
         # Pre-create seed.bin
         self._create_seed()
         with self._in_tempdir():
-            with self.assertRaises(SystemExit) as cm:
-                self._encode(infile, outfile)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
+            self.assertIn("seed.bin already exists. Refusing to overwrite.", stderr.getvalue())
             # Ensure seed.bin was not modified (content unchanged)
             with (self.temp_dir_path / "seed.bin").open("rb") as f:
                 self.assertEqual(f.read(), b"myseed")
@@ -209,9 +221,12 @@ def fx(i, seed, bound):
         infile = self._create_input()
         outfile = self._write_file("output.enc", b"original data")
         with self._in_tempdir():
-            with self.assertRaises(SystemExit) as cm:
-                self._encode(infile, outfile)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile)
             self.assertNotEqual(cm.exception.code, 0)
+            self.assertIn("output.enc already exists. Refusing to overwrite.", stderr.getvalue())
             # Ensure output file was not modified
             with (self.temp_dir_path / "output.enc").open("rb") as f:
                 self.assertEqual(f.read(), b"original data")
@@ -225,9 +240,12 @@ def fx(i, seed, bound):
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(infile, encfile, fx_file=fx_file, seed_file=seed_file)
-            with self.assertRaises(SystemExit) as cm:
-                self._decode(encfile, outfile, fx_file, seed_file)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._decode(encfile, outfile, fx_file, seed_file)
             self.assertNotEqual(cm.exception.code, 0)
+            self.assertIn("output.txt already exists. Refusing to overwrite.", stderr.getvalue())
             # Ensure output file was not modified
             with (self.temp_dir_path / "output.txt").open("rb") as f:
                 self.assertEqual(f.read(), b"original plain")
