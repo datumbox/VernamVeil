@@ -86,7 +86,7 @@ class VernamVeil:
         self._vectorise = vectorise
 
     @staticmethod
-    def _refresh_seed(seed: bytes | memoryview, data: bytes | None = None) -> bytes:
+    def _refresh_seed(seed: bytes, data: bytes | memoryview | None = None) -> bytes:
         """
         Rehashes the current seed with optional data to produce a new seed.
 
@@ -319,7 +319,9 @@ class VernamVeil:
 
         return message
 
-    def _xor_with_key(self, data: memoryview, seed: bytes, is_encode: bool) -> tuple[bytearray, bytes]:
+    def _xor_with_key(
+        self, data: memoryview, seed: bytes, is_encode: bool
+    ) -> tuple[bytearray, bytes]:
         """
         Encrypts or decrypts data using XOR with the generated keystream.
 
