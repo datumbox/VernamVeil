@@ -19,8 +19,8 @@ def hash_numpy(
     i: "np.ndarray", seed: bytes | None = None, hash_name: Literal["blake2b", "sha256"] = "blake2b"
 ) -> "np.ndarray":
     """
-    Computes a 64-bit integer NumPy array by HMAC-ing each index (as a 4-byte big-endian block) with a seed using
-    a hashing algorithm.
+    Computes a 64-bit integer NumPy array by HMAC-ing each index with a seed using a hashing algorithm.
+    If no seed is provided, the index is hashed directly.
 
     This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation
     (with OpenMP and OpenSSL) for efficient, parallelised HMAC hashing from Python. If the C module isn't available
@@ -28,16 +28,16 @@ def hash_numpy(
 
     Args:
         i (np.ndarray): NumPy array of indices (dtype should be unsigned 64-bit integer).
-        seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index (not recommended).
+        seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index.
         hash_name (Literal["blake2b", "sha256"], optional): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        np.ndarray: An array of 64-bit integers derived from the HMAC of each 4-byte block.
+        np.ndarray: An array of 64-bit integers derived from the HMAC of each index.
 
     Raises:
         ValueError: If a hash algorithm is not supported.
     """
-    i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
+    i_bytes = i.astype(">u8").tobytes()
     if _HAS_C_MODULE:
         if hash_name == "blake2b":
             ffi = _npblake2bffi.ffi
@@ -48,7 +48,7 @@ def hash_numpy(
         else:
             raise ValueError(f"Unsupported hash_name '{hash_name}'.")
 
-        n = len(i_bytes) // 4
+        n = len(i_bytes) // 8
         out = np.empty(n, dtype=np.uint64)
         method(
             ffi.from_buffer(i_bytes),
@@ -70,14 +70,14 @@ def hash_numpy(
             (
                 int.from_bytes(
                     (
-                        hmac.new(seed, i_bytes[j : j + 4], method).digest()
+                        hmac.new(seed, i_bytes[j : j + 8], method).digest()
                         if seed is not None
-                        else method(i_bytes[j : j + 4]).digest()
+                        else method(i_bytes[j : j + 8]).digest()
                     ),
                     "big",
                 )
                 % _UINT64_BOUND
-                for j in range(0, len(i_bytes), 4)
+                for j in range(0, len(i_bytes), 8)
             ),
             dtype=np.uint64,
         )

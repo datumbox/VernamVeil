@@ -17,12 +17,6 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--fx-file", type=Path, help="Path to Python file containing the fx function.")
     p.add_argument("--seed-file", type=Path, help="Path to file containing the seed (bytes).")
     p.add_argument(
-        "--fx-complexity",
-        type=int,
-        default=20,
-        help="Complexity for random fx (if fx-file omitted). Default: 20.",
-    )
-    p.add_argument(
         "--vectorise",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -57,11 +51,6 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         default=True,
         help="Enable authenticated encryption (default: True).",
     )
-    p.add_argument(
-        "--check-fx-sanity",
-        action="store_true",
-        help="Check the loaded/generated fx with check_fx_sanity.",
-    )
 
 
 def main(args=None) -> None:
@@ -82,6 +71,17 @@ def main(args=None) -> None:
     # Encode subcommand
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
     _add_common_args(enc)
+    enc.add_argument(
+        "--fx-complexity",
+        type=int,
+        default=20,
+        help="Complexity for random fx (if fx-file omitted). Default: 20.",
+    )
+    enc.add_argument(
+        "--check-fx-sanity",
+        action="store_true",
+        help="Check the loaded/generated fx with check_fx_sanity.",
+    )
 
     # Decode subcommand
     dec = subparsers.add_parser("decode", help="Decrypt a file.")
@@ -108,12 +108,7 @@ def main(args=None) -> None:
             print("Error: fx.py already exists. Refusing to overwrite.", file=sys.stderr)
             sys.exit(1)
         fx_obj = generate_default_fx(parsed_args.fx_complexity, vectorise=parsed_args.vectorise)
-        fx_code = fx_obj._source_code
-        if parsed_args.vectorise:
-            fx_code = ("from vernamveil import hash_numpy\n" "import numpy as np\n") + fx_code
-        else:
-            fx_code = "import hashlib\nimport hmac\n" + fx_code
-        fx_py.write_text(fx_code)
+        fx_py.write_text(fx_obj._source_code)
         print("Generated fx.py in current directory. Store securely.", file=sys.stderr)
         fx = fx_obj
     else:
@@ -136,7 +131,7 @@ def main(args=None) -> None:
         sys.exit(1)
 
     # Optionally check fx sanity
-    if parsed_args.check_fx_sanity:
+    if parsed_args.command == "encode" and parsed_args.check_fx_sanity:
         if not check_fx_sanity(fx, seed):
             print("fx sanity check failed.", file=sys.stderr)
             sys.exit(1)

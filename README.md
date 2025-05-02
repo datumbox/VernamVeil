@@ -11,10 +11,10 @@
 **VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
 Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
-- `i`: the index of the byte in the stream; a scalar integer or an uint64 NumPy array for vectorised operations
-- `seed`: a byte string that provides context and state
-- `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 byte at a time)
-- **Output**: an integer or an uint64 NumPy array representing the key stream value
+- `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations
+- `seed`: a byte string that provides context and state; should be kept secret
+- `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 bytes at a time)
+- **Output**: an integer or an uint64 NumPy array representing the key stream values
 
 _Note: `numpy` is an optional dependency, used to accelerate vectorised operations when available._
 
@@ -22,6 +22,7 @@ _Note: `numpy` is an optional dependency, used to accelerate vectorised operatio
 from vernamveil import VernamVeil
 
 
+# Step 1: Define a custom key stream function; remember to store this securely
 def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
@@ -31,10 +32,13 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     return result
 
 
+# Step 2: Generate a random initial seed for encryption
+initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
+
+# Step 3: Encrypt and decrypt a single message
 cipher = VernamVeil(fx)
-seed = cipher.get_initial_seed()
-encrypted, _ = cipher.encode(b"Hello!", seed)
-decrypted, _ = cipher.decode(encrypted, seed)
+encrypted, _ = cipher.encode(b"Hello!", initial_seed)
+decrypted, _ = cipher.decode(encrypted, initial_seed)
 ```
 
 This approach enables novel forms of key generation, especially for those who enjoy playing with math and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
@@ -63,27 +67,22 @@ Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil
 - **Symmetric Encryption:** The same secrets are used for both encryption and decryption, ensuring the process is fully reversible with identical parameters for both operations.
 - **One-Time Pad Inspired**: The keystream is derived in a manner loosely reminiscent of OTPs, with potential for non-repeating, functionally generated keys. Initial seeds are intended for single use.
 - **Modular Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes.
-- **Obfuscation Techniques**:
-  - Injects decoy chunks into ciphertext
-  - Pads real chunks with dummy bytes
-  - Shuffles output to obscure chunk boundaries
-  - Chunk delimiters are randomly generated, encrypted and not exposed
+- **Obfuscation Techniques**: The cypher injects decoy chunks into ciphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. Note that chunk delimiters are randomly generated, encrypted and not exposed.
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
-- **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering.
-- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs or security requirements. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
-- **Vectorisation**: Some operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
+- **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering and prevent padding oracle-style issues.
+- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
+- **Vectorisation**: All operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
 - **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
 ---
 
 ## ⚠️ Caveats & Best Practices
 
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
-- **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behavior of your `fx`. Avoid anything guessable or biased.
+- **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behavior of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Block Delimiters Leak**: When encrypting multiple messages to the same file, plaintext delimiters remain visible. Encrypt the entire blob if full confidentiality is needed.
 - **Use Secure Randomness**: For generating initial seeds favour `VernamVeil.get_initial_seed()` over `random.randbytes()`.
 - **Do not reuse seeds**: Treat each `initial_seed` as a one-time-use context. It's recommended to use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
 - **The seed replaces the need for IVs/nonces**: While this implementation doesn’t use a nonce or IV in the traditional cryptographic sense, the seed serves a similar role by maintaining state between operations. Each new seed evolves from the previous one, ensuring unique keystreams and preventing key stream reuse.
-- **MAC Limitations**: Tampering is detected before decryption using a message authentication code (MAC) derived from the initial seed. While this improves safety by preventing padding oracle-style issues, its overall cryptographic design remains experimental.
 - **Message Ordering & Replay**: If transmitting encrypted chunks over time, ensure that any external metadata (e.g., message order, timestamps) is securely handled. While the evolving seed prevents keystream reuse, maintaining proper ordering and anti-replay mechanisms might still be necessary in some cases.
 
 ---
@@ -93,18 +92,11 @@ Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil
 ### ✉️ Encrypting and Decrypting Multiple Messages
 
 ```python
-from vernamveil import VernamVeil
+from vernamveil import VernamVeil, generate_default_fx
 
 
-# Step 1: Define a custom key stream function
-def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Simple but cryptographically unsafe fx; see below for a more complex example
-    b = seed[i % len(seed)]
-    result = ((i ** 2 + i * b + b ** 2) * (i + 7))
-    if bound is not None:
-        result %= bound
-    return result
-
+# Step 1: Generate a random custom fx using the helper
+fx = generate_default_fx(10)  # remember to store fx._source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -112,7 +104,7 @@ initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
 # Step 3: Initialise VernamVeil with the custom fx and parameters
 cipher = VernamVeil(fx, chunk_size=64, decoy_ratio=0.2)
 
-# Step 4: Encrypt messages
+# Step 4: Encrypt multiple messages in one session
 messages = [
     "This is a secret message!",
     "another one",
@@ -121,12 +113,14 @@ messages = [
 encrypted = []
 seed = initial_seed
 for msg in messages:
+    # Each message evolves the seed for the next one
     enc, seed = cipher.encode(msg.encode(), seed)
     encrypted.append(enc)
 
-# Step 5: Decrypt messages
+# Step 5: Decrypt multiple messages in one session
 seed = initial_seed
 for original, enc in zip(messages, encrypted):
+    # Each message evolves the seed for the next one
     dec, seed = cipher.decode(enc, seed)
     assert dec.decode() == original
 ```
@@ -134,18 +128,11 @@ for original, enc in zip(messages, encrypted):
 ### 📂 Encrypting and Decrypting Files
 
 ```python
-from vernamveil import VernamVeil
+from vernamveil import VernamVeil, generate_default_fx
 
 
-# Step 1: Define a custom key stream function
-def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Simple but cryptographically unsafe fx; see below for a more complex example
-    b = seed[i % len(seed)]
-    result = ((i ** 2 + i * b + b ** 2) * (i + 7))
-    if bound is not None:
-        result %= bound
-    return result
-
+# Step 1: Generate a random custom fx using the helper
+fx = generate_default_fx(10)  # remember to store fx._source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -185,6 +172,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
         result %= bound
+
     return result
 ```
 
@@ -226,6 +214,7 @@ VernamVeil includes helper tools to make working with key stream functions easie
 
 - `generate_default_fx`: Quickly create deterministic `fx` functions for testing or experimentation. Supports both scalar and vectorised (NumPy) modes.
 - `check_fx_sanity`: Run basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
+- `load_fx_from_file`: Load a custom `fx` function from a Python file. This is useful for testing and validating your own implementations.
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
 
@@ -284,11 +273,11 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx
 >
 > When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
 >
-> For example, the following will **fail** with a `MAC tag mismatch` error because the chunk size differs between encoding and decoding:
+> For example, the following will **fail** with a `MAC tag mismatch` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
 > ```commandline
-> vernamveil encode --infile plain.txt --outfile encrypted.dat
-> vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.bin --chunk-size 1024
+> vernamveil encode --infile plain.txt --outfile encrypted.dat --chunk-size 2048
+> vernamveil decode --infile encrypted.dat --outfile decrypted.txt --chunk-size 1024 --fx-file fx.py --seed-file seed.bin
 > ```
 >
 > **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure.

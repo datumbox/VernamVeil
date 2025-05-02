@@ -86,9 +86,9 @@ c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
 with c_path_blake2b.open() as f:
     c_source_blake2b = f.read()
 
-c_path = Path(__file__).parent / "_npsha256.c"
-with c_path.open() as f:
-    c_source = f.read()
+c_path_sha256 = Path(__file__).parent / "_npsha256.c"
+with c_path_sha256.open() as f:
+    c_source_sha256 = f.read()
 
 # Add extension build
 ffibuilder_blake2b.set_source(
@@ -103,7 +103,7 @@ ffibuilder_blake2b.set_source(
 
 ffibuilder_sha256.set_source(
     "_npsha256ffi",
-    c_source,
+    c_source_sha256,
     libraries=libraries,
     extra_compile_args=extra_compile_args,
     extra_link_args=extra_link_args,

@@ -45,7 +45,7 @@ def fx(i, seed, bound):
         return self._write_file("input.txt", content)
 
     def _create_fx(self, code=None):
-        """Create an fx.py file with given code."""
+        """Create a fx.py file with given code."""
         code = code if code is not None else self.fx_code
         return self._write_file("fx.py", code.encode(), mode="wb")
 
@@ -160,29 +160,21 @@ def fx(i, seed, bound):
             self._encode(infile, outfile, extra_args=["--check-fx-sanity"])
         self.assertTrue(outfile.exists())
 
-    def test_decode_with_check_fx_sanity(self):
-        """Test decoding with fx sanity check enabled (handles both scalar and vectorised fx)."""
-        infile = self._create_input()
-        encfile = self.temp_dir_path / "output.enc"
-        outfile = self.temp_dir_path / "output.txt"
-        fx_file = self._create_fx(self.fx_strong_code)
-        seed_file = self._create_seed()
-        with self._in_tempdir():
-            self._encode(infile, encfile, fx_file=fx_file, seed_file=seed_file)
-            self._decode(encfile, outfile, fx_file, seed_file, extra_args=["--check-fx-sanity"])
-        self.assertTrue(outfile.exists())
-
-    def test_decode_with_check_fx_sanity_fails(self):
+    def test_encode_with_check_fx_sanity_fails(self):
         """Test that fx sanity check fails if fx does not depend on seed."""
         infile = self._create_input()
         encfile = self.temp_dir_path / "output.enc"
-        outfile = self.temp_dir_path / "output.txt"
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
-            self._encode(infile, encfile, fx_file=fx_file, seed_file=seed_file)
             with self.assertRaises(SystemExit) as cm:
-                self._decode(encfile, outfile, fx_file, seed_file, extra_args=["--check-fx-sanity"])
+                self._encode(
+                    infile,
+                    encfile,
+                    fx_file=fx_file,
+                    seed_file=seed_file,
+                    extra_args=["--check-fx-sanity"],
+                )
             self.assertNotEqual(cm.exception.code, 0)
 
     def test_encode_refuses_to_overwrite_existing_fx(self):

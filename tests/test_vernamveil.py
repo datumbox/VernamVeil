@@ -44,7 +44,7 @@ class TestVernamVeil(unittest.TestCase):
                 )
                 with context:
                     fx = generate_default_fx(fx_complexity, vectorise=vectorise)
-                    cipher = VernamVeil(fx, vectorise=vectorise) if vectorise else VernamVeil(fx)
+                    cipher = VernamVeil(fx, vectorise=vectorise)
                     test_func(cipher, vectorise)
 
     def test_single_message_encryption(self):

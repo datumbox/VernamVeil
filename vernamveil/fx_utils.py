@@ -20,9 +20,10 @@ def generate_polynomial_fx(
     complexity: int, max_weight: int = 10**5, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
-    Generates a polynomial-based secret function to act as a deterministic key stream generator. Though any
-    mathematical function with domain the positive integers can be used, this utility only supports polynomials and is
-    used for testing.
+    Generates a random polynomial-based secret function to act as a deterministic key stream generator. The
+    transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
+    Though any mathematical function with domain the positive integers can be used, this utility only supports
+    polynomials and is used for testing.
 
     Args:
         complexity (int): Degree of the polynomial.
@@ -34,10 +35,10 @@ def generate_polynomial_fx(
             integers from polynomial evaluation.
 
     Raises:
-        ImportError: If `vectorise` is True but numpy is not installed.
+        ValueError: If `vectorise` is True but numpy is not installed.
     """
     if vectorise and np is None:
-        raise ImportError("NumPy is required for vectorised mode but is not installed.")
+        raise ValueError("NumPy is required for vectorised mode but is not installed.")
 
     # Generate random weights for each term in the polynomial including the constant term
     weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity + 1)]
@@ -45,6 +46,10 @@ def generate_polynomial_fx(
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
+from vernamveil import hash_numpy
+import numpy as np
+
+
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     # Implements a customisable fx function based on a {complexity}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
@@ -69,6 +74,10 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 """
     else:
         function_code = f"""
+import hashlib
+import hmac
+
+
 def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Implements a customisable fx function based on a {complexity}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.

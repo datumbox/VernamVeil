@@ -20,7 +20,7 @@ except ImportError:
 
 class VernamVeil:
     """
-    VernamVeil is a modular, symmetric cipher inspired by One-Time Pad principles, featuring customisable keystream
+    VernamVeil is a modular, symmetric cipher inspired by One-Time Pad principles, featuring customisable key stream
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
     """
@@ -39,9 +39,9 @@ class VernamVeil:
         Initialises the VernamVeil encryption cipher with configurable parameters.
 
         Args:
-            fx (Callable): Key stream generator accepting (int, bytes, int | None) and returning int.
-                This function is critical for the encryption process and should be carefully designed
-                to ensure unpredictability.
+            fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
+                int or np.ndarray. This function is critical for the encryption process and should be carefully
+                designed to ensure cryptographic security.
             chunk_size (int, optional): Size of message chunks. Defaults to 32.
             delimiter_size (int, optional): The delimiter size in bytes used for separating chunks; must be
                 at least 4. Defaults to 8.
@@ -53,6 +53,7 @@ class VernamVeil:
                 installed and `fx` must support numpy arrays. Defaults to False.
 
         Raises:
+            ValueError: If `delimiter_size` is less than 4.
             ValueError: If `padding_range` is not a tuple of two integers.
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `vectorise` is True but numpy is not installed.
@@ -369,7 +370,7 @@ class VernamVeil:
 
     def encode(self, message: bytes, seed: bytes) -> tuple[bytes, bytes]:
         """
-        Encrypts a message by shuffling, padding, and applying keystream XOR.
+        Encrypts a message.
 
         Args:
             message (bytes): Message to encode.
@@ -406,7 +407,7 @@ class VernamVeil:
 
     def decode(self, ciphertext: bytes, seed: bytes) -> tuple[bytes, bytes]:
         """
-        Decrypts an encoded message and extracts the original content.
+        Decrypts an encoded message.
 
         Args:
             ciphertext (bytes): Encrypted and obfuscated message.

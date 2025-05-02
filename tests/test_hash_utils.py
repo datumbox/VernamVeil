@@ -36,21 +36,21 @@ class TestHashUtils(unittest.TestCase):
                 with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
                     print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
                     with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
-                        seed = secrets.token_bytes(32)
+                        seed = secrets.token_bytes(64)
                         i = np.arange(1, 1000, dtype=np.uint64)
 
                         output = hash_numpy(i, seed, hash_name)
 
-                        i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
+                        i_bytes = i.astype(">u8").tobytes()
                         method = self._get_hash_method_for_test(hash_name)
 
                         expected = np.fromiter(
                             (
                                 int.from_bytes(
-                                    hmac.new(seed, i_bytes[j : j + 4], method).digest(), "big"
+                                    hmac.new(seed, i_bytes[j : j + 8], method).digest(), "big"
                                 )
                                 % _UINT64_BOUND
-                                for j in range(0, len(i_bytes), 4)
+                                for j in range(0, len(i_bytes), 8)
                             ),
                             dtype=np.uint64,
                         )
@@ -68,18 +68,18 @@ class TestHashUtils(unittest.TestCase):
                 with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
                     print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
                     with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
-                        i = np.arange(1, 100, dtype=np.uint64)
+                        i = np.arange(1, 1000, dtype=np.uint64)
 
                         output = hash_numpy(i, None, hash_name)
 
-                        i_bytes = np.frombuffer(i.astype(">u4"), dtype="S4").tobytes()
+                        i_bytes = i.astype(">u8").tobytes()
                         method = self._get_hash_method_for_test(hash_name)
 
                         expected = np.fromiter(
                             (
-                                int.from_bytes(method(i_bytes[j : j + 4]).digest(), "big")
+                                int.from_bytes(method(i_bytes[j : j + 8]).digest(), "big")
                                 % _UINT64_BOUND
-                                for j in range(0, len(i_bytes), 4)
+                                for j in range(0, len(i_bytes), 8)
                             ),
                             dtype=np.uint64,
                         )

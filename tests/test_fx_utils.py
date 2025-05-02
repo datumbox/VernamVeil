@@ -106,10 +106,9 @@ class TestFxUtils(unittest.TestCase):
     def test_load_fx_from_file_scalar(self):
         """Test that a scalar fx function can be saved to a file and loaded back using load_fx_from_file."""
         fx_obj = generate_default_fx(3, vectorise=False)
-        fx_code = "import hashlib\nimport hmac\n" + fx_obj._source_code
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
-            tmp.write(fx_code)
+            tmp.write(fx_obj._source_code)
             tmp_path = Path(tmp.name)
 
         try:
@@ -122,16 +121,10 @@ class TestFxUtils(unittest.TestCase):
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_load_fx_from_file_vectorised(self):
         """Test that a vectorised fx function can be saved to a file and loaded back using load_fx_from_file."""
-        try:
-            import numpy  # noqa: F401
-        except ImportError:
-            self.skipTest("NumPy not available")
-
         fx_obj = generate_default_fx(3, vectorise=True)
-        fx_code = "from vernamveil import hash_numpy\nimport numpy as np\n" + fx_obj._source_code
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
-            tmp.write(fx_code)
+            tmp.write(fx_obj._source_code)
             tmp_path = Path(tmp.name)
 
         try:
