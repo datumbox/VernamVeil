@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -18,6 +21,9 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
       - name: Set benchmark sizes
         id: benchvars
         run: |
@@ -26,11 +32,12 @@ jobs:
       - name: Install system dependencies and build C modules
         run: |
           sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
-          pip install .[dev,numpy,cffi]
+          python -m pip install .[dev,numpy,cffi]
           cd nphash
           python build.py
           ls -lh _npblake2bffi.* _npsha256ffi.*
           cd ..
+        shell: bash
 
       - name: Create benchmark data
         run: |
@@ -38,6 +45,7 @@ jobs:
           for size in $SIZES; do
             head -c ${size}M </dev/urandom >benchdata/input_${size}mb.bin
           done
+        shell: bash
 
       - name: Run CLI benchmarks
         run: |
@@ -75,3 +83,4 @@ jobs:
             echo "Average total time for ${size}mb: ${avg_total} s"
             echo "---------------------------------------------"
           done
+        shell: bash
