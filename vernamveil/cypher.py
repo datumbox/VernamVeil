@@ -1,8 +1,6 @@
 """
-VernamVeil core cypher implementation.
-
-This module provides the VernamVeil class, a modular, function-based stream cypher inspired by the One-Time Pad.
-It supports custom key stream functions, authenticated encryption, obfuscation, and vectorised operations.
+Implements the VernamVeil stream cypher and related utilities.
+Defines the main encryption class and core cryptographic operations.
 """
 
 import hashlib
@@ -32,12 +30,11 @@ __all__ = ["VernamVeil"]
 
 class VernamVeil:
     """
-    VernamVeil is a modular, symmetric cypher inspired by One-Time Pad principles, featuring customisable key stream
-    generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
-    while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
-
-    When SIV seed evolution is enabled, an encrypted synthetic IV (SIV) is prepended to the ciphertext to ensure
-    keystream uniqueness and allow correct seed reconstruction during decryption.
+    VernamVeil is a modular, symmetric stream cypher inspired by One-Time Pad principles. It features customisable
+    keystream generation, synthetic IV seed initialisation, stateful seed evolution for avalanche effects,
+    authenticated encryption, and layered message obfuscation (chunk shuffling, padding, decoy injection). Supports
+    vectorised operations (NumPy) and optional C-backed hashing for performance. Designed for educational and
+    experimental use.
     """
 
     def __init__(
@@ -64,8 +61,8 @@ class VernamVeil:
             padding_range (tuple[int, int], optional): Range for padding length before and after
                 chunks. Defaults to (5, 15).
             decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
-            siv_seed_evolution (bool, optional): Enables synthetic-IV seed evolution based on the message to resist
-                seed reuse. Defaults to True.
+            siv_seed_evolution (bool, optional): Enables synthetic IV seed initialisation based on the message to
+                resist seed reuse. Defaults to True.
             auth_encrypt (bool, optional): Enables authenticated encryption with integrity check. Defaults to True.
             vectorise (bool, optional): Whether to use numpy for vectorised operations. If True, numpy must be
                 installed and `fx` must support numpy arrays. Defaults to False.
@@ -404,10 +401,6 @@ class VernamVeil:
 
         Returns:
             tuple[bytearray, bytes]: Encrypted message and final seed.
-
-        Note:
-            The encrypted Synthetic IV (SIV) is prepended to the ciphertext when SIV seed evolution is enabled.
-            The SIV is not reused for MAC computation, ensuring separation between seed evolution and authentication.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(message, memoryview):
@@ -422,6 +415,9 @@ class VernamVeil:
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Put the encrypted SIV hash at the start of the output
             output = bytearray(encrypted_siv_hash)
+
+            # Note: The SIV is not reused for MAC computation, ensuring separation
+            # between seed evolution and authentication.
         else:
             output = bytearray()
 
@@ -461,11 +457,6 @@ class VernamVeil:
 
         Returns:
             tuple[bytearray, bytes]: Decrypted message and final seed.
-
-        Note:
-            If SIV seed evolution is enabled, the encrypted Synthetic IV (SIV) is consumed from the start of the
-            ciphertext to reconstruct the evolved seed. The SIV is not reused for MAC verification, maintaining
-            separation between seed evolution and authentication.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(cyphertext, memoryview):

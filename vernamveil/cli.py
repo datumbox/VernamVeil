@@ -57,7 +57,7 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         "--siv-seed-evolution",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Enable Synthetic-IV seed evolution (default: True).",
+        help="Enable Synthetic IV seed initialisation (default: True).",
     )
     p.add_argument(
         "--auth-encrypt",

@@ -19,11 +19,36 @@ from vernamveil import VernamVeil, generate_default_fx
 
 fx = generate_default_fx(4)
 initial_seed = VernamVeil.get_initial_seed()
-cipher = VernamVeil(fx)
-encrypted, _ = cipher.encode(b"Hello!", initial_seed)
-decrypted, _ = cipher.decode(encrypted, initial_seed)
+cypher = VernamVeil(fx)
+encrypted, _ = cypher.encode(b"Hello!", initial_seed)
+decrypted, _ = cypher.decode(encrypted, initial_seed)
 assert decrypted == b"Hello!"
 ```
+
+---
+
+## 📖 Table of Contents
+
+- [🔎 Overview](#-overview)
+- [💡 Why VernamVeil?](#-why-vernamveil)
+- [✨ Cryptographic Characteristics](#-cryptographic-characteristics)
+- [⚠️ Caveats & Best Practices](#️-caveats--best-practices)
+- [📝 Examples](#-examples)
+  - [✉️ Encrypting and Decrypting Multiple Messages](#️-encrypting-and-decrypting-multiple-messages)
+  - [📂 Encrypting and Decrypting Files](#-encrypting-and-decrypting-files)
+  - [🧠 A marginally stronger `fx`](#-a-marginally-stronger-fx)
+  - [🏎️ A fast `fx` that uses NumPy vectorisation and the `nphash` C module](#️-a-fast-fx-that-uses-numpy-vectorisation-and-the-nphash-c-module)
+- [🧰 Provided `fx` Utilities](#-provided-fx-utilities)
+- [🖥️ Command-Line Interface (CLI)](#️-command-line-interface-cli)
+  - [⚙️ Features](#️-features)
+  - [💻 Usage](#-usage)
+  - [🗄️ File Handling](#️-file-handling)
+- [🛠️ Technical Details](#️-technical-details)
+  - [🔧 Installation](#-installation)
+  - [⚡ Fast Vectorised `fx` Functions](#-fast-vectorised-fx-functions)
+- [📚 Documentation](#-documentation)
+- [🤝 Contributing](#-contributing)
+- [📄 Copyright & License](#-copyright--license)
 
 ---
 
@@ -57,9 +82,9 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
 
 # Step 3: Encrypt and decrypt a single message
-cipher = VernamVeil(fx)
-encrypted, _ = cipher.encode(b"Hello!", initial_seed)
-decrypted, _ = cipher.decode(encrypted, initial_seed)
+cypher = VernamVeil(fx)
+encrypted, _ = cypher.encode(b"Hello!", initial_seed)
+decrypted, _ = cypher.decode(encrypted, initial_seed)
 ```
 
 This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
@@ -76,19 +101,20 @@ If you're curious about how encryption works, or just want to mess with maths an
 
 ---
 
-## ✨ Characteristics
+## ✨ Cryptographic Characteristics
 
 - **Function-Based Key Stream:** The key stream is dynamically generated using a user-defined function `fx` and an `initial_seed`, both of which should be kept secret.
 - **Symmetric Encryption:** The same secrets are used for both encryption and decryption, ensuring the process is fully reversible with identical parameters for both operations.
 - **One-Time Pad Inspired**: The keystream is derived in a manner loosely reminiscent of OTPs, with potential for non-repeating, functionally generated keys. Initial seeds are intended for single use.
-- **Modular Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes.
-- **Obfuscation Techniques**: The cypher injects decoy chunks into ciphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. Note that chunk delimiters are randomly generated, encrypted and not exposed.
+- **Obfuscation Techniques**: The cypher injects decoy chunks into cyphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. Note that chunk delimiters are randomly generated, encrypted and not exposed.
+- **Synthetic IV Seed Initialisation & Stateful Evolution**: Enabled by default, this implementation does not use a traditional nonce. Instead, the initial seed is derived using a Synthetic IV computed as an HMAC of the provided seed and the full plaintext (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by HMACing the previous seed with the chunk's plaintext, maintaining state between operations. This ensures each keystream is unique, prevents keystream reuse, and provides resilience against seed reuse and deterministic output.
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
-- **Synthetic-IV-Inspired Seed Evolution**: Enabled by default, the initial seed is evolved using an HMAC of the plaintext and the initial seed, ensuring keystream uniqueness and resistance to seed reuse. Inspired from [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297).
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering and prevent padding oracle-style issues.
+- **Modular Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes.
 - **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, `siv_seed_evolution`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
 - **Vectorisation**: All operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
 - **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
+
 ---
 
 ## ⚠️ Caveats & Best Practices
@@ -98,7 +124,6 @@ If you're curious about how encryption works, or just want to mess with maths an
 - **Block Delimiters Leak**: When encrypting multiple messages to the same file, plaintext delimiters remain visible. Encrypt the entire blob if full confidentiality is needed.
 - **Use Secure Randomness**: For generating initial seeds favour `VernamVeil.get_initial_seed()` over `random.randbytes()`.
 - **Do not reuse seeds**: Treat each `initial_seed` as a one-time-use context. It's recommended to use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
-- **The seed replaces the need for IVs/nonces**: While this implementation doesn’t use a nonce or IV in the traditional cryptographic sense, the seed serves a similar role by maintaining state between operations. Each new seed evolves from the previous one, ensuring unique keystreams and preventing key stream reuse.
 - **Message Ordering & Replay**: If transmitting encrypted chunks over time, ensure that any external metadata (e.g., message order, timestamps) is securely handled. While the evolving seed prevents keystream reuse, maintaining proper ordering and anti-replay mechanisms might still be necessary in some cases.
 
 ---
@@ -118,7 +143,7 @@ fx = generate_default_fx(10)  # remember to store fx._source_code securely
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
 
 # Step 3: Initialise VernamVeil with the custom fx and parameters
-cipher = VernamVeil(fx, chunk_size=64, decoy_ratio=0.2)
+cypher = VernamVeil(fx, chunk_size=64, decoy_ratio=0.2)
 
 # Step 4: Encrypt multiple messages in one session
 messages = [
@@ -130,14 +155,14 @@ encrypted = []
 seed = initial_seed
 for msg in messages:
     # Each message evolves the seed for the next one
-    enc, seed = cipher.encode(msg.encode(), seed)
+    enc, seed = cypher.encode(msg.encode(), seed)
     encrypted.append(enc)
 
 # Step 5: Decrypt multiple messages in one session
 seed = initial_seed
 for original, enc in zip(messages, encrypted):
     # Each message evolves the seed for the next one
-    dec, seed = cipher.decode(enc, seed)
+    dec, seed = cypher.decode(enc, seed)
     assert dec.decode() == original
 ```
 
@@ -309,7 +334,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 ## 🛠️ Technical Details
 
-- **Compact Implementation**: The cipher implementation is less than 300 lines of code, excluding comments and documentation.
+- **Compact Implementation**: The cypher implementation is less than 300 lines of code, excluding comments and documentation.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
 - **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
