@@ -4,6 +4,8 @@ This project optionally uses a C extension called `nphash` to efficiently comput
 
 The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
+> **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
+
 ## Prerequisites
 
 Before building, ensure you have the following dependencies installed:
@@ -14,6 +16,8 @@ Before building, ensure you have the following dependencies installed:
 - **OpenMP** (usually included with gcc)
 - **OpenSSL development libraries**
 - **cffi** and **numpy** Python packages
+
+Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
 ## Installation Steps
 

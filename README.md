@@ -6,6 +6,25 @@
 
 > ⚠️ **DISCLAIMER:** This is an educational encryption prototype and **not** meant for real-world use. It has **not** been audited or reviewed by cryptography experts, and **should not** be used to store, transmit, or protect sensitive data.
 
+## 🚀 Quick Start
+
+```bash
+pip install .[numpy]
+```
+
+```python
+from vernamveil import VernamVeil, generate_default_fx
+
+fx = generate_default_fx(4)
+initial_seed = VernamVeil.get_initial_seed()
+cipher = VernamVeil(fx)
+encrypted, _ = cipher.encode(b"Hello!", initial_seed)
+decrypted, _ = cipher.decode(encrypted, initial_seed)
+assert decrypted == b"Hello!"
+```
+
+---
+
 ## 🔎 Overview
 
 **VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
@@ -317,8 +336,14 @@ For more details on the C module and its usage, see [`nphash/README.md`](nphash/
 
 ---
 
+## 🤝 Contributing
+
+Contributions, bug reports, and feature requests are welcome! Please open an issue or pull request on [GitHub](https://github.com/datumbox/VernamVeil).
+
+---
+
 ## 📄 Copyright & License
 
-Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/). 
+Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/).
 
 The code is licensed under the [Apache License, Version 2.0](./LICENSE).
