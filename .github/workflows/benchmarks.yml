@@ -47,24 +47,22 @@ jobs:
               # Clean up files each time to avoid overwrite errors
               rm -f fx.py seed.bin output.enc output.dec
               start_enc=$(date +%s%N)
-              python -m vernamveil.cli encode --infile input.bin --outfile output.enc
+              python -m vernamveil.cli encode --infile input.bin --outfile output.enc 2>/dev/null
               end_enc=$(date +%s%N)
-              enc_time=$(( (end_enc - start_enc)/1000000 ))
+              enc_time=$((end_enc - start_enc))
               total_enc=$((total_enc + enc_time))
 
               start_dec=$(date +%s%N)
-              python -m vernamveil.cli decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin
+              python -m vernamveil.cli decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin 2>/dev/null
               end_dec=$(date +%s%N)
-              dec_time=$(( (end_dec - start_dec)/1000000 ))
+              dec_time=$((end_dec - start_dec))
               total_dec=$((total_dec + dec_time))
             done
-            avg_enc=$((total_enc / NUM_RUNS))
-            avg_dec=$((total_dec / NUM_RUNS))
-            avg_total=$(( (total_enc + total_dec) / NUM_RUNS ))
-            echo "Average encode time for $size: ${avg_enc} ms"
-            echo "Average decode time for $size: ${avg_dec} ms"
-            echo "Average total time for $size: ${avg_total} ms"
-            echo "Total encode time for $size: ${total_enc} ms"
-            echo "Total decode time for $size: ${total_dec} ms"
-            echo "Total time for $size: $((total_enc + total_dec)) ms"
+            avg_enc=$(awk "BEGIN {printf \"%.3f\", $total_enc / $NUM_RUNS / 1000000000}")
+            avg_dec=$(awk "BEGIN {printf \"%.3f\", $total_dec / $NUM_RUNS / 1000000000}")
+            avg_total=$(awk "BEGIN {printf \"%.3f\", ($total_enc + $total_dec) / $NUM_RUNS / 1000000000}")
+            echo "Average encode time for $size: ${avg_enc} s"
+            echo "Average decode time for $size: ${avg_dec} s"
+            echo "Average total time for $size: ${avg_total} s"
+            echo "---------------------------------------------"
           done
