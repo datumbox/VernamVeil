@@ -9,7 +9,7 @@ import hmac
 import secrets
 import warnings
 from pathlib import Path
-from typing import Any, Callable, cast
+from typing import Any, Callable, Literal, Tuple, cast
 
 try:
     import numpy as np
@@ -21,11 +21,94 @@ from .cypher import _IntOrArray
 from .hash_utils import _UINT64_BOUND, hash_numpy
 
 __all__ = [
-    "generate_polynomial_fx",
-    "generate_default_fx",
-    "load_fx_from_file",
     "check_fx_sanity",
+    "generate_default_fx",
+    "generate_hmac_fx",
+    "generate_polynomial_fx",
+    "load_fx_from_file",
 ]
+
+
+def generate_hmac_fx(
+    *args: Tuple[Any, ...],
+    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+    vectorise: bool = False,
+) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
+    """
+    Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
+
+    Args:
+        *args (tuple): Additional positional arguments (ignored; present for API compatibility).
+        hash_name (str, optional): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
+        vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
+
+    Returns:
+        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
+            integers from HMAC-based function.
+
+    Raises:
+        ValueError: If `vectorise` is True but numpy is not installed.
+        ValueError: If `hash_name` is not "blake2b" or "sha256".
+    """
+    if vectorise and np is None:
+        raise ValueError("NumPy is required for vectorised mode but is not installed.")
+    if not isinstance(hash_name, str) or hash_name not in ("blake2b", "sha256"):
+        raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
+
+    # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
+    if vectorise:
+        function_code = f"""
+from vernamveil import hash_numpy
+import numpy as np
+
+
+def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
+    # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+
+    # Cryptographic HMAC using {hash_name}
+    result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
+
+    # Modulo the result with the bound to ensure it's always within the requested range
+    if bound is not None:
+        np.remainder(result, bound, out=result)
+
+    return result
+"""
+    else:
+        function_code = f"""
+import hmac
+
+
+def fx(i: int, seed: bytes, bound: int | None) -> int:
+    # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+
+    # Cryptographic HMAC using {hash_name}
+    result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest(), "big")
+
+    # Modulo the result with the bound to ensure it's always within the requested range
+    if bound is not None:
+        result %= bound
+
+    return result
+"""
+
+    # Execute the string to define fx in a local namespace
+    local_vars: dict[str, Any] = {}
+    exec(
+        function_code,
+        {"np": np, "hash_numpy": hash_numpy, "hmac": hmac},
+        local_vars,
+    )
+
+    # Attach the code string directly to the function object for later reference
+    fx = local_vars["fx"]
+    fx._source_code = function_code  # type: ignore[attr-defined, unused-ignore]
+
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 def generate_polynomial_fx(
@@ -48,9 +131,21 @@ def generate_polynomial_fx(
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
+        TypeError: If `complexity` is not an integer.
+        ValueError: If `complexity` is negative.
+        TypeError: If `max_weight` is not an integer.
+        ValueError: If `max_weight` is not positive.
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
+    if not isinstance(complexity, int):
+        raise TypeError("complexity must be an integer.")
+    elif complexity <= 0:
+        raise ValueError("complexity must be a positive integer.")
+    if not isinstance(max_weight, int):
+        raise TypeError("max_weight must be an integer.")
+    elif max_weight <= 0:
+        raise ValueError("max_weight must be a positive integer.")
 
     # Generate random weights for each term in the polynomial including the constant term
     weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity + 1)]
