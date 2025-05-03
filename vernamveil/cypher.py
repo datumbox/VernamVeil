@@ -523,6 +523,9 @@ class VernamVeil:
 
         Returns:
             bytes: A random byte string of the specified length.
+
+        Raises:
+            ValueError: If `num_bytes` is not a positive integer.
         """
         if num_bytes <= 0:
             raise ValueError("num_bytes must be a positive integer.")
