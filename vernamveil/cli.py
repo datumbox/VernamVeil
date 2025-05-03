@@ -108,12 +108,6 @@ def main(args: list[str] | None = None) -> None:
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
     _add_common_args(enc)
     enc.add_argument(
-        "--fx-complexity",
-        type=int,
-        default=20,
-        help="Complexity for random fx (if fx-file omitted). Default: 20.",
-    )
-    enc.add_argument(
         "--check-fx-sanity",
         action="store_true",
         help="Check the loaded/generated fx with check_fx_sanity.",
@@ -144,7 +138,7 @@ def main(args: list[str] | None = None) -> None:
         if fx_py.exists():
             _vprint("Error: fx.py already exists. Refusing to overwrite.", "error", verbosity)
             sys.exit(1)
-        fx_obj = generate_default_fx(parsed_args.fx_complexity, vectorise=parsed_args.vectorise)
+        fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
         fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
         _vprint(
             "Warning: Generated fx.py in current directory. Store securely.", "warning", verbosity

@@ -23,7 +23,7 @@ class TestFxUtils(unittest.TestCase):
 
     def test_generate_default_fx_scalar(self):
         """Test that generate_default_fx returns a valid scalar function."""
-        fx = generate_default_fx(5, vectorise=False)
+        fx = generate_default_fx(vectorise=False)
         for i in range(10):
             out = fx(i, self.seed, self.bound)
             self.assertIsInstance(out, int)
@@ -33,7 +33,7 @@ class TestFxUtils(unittest.TestCase):
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_generate_default_fx_vectorised(self):
         """Test that generate_default_fx returns a valid vectorised function."""
-        fx = generate_default_fx(5, vectorise=True)
+        fx = generate_default_fx(vectorise=True)
         arr = np.arange(10, dtype=np.uint64)
         out = fx(arr, self.seed, self.bound)
         self.assertIsInstance(out, np.ndarray)
@@ -88,7 +88,7 @@ class TestFxUtils(unittest.TestCase):
 
     def test_check_default_fx_sanity_scalar(self):
         """Test check_default_fx_sanity passes for a good scalar default fx."""
-        fx = generate_default_fx(4, vectorise=False)
+        fx = generate_default_fx(vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.bound, self.num_samples)
         self.assertTrue(passed)
@@ -97,7 +97,7 @@ class TestFxUtils(unittest.TestCase):
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_check_default_fx_sanity_vectorised(self):
         """Test check_default_fx_sanity passes for a good vectorised default fx."""
-        fx = generate_default_fx(4, vectorise=True)
+        fx = generate_default_fx(vectorise=True)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.bound, self.num_samples)
         self.assertTrue(passed)
@@ -105,7 +105,7 @@ class TestFxUtils(unittest.TestCase):
 
     def test_load_fx_from_file_scalar(self):
         """Test that a scalar fx function can be saved to a file and loaded back using load_fx_from_file."""
-        fx_obj = generate_default_fx(3, vectorise=False)
+        fx_obj = generate_default_fx(vectorise=False)
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_obj._source_code)
@@ -121,7 +121,7 @@ class TestFxUtils(unittest.TestCase):
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_load_fx_from_file_vectorised(self):
         """Test that a vectorised fx function can be saved to a file and loaded back using load_fx_from_file."""
-        fx_obj = generate_default_fx(3, vectorise=True)
+        fx_obj = generate_default_fx(vectorise=True)
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
             tmp.write(fx_obj._source_code)

@@ -92,7 +92,7 @@ from vernamveil import VernamVeil, generate_default_fx
 
 
 # Step 1: Generate a random custom fx using the helper
-fx = generate_default_fx(10)  # remember to store fx._source_code securely
+fx = generate_default_fx()  # remember to store fx._source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -128,7 +128,7 @@ from vernamveil import VernamVeil, generate_default_fx
 
 
 # Step 1: Generate a random custom fx using the helper
-fx = generate_default_fx(10)  # remember to store fx._source_code securely
+fx = generate_default_fx()  # remember to store fx._source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -207,9 +207,10 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
 VernamVeil includes helper tools to make working with key stream functions easier:
 
-- `generate_default_fx`: Quickly create deterministic `fx` functions for testing or experimentation. Supports both scalar and vectorised (NumPy) modes.
-- `check_fx_sanity`: Run basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
-- `load_fx_from_file`: Load a custom `fx` function from a Python file. This is useful for testing and validating your own implementations.
+- `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
+- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies HMAC (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
+- `generate_hmac_fx`: Generates a deterministic `fx` function that applies HMAC (using a specified hash algorithm, e.g., SHA-256 or BLAKE2b) directly to the index and seed. The seed is the only secret key for this method. Supports both scalar and vectorised (NumPy) modes.
+- `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations.
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
 
@@ -220,7 +221,7 @@ from vernamveil import generate_default_fx, check_fx_sanity
 
 
 # Generate a vectorised fx function of degree 4
-fx = generate_default_fx(4, max_weight=1000, vectorise=True)
+fx = generate_default_fx(vectorise=True)
 
 # Show the generated function's source code
 print("Generated fx source code:\n", fx._source_code)
@@ -307,7 +308,7 @@ To install the library with all optional dependencies (development tools, NumPy 
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 For more details on the C module and its usage, see [`nphash/README.md`](nphash/README.md).
 

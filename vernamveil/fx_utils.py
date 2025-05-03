@@ -9,7 +9,7 @@ import hmac
 import secrets
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Literal, Tuple, cast
+from typing import Any, Callable, Literal, cast
 
 try:
     import numpy as np
@@ -30,7 +30,6 @@ __all__ = [
 
 
 def generate_hmac_fx(
-    *args: Tuple[Any, ...],
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
@@ -38,7 +37,6 @@ def generate_hmac_fx(
     Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
-        *args (tuple): Additional positional arguments (ignored; present for API compatibility).
         hash_name (str, optional): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
 
@@ -112,7 +110,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 
 
 def generate_polynomial_fx(
-    complexity: int, max_weight: int = 10**5, vectorise: bool = False
+    degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
     Generate a random polynomial-based secret function to act as a deterministic key stream generator.
@@ -121,7 +119,7 @@ def generate_polynomial_fx(
     polynomials and is used for testing.
 
     Args:
-        complexity (int): Degree of the polynomial.
+        degree (int): Degree of the polynomial. Defaults to 10.
         max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
 
@@ -131,24 +129,24 @@ def generate_polynomial_fx(
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
-        TypeError: If `complexity` is not an integer.
-        ValueError: If `complexity` is negative.
+        TypeError: If `degree` is not an integer.
+        ValueError: If `degree` is negative.
         TypeError: If `max_weight` is not an integer.
         ValueError: If `max_weight` is not positive.
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
-    if not isinstance(complexity, int):
-        raise TypeError("complexity must be an integer.")
-    elif complexity <= 0:
-        raise ValueError("complexity must be a positive integer.")
+    if not isinstance(degree, int):
+        raise TypeError("degree must be an integer.")
+    elif degree <= 0:
+        raise ValueError("degree must be a positive integer.")
     if not isinstance(max_weight, int):
         raise TypeError("max_weight must be an integer.")
     elif max_weight <= 0:
         raise ValueError("max_weight must be a positive integer.")
 
     # Generate random weights for each term in the polynomial including the constant term
-    weights = [secrets.randbelow(max_weight + 1) for _ in range(complexity + 1)]
+    weights = [secrets.randbelow(max_weight + 1) for _ in range(degree + 1)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
@@ -158,7 +156,7 @@ import numpy as np
 
 
 def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
-    # Implements a customisable fx function based on a {complexity}-degree polynomial transformation of the index,
+    # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
@@ -166,7 +164,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
     # Transform index i using a polynomial function to introduce uniqueness on fx
     # Compute all powers: shape (i.size, degree)
-    powers = np.power.outer(i, np.arange({complexity + 1}, dtype=np.uint64))
+    powers = np.power.outer(i, np.arange({degree + 1}, dtype=np.uint64))
     # Weighted sum (polynomial evaluation)
     result = np.dot(powers, weights)
 
@@ -185,7 +183,7 @@ import hmac
 
 
 def fx(i: int, seed: bytes, bound: int | None) -> int:
-    # Implements a customisable fx function based on a {complexity}-degree polynomial transformation of the index,
+    # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
