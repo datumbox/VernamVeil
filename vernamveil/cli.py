@@ -54,7 +54,7 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         help="Decoy ratio for VernamVeil (default: 0.05).",
     )
     p.add_argument(
-        "--siv-seed-evolution",
+        "--siv-seed-initialisation",
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Enable Synthetic IV seed initialisation (default: True).",
@@ -179,7 +179,7 @@ def main(args: list[str] | None = None) -> None:
         "delimiter_size": parsed_args.delimiter_size,
         "padding_range": tuple(parsed_args.padding_range),
         "decoy_ratio": parsed_args.decoy_ratio,
-        "siv_seed_evolution": parsed_args.siv_seed_evolution,
+        "siv_seed_initialisation": parsed_args.siv_seed_initialisation,
         "auth_encrypt": parsed_args.auth_encrypt,
         "vectorise": parsed_args.vectorise,
     }

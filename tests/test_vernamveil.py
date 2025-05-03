@@ -58,11 +58,11 @@ class TestVernamVeil(unittest.TestCase):
             decrypted, _ = cypher.decode(encrypted, self.initial_seed)
             self.assertEqual(message, decrypted.decode())
 
-        # Test with all combinations of siv_seed_evolution and auth_encrypt
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=False)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=False)
+        # Test with all combinations of siv_seed_initialisation and auth_encrypt
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
     def test_variable_length_encryption(self):
         """Test encryption and decryption for messages of varying lengths."""
@@ -74,11 +74,11 @@ class TestVernamVeil(unittest.TestCase):
                 decrypted, _ = cypher.decode(encrypted, self.initial_seed)
                 self.assertEqual(msg, decrypted.decode(), f"Failed at length {i}")
 
-        # Test with all combinations of siv_seed_evolution and auth_encrypt
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=False)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=False)
+        # Test with all combinations of siv_seed_initialisation and auth_encrypt
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
     def test_file_encryption(self):
         """Test file encryption and decryption, verifying file integrity via checksum."""
@@ -105,7 +105,7 @@ class TestVernamVeil(unittest.TestCase):
                 buffer_size=1024,
                 chunk_size=128,
                 vectorise=cypher._vectorise,
-                siv_seed_evolution=cypher._siv_seed_evolution,
+                siv_seed_initialisation=cypher._siv_seed_initialisation,
                 auth_encrypt=cypher._auth_encrypt,
             )
             VernamVeil.process_file(
@@ -117,7 +117,7 @@ class TestVernamVeil(unittest.TestCase):
                 buffer_size=1024,
                 chunk_size=128,
                 vectorise=cypher._vectorise,
-                siv_seed_evolution=cypher._siv_seed_evolution,
+                siv_seed_initialisation=cypher._siv_seed_initialisation,
                 auth_encrypt=cypher._auth_encrypt,
             )
             with input_file.open("rb") as f1, decoded_file.open("rb") as f2:
@@ -127,11 +127,11 @@ class TestVernamVeil(unittest.TestCase):
             output_file.unlink()
             decoded_file.unlink()
 
-        # Test with all combinations of siv_seed_evolution and auth_encrypt
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=True)
-        self.for_all_modes(test, siv_seed_evolution=True, auth_encrypt=False)
-        self.for_all_modes(test, siv_seed_evolution=False, auth_encrypt=False)
+        # Test with all combinations of siv_seed_initialisation and auth_encrypt
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
 
 if __name__ == "__main__":

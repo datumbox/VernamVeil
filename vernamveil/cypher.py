@@ -44,7 +44,7 @@ class VernamVeil:
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
         decoy_ratio: float = 0.1,
-        siv_seed_evolution: bool = True,
+        siv_seed_initialisation: bool = True,
         auth_encrypt: bool = True,
         vectorise: bool = False,
     ):
@@ -61,7 +61,7 @@ class VernamVeil:
             padding_range (tuple[int, int], optional): Range for padding length before and after
                 chunks. Defaults to (5, 15).
             decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
-            siv_seed_evolution (bool, optional): Enables synthetic IV seed initialisation based on the message to
+            siv_seed_initialisation (bool, optional): Enables synthetic IV seed initialisation based on the message to
                 resist seed reuse. Defaults to True.
             auth_encrypt (bool, optional): Enables authenticated encryption with integrity check. Defaults to True.
             vectorise (bool, optional): Whether to use numpy for vectorised operations. If True, numpy must be
@@ -97,7 +97,7 @@ class VernamVeil:
         self._delimiter_size = delimiter_size
         self._padding_range = padding_range
         self._decoy_ratio = decoy_ratio
-        self._siv_seed_evolution = siv_seed_evolution
+        self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
         self._vectorise = vectorise
 
@@ -406,9 +406,9 @@ class VernamVeil:
         if not isinstance(message, memoryview):
             message = memoryview(message)
 
-        # SIV seed evolution: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
+        # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
-        if self._siv_seed_evolution:
+        if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed and the message
             siv_hash = self._hmac(seed, message)
             # Encrypt the synthetic IV and involve the seed with it
@@ -464,9 +464,9 @@ class VernamVeil:
 
         HMAC_LENGTH = self._hmac_length
 
-        # SIV seed evolution: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
+        # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
-        if self._siv_seed_evolution:
+        if self._siv_seed_initialisation:
             # Split the data by taking the first HMAC_LENGTH bytes
             encrypted_siv_hash, cyphertext = cyphertext[:HMAC_LENGTH], cyphertext[HMAC_LENGTH:]
             # Decrypt the SIV hash (throw away) and involve the seed with it
@@ -561,7 +561,7 @@ class VernamVeil:
             "delimiter_size": 8,
             "padding_range": (10, 20),
             "decoy_ratio": 0.05,
-            "siv_seed_evolution": True,
+            "siv_seed_initialisation": True,
             "auth_encrypt": True,
         }
 

@@ -289,7 +289,7 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx
 
 > ⚠️ **Warning: CLI Parameter Consistency**
 >
-> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-evolution`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
 >
 > For example, the following will **fail** with a `MAC tag mismatch` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
