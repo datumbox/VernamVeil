@@ -15,7 +15,7 @@
 // HMACs or hashes an array of 8-byte (uint64) elements with a seed using SHA256, outputs 64-bit values
 // - If a seed is provided, HMAC is used for cryptographic safety.
 // - If no seed is provided, a plain hash is used (not recommended for security).
-void numpy_sha256(const char* const arr, const size_t n, const char* const seed, const size_t seedlen, uint64_t* restrict out) {
+void numpy_sha256(const char* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint64_t* restrict out) {
     // Treat input as an array of 8-byte (uint64) blocks for hashing/HMAC
     const unsigned char (*arr8)[BLOCK_SIZE] = (const unsigned char (*)[BLOCK_SIZE])arr;
     const int n_int = (int)n;
