@@ -411,7 +411,7 @@ class VernamVeil:
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed and the message
             siv_hash = self._hmac(seed, message)
-            # Encrypt the synthetic IV and involve the seed with it
+            # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Put the encrypted SIV hash at the start of the output
             output = bytearray(encrypted_siv_hash)
@@ -469,7 +469,7 @@ class VernamVeil:
         if self._siv_seed_initialisation:
             # Split the data by taking the first HMAC_LENGTH bytes
             encrypted_siv_hash, cyphertext = cyphertext[:HMAC_LENGTH], cyphertext[HMAC_LENGTH:]
-            # Decrypt the SIV hash (throw away) and involve the seed with it
+            # Decrypt the SIV hash (throw away) and evolve the seed with it
             _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)
 
         # Authenticated Encryption
