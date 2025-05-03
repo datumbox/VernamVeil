@@ -1,3 +1,10 @@
+"""
+VernamVeil core cipher implementation.
+
+This module provides the VernamVeil class, a modular, function-based stream cipher inspired by the One-Time Pad.
+It supports custom key stream functions, authenticated encryption, obfuscation, and vectorised operations.
+"""
+
 import hashlib
 import hmac
 import math
@@ -20,6 +27,8 @@ except ImportError:
     _IntOrArray: TypeAlias = int  # type: ignore[misc, no-redef]
     _HAS_NUMPY = False
 
+__all__ = ["VernamVeil"]
+
 
 class VernamVeil:
     """
@@ -39,7 +48,7 @@ class VernamVeil:
         vectorise: bool = False,
     ):
         """
-        Initialises the VernamVeil encryption cipher with configurable parameters.
+        Initialise the VernamVeil encryption cipher with configurable parameters.
 
         Args:
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an

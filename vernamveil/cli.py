@@ -1,3 +1,10 @@
+"""
+VernamVeil CLI utility.
+
+This module provides a command-line interface for encrypting and decrypting files using the VernamVeil cipher.
+It supports custom key stream functions, seed management, and various encryption parameters.
+"""
+
 import argparse
 import sys
 from pathlib import Path
@@ -8,7 +15,7 @@ from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
     """
-    Adds common CLI arguments for both encode and decode subcommands.
+    Add common CLI arguments for both encode and decode subcommands.
 
     Args:
         p (argparse.ArgumentParser): The argument parser to which the arguments will be added.

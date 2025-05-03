@@ -1,3 +1,9 @@
+"""
+Hashing utilities for VernamVeil.
+
+This module provides fast, optionally C-accelerated hashing functions for use in key stream generation.
+"""
+
 import hashlib
 import hmac
 from typing import Literal
@@ -15,6 +21,8 @@ except ImportError:
 
 
 _UINT64_BOUND = 2**64
+
+__all__ = ["hash_numpy"]
 
 
 def hash_numpy(

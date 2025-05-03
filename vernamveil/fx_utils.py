@@ -1,3 +1,10 @@
+"""
+Key stream function utilities for VernamVeil.
+
+This module provides utilities for generating, loading, and checking the sanity of key stream functions (fx)
+used by the VernamVeil cipher.
+"""
+
 import hmac
 import secrets
 import warnings
@@ -13,13 +20,20 @@ except ImportError:
 from .cypher import _IntOrArray
 from .hash_utils import _UINT64_BOUND, hash_numpy
 
+__all__ = [
+    "generate_polynomial_fx",
+    "generate_default_fx",
+    "load_fx_from_file",
+    "check_fx_sanity",
+]
+
 
 def generate_polynomial_fx(
     complexity: int, max_weight: int = 10**5, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
-    Generates a random polynomial-based secret function to act as a deterministic key stream generator. The
-    transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
+    Generate a random polynomial-based secret function to act as a deterministic key stream generator.
+    The transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
     Though any mathematical function with domain the positive integers can be used, this utility only supports
     polynomials and is used for testing.
 
@@ -121,7 +135,7 @@ generate_default_fx = generate_polynomial_fx
 
 def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """
-    Loads the fx function from a Python file.
+    Load the fx function from a Python file.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
@@ -144,7 +158,7 @@ def check_fx_sanity(
     num_samples: int = 1000,
 ) -> bool:
     """
-    Performs basic sanity checks on a user-supplied fx function for use as a key stream generator.
+    Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
     Automatically detects if fx is vectorised (NumPy) or scalar (int) and tests accordingly.
 
     Checks performed:
