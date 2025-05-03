@@ -348,7 +348,7 @@ class VernamVeil:
 
     def _xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """
         Encrypts or decrypts data using XOR with the generated keystream.
 
@@ -358,7 +358,7 @@ class VernamVeil:
             is_encode (bool): True for encryption, False for decryption.
 
         Returns:
-            tuple[bytearray, bytes]: Processed data and the final seed.
+            tuple[memoryview, bytes]: Processed data and the final seed.
         """
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
@@ -387,11 +387,10 @@ class VernamVeil:
             # Refresh the seed differently for encoding and decoding
             seed = self._hmac(seed, seed_data)
 
-        # TODO: can we avoid the below conversion and return a memoryview?
         if self._vectorise:
-            result: bytearray = bytearray(processed)
+            result: memoryview = processed.data
         else:
-            result: bytearray = processed  # type: ignore[no-redef]
+            result = memoryview(processed)
 
         return result, seed
 
@@ -422,7 +421,7 @@ class VernamVeil:
             # Encrypt the synthetic IV and involve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Put the encrypted SIV hash at the start of the output
-            output = encrypted_siv_hash
+            output = bytearray(encrypted_siv_hash)
         else:
             output = bytearray()
 
@@ -508,8 +507,14 @@ class VernamVeil:
         # Decrypt the noisy message
         decrypted, last_seed = self._xor_with_key(encrypted_data, seed, False)
 
+        # Convert to bytearray based on the type of the memoryview
+        if isinstance(decrypted.obj, bytearray):
+            decrypted_bytearray = decrypted.obj
+        else:
+            decrypted_bytearray = bytearray(decrypted)
+
         # Denoise, Unshuffle and extract the real message
-        message = self._deobfuscate(decrypted, shuffle_seed, delimiter)
+        message = self._deobfuscate(decrypted_bytearray, shuffle_seed, delimiter)
 
         return message, last_seed
 
