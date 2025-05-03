@@ -27,31 +27,6 @@ assert decrypted == b"Hello!"
 
 ---
 
-## 📖 Table of Contents
-
-- [🔎 Overview](#-overview)
-- [💡 Why VernamVeil?](#-why-vernamveil)
-- [✨ Cryptographic Characteristics](#-cryptographic-characteristics)
-- [⚠️ Caveats & Best Practices](#️-caveats--best-practices)
-- [📝 Examples](#-examples)
-  - [✉️ Encrypting and Decrypting Multiple Messages](#️-encrypting-and-decrypting-multiple-messages)
-  - [📂 Encrypting and Decrypting Files](#-encrypting-and-decrypting-files)
-  - [🧠 A marginally stronger `fx`](#-a-marginally-stronger-fx)
-  - [🏎️ A fast `fx` that uses NumPy vectorisation and the `nphash` C module](#️-a-fast-fx-that-uses-numpy-vectorisation-and-the-nphash-c-module)
-- [🧰 Provided `fx` Utilities](#-provided-fx-utilities)
-- [🖥️ Command-Line Interface (CLI)](#️-command-line-interface-cli)
-  - [⚙️ Features](#️-features)
-  - [💻 Usage](#-usage)
-  - [🗄️ File Handling](#️-file-handling)
-- [🛠️ Technical Details](#️-technical-details)
-  - [🔧 Installation](#-installation)
-  - [⚡ Fast Vectorised `fx` Functions](#-fast-vectorised-fx-functions)
-- [📚 Documentation](#-documentation)
-- [🤝 Contributing](#-contributing)
-- [📄 Copyright & License](#-copyright--license)
-
----
-
 ## 🔎 Overview
 
 **VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
