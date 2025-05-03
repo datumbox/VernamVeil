@@ -171,7 +171,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     return result
 ```
 
-### 🏎️ A fast `fx` that uses NumPy vectorisation and the `nphash` C module
+### 🏎️ A fast version of the above `fx` that uses NumPy vectorisation and the `nphash` C module
 
 ```python
 from vernamveil import hash_numpy
@@ -198,6 +198,28 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     if bound is not None:
         np.remainder(result, bound, out=result)
     
+    return result
+```
+
+### 🛡️ A cryptographically strong HMAC-SHA256 `fx` (vectorised & C-accelerated)
+
+```python
+from vernamveil import hash_numpy
+import numpy as np
+
+
+def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
+    # Implements a standard HMAC-based pseudorandom function (PRF) using sha256.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+
+    # Cryptographic HMAC using sha256
+    result = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
+
+    # Modulo the result with the bound to ensure it's always within the requested range
+    if bound is not None:
+        np.remainder(result, bound, out=result)
+
     return result
 ```
 
