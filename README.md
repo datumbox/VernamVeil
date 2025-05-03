@@ -1,4 +1,4 @@
-# 🔐 VernamVeil: A Function-Based Stream Cipher
+# 🔐 VernamVeil: A Function-Based Stream Cypher
 
 [![CI](https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datumbox/VernamVeil/actions) [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://datumbox.github.io/VernamVeil/) [![License](https://img.shields.io/:license-apache-brightgreen.svg)](./LICENSE)
 
@@ -29,7 +29,7 @@ assert decrypted == b"Hello!"
 
 ## 🔎 Overview
 
-**VernamVeil** is an experimental cipher inspired by the **One-Time Pad (OTP)** developed in Python. The name honors **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
+**VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
 Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
 - `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations
@@ -62,9 +62,9 @@ encrypted, _ = cipher.encode(b"Hello!", initial_seed)
 decrypted, _ = cipher.decode(encrypted, initial_seed)
 ```
 
-This approach enables novel forms of key generation, especially for those who enjoy playing with math and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
+This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
 
-If you're curious about how encryption works, or just want to mess with math and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
+If you're curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
 
 ---
 
@@ -93,7 +93,7 @@ If you're curious about how encryption works, or just want to mess with math and
 ## ⚠️ Caveats & Best Practices
 
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
-- **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behavior of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
+- **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behaviour of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Block Delimiters Leak**: When encrypting multiple messages to the same file, plaintext delimiters remain visible. Encrypt the entire blob if full confidentiality is needed.
 - **Use Secure Randomness**: For generating initial seeds favour `VernamVeil.get_initial_seed()` over `random.randbytes()`.
 - **Do not reuse seeds**: Treat each `initial_seed` as a one-time-use context. It's recommended to use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.

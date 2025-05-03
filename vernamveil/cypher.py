@@ -1,7 +1,7 @@
 """
-VernamVeil core cipher implementation.
+VernamVeil core cypher implementation.
 
-This module provides the VernamVeil class, a modular, function-based stream cipher inspired by the One-Time Pad.
+This module provides the VernamVeil class, a modular, function-based stream cypher inspired by the One-Time Pad.
 It supports custom key stream functions, authenticated encryption, obfuscation, and vectorised operations.
 """
 
@@ -32,7 +32,7 @@ __all__ = ["VernamVeil"]
 
 class VernamVeil:
     """
-    VernamVeil is a modular, symmetric cipher inspired by One-Time Pad principles, featuring customisable key stream
+    VernamVeil is a modular, symmetric cypher inspired by One-Time Pad principles, featuring customisable key stream
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
     """
@@ -48,7 +48,7 @@ class VernamVeil:
         vectorise: bool = False,
     ):
         """
-        Initialise the VernamVeil encryption cipher with configurable parameters.
+        Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
@@ -395,7 +395,7 @@ class VernamVeil:
             message = memoryview(message)
 
         # Produce a unique seed for Authenticated Encryption
-        # This ensures integrity by generating a MAC tag for the ciphertext
+        # This ensures integrity by generating a MAC tag for the cyphertext
         auth_seed = self._refresh_seed(seed, b"MAC") if self._auth_encrypt else b""
 
         # Generate the delimiter
@@ -409,36 +409,36 @@ class VernamVeil:
         noisy = self._obfuscate(message, shuffle_seed, delimiter)
 
         # Encrypt the noisy message
-        ciphertext, last_seed = self._xor_with_key(noisy, seed, True)
+        cyphertext, last_seed = self._xor_with_key(noisy, seed, True)
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            blake_hash = hashlib.blake2b(ciphertext).digest()
+            blake_hash = hashlib.blake2b(cyphertext).digest()
             tag, _ = self._xor_with_key(memoryview(blake_hash), auth_seed, True)
-            ciphertext.extend(tag)
+            cyphertext.extend(tag)
 
-        return ciphertext, last_seed
+        return cyphertext, last_seed
 
-    def decode(self, ciphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
+    def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """
         Decrypts an encoded message.
 
         Args:
-            ciphertext (bytes or memoryview): Encrypted and obfuscated message.
+            cyphertext (bytes or memoryview): Encrypted and obfuscated message.
             seed (bytes): Initial seed for decryption.
 
         Returns:
             tuple[bytearray, bytes]: Decrypted message and final seed.
         """
         # Convert to memoryview for efficient slicing
-        if not isinstance(ciphertext, memoryview):
-            ciphertext = memoryview(ciphertext)
+        if not isinstance(cyphertext, memoryview):
+            cyphertext = memoryview(cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             # Split the data
             blake2b_len = 64
-            encrypted_data, expected_tag = ciphertext[:-blake2b_len], ciphertext[-blake2b_len:]
+            encrypted_data, expected_tag = cyphertext[:-blake2b_len], cyphertext[-blake2b_len:]
 
             # Produce a unique seed for Authenticated Encryption
             auth_seed = self._refresh_seed(seed, b"MAC")
@@ -449,7 +449,7 @@ class VernamVeil:
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
-            encrypted_data = ciphertext
+            encrypted_data = cyphertext
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
@@ -525,7 +525,7 @@ class VernamVeil:
         defaults.update(vernamveil_kwargs)
 
         # Initialise the VernamVeil object
-        cipher = VernamVeil(fx, **defaults)
+        cypher = VernamVeil(fx, **defaults)
 
         # Convert to Path if necessary
         input_path = Path(input_file)
@@ -548,7 +548,7 @@ class VernamVeil:
                         break  # End of file
 
                     # Encode the content block
-                    processed_block, current_seed = cipher.encode(block, current_seed)
+                    processed_block, current_seed = cypher.encode(block, current_seed)
 
                     # Write the processed block to the output file
                     outfile.write(processed_block)
@@ -572,7 +572,7 @@ class VernamVeil:
                         complete_block = memoryview(buffer)[:delim_index]
 
                         # Decode the complete block
-                        processed_block, current_seed = cipher.decode(complete_block, current_seed)
+                        processed_block, current_seed = cypher.decode(complete_block, current_seed)
                         outfile.write(processed_block)
 
                         # Remove the processed block and delimiter from the buffer

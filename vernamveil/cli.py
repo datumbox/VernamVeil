@@ -1,7 +1,7 @@
 """
 VernamVeil CLI utility.
 
-This module provides a command-line interface for encrypting and decrypting files using the VernamVeil cipher.
+This module provides a command-line interface for encrypting and decrypting files using the VernamVeil cypher.
 It supports custom key stream functions, seed management, and various encryption parameters.
 """
 

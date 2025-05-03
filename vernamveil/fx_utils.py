@@ -2,7 +2,7 @@
 Key stream function utilities for VernamVeil.
 
 This module provides utilities for generating, loading, and checking the sanity of key stream functions (fx)
-used by the VernamVeil cipher.
+used by the VernamVeil cypher.
 """
 
 import hmac
