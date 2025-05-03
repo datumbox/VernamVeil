@@ -220,7 +220,7 @@ Example:
 from vernamveil import generate_default_fx, check_fx_sanity
 
 
-# Generate a vectorised fx function of degree 4
+# Generate a vectorised fx function
 fx = generate_default_fx(vectorise=True)
 
 # Show the generated function's source code
