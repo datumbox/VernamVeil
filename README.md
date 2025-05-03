@@ -8,37 +8,12 @@
 
 ## 🚀 Quick Start
 
-Minimal Installation (without vectorisation or C module):
+Minimal Installation (without vectorisation or C extension support):
 ```bash
 pip install .
 ```
 
 Minimal Example:
-```python
-from vernamveil import VernamVeil, generate_default_fx
-
-fx = generate_default_fx(4)
-initial_seed = VernamVeil.get_initial_seed()
-cypher = VernamVeil(fx)
-encrypted, _ = cypher.encode(b"Hello!", initial_seed)
-decrypted, _ = cypher.decode(encrypted, initial_seed)
-assert decrypted == b"Hello!"
-```
-
----
-
-## 🔎 Overview
-
-**VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
-
-Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
-- `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations
-- `seed`: a byte string that provides context and state; should be kept secret
-- `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 bytes at a time)
-- **Output**: an integer or an uint64 NumPy array representing the key stream values
-
-_Note: `numpy` is an optional dependency, used to accelerate vectorised operations when available._
-
 ```python
 from vernamveil import VernamVeil
 
@@ -62,9 +37,21 @@ encrypted, _ = cypher.encode(b"Hello!", initial_seed)
 decrypted, _ = cypher.decode(encrypted, initial_seed)
 ```
 
-This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
+---
 
-If you're curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
+## 🔎 Overview
+
+**VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
+
+Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray, seed: bytes, bound: int | None) -> int | np.ndarray`:
+- `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations.
+- `seed`: a byte string that provides context and state; should be kept secret.
+- `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 bytes at a time).
+- **Output**: an integer or an uint64 NumPy array representing the key stream values.
+
+_Note: `numpy` is an optional but highly recommended dependency, used to accelerate vectorised operations when available._
+
+This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption. If you're curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
 
 ---
 
@@ -81,13 +68,13 @@ If you're curious about how encryption works, or just want to mess with maths an
 - **Function-Based Key Stream:** The key stream is dynamically generated using a user-defined function `fx` and an `initial_seed`, both of which should be kept secret.
 - **Symmetric Encryption:** The same secrets are used for both encryption and decryption, ensuring the process is fully reversible with identical parameters for both operations.
 - **One-Time Pad Inspired**: The keystream is derived in a manner loosely reminiscent of OTPs, with potential for non-repeating, functionally generated keys. Initial seeds are intended for single use.
-- **Obfuscation Techniques**: The cypher injects decoy chunks into cyphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. Note that chunk delimiters are randomly generated, encrypted and not exposed.
-- **Synthetic IV Seed Initialisation & Stateful Evolution**: Enabled by default, this implementation does not use a traditional nonce. Instead, the initial seed is derived using a Synthetic IV computed as an HMAC of the provided seed and the full plaintext (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by HMACing the previous seed with the chunk's plaintext, maintaining state between operations. This ensures each keystream is unique, prevents keystream reuse, and provides resilience against seed reuse and deterministic output.
+- **Synthetic IV Seed Initialisation & Stateful Evolution**: Enabled by default, this implementation does not use a traditional nonce. Instead, the first internal seed is derived using a Synthetic IV computed as an HMAC of the user-provided initial seed and the full plaintext (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by HMACing the previous seed with the chunk's plaintext, maintaining state between operations. This ensures each keystream is unique, prevents keystream reuse, and provides resilience against seed reuse and deterministic output.
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
+- **Layered Message Obfuscation**: The cypher injects decoy chunks into cyphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. While these techniques do not provide formal cryptographic guarantees, they are intended to complicate cryptanalysis methods, such as traffic analysis or block boundary detection, that exploit knowledge of plaintext structure or message segmentation. Chunk delimiters are randomly generated, encrypted, and not exposed.
+- **No Metadata in Cyphertext**:  The cyphertext contains no embedded metadata. The algorithm deterministically recovers most encryption details from the key, but encryption parameters such as chunk and delimiter sizes must be managed externally and matched exactly during decryption; the cyphertext itself does not reveal or store this information.
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering and prevent padding oracle-style issues.
 - **Modular Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes.
 - **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, `siv_seed_evolution`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
-- **No Metadata in Cyphertext**:  The cyphertext contains no embedded metadata (such as parameters, file names, or timestamps). The algorithm deterministically recovers most encryption details from the key, but encryption parameters such as chunk and delimiter sizes must be managed externally and matched exactly during decryption; the cyphertext itself does not reveal or store this information.
 - **Vectorisation**: All operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
 - **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
 
