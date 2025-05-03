@@ -8,10 +8,12 @@
 
 ## 🚀 Quick Start
 
+Minimal Installation (without vectorisation or C module):
 ```bash
-pip install .[numpy]
+pip install .
 ```
 
+Minimal Example:
 ```python
 from vernamveil import VernamVeil, generate_default_fx
 
@@ -63,12 +65,6 @@ decrypted, _ = cipher.decode(encrypted, initial_seed)
 This approach enables novel forms of key generation, especially for those who enjoy playing with math and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption.
 
 If you're curious about how encryption works, or just want to mess with math and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
-
----
-
-## 📚 Documentation
-
-Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil/](https://datumbox.github.io/VernamVeil/)
 
 ---
 
@@ -333,6 +329,12 @@ To install the library with all optional dependencies (development tools, NumPy 
 If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(..., vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 For more details on the C module and its usage, see [`nphash/README.md`](nphash/README.md).
+
+---
+
+## 📚 Documentation
+
+Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil/](https://datumbox.github.io/VernamVeil/)
 
 ---
 
