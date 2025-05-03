@@ -66,6 +66,14 @@ def fx(i, seed, bound):
             if Path.cwd() != cwd:
                 os.chdir(cwd)
 
+    @contextmanager
+    def assertDoesNotRaise(self, exc_type):
+        """Context manager to assert that no exception is raised."""
+        try:
+            yield
+        except exc_type as e:
+            self.fail(f"Unexpected exception raised: {e}")
+
     def _encode(self, infile, outfile, fx_file=None, seed_file=None, extra_args=None):
         """Helper to run the encode CLI command with optional fx and seed files."""
         args = ["encode", "--infile", infile, "--outfile", outfile]
@@ -177,10 +185,11 @@ def fx(i, seed, bound):
                         encfile,
                         fx_file=fx_file,
                         seed_file=seed_file,
-                        extra_args=["--check-fx-sanity"],
+                        extra_args=["--check-fx-sanity", "--verbosity", "error"],
                     )
             self.assertNotEqual(cm.exception.code, 0)
-            self.assertIn("fx sanity check failed.", stderr.getvalue())
+            err = stderr.getvalue()
+            self.assertIn("Error: fx sanity check failed.", err)
 
     def test_encode_refuses_to_overwrite_existing_fx(self):
         """Test that encoding refuses to overwrite an existing fx.py file."""
@@ -192,9 +201,10 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with unittest.mock.patch("sys.stderr", stderr):
                 with self.assertRaises(SystemExit) as cm:
-                    self._encode(infile, outfile)
+                    self._encode(infile, outfile, extra_args=["--verbosity", "error"])
             self.assertNotEqual(cm.exception.code, 0)
-            self.assertIn("fx.py already exists. Refusing to overwrite.", stderr.getvalue())
+            err = stderr.getvalue()
+            self.assertIn("Error: fx.py already exists. Refusing to overwrite.", err)
             # Ensure fx.py was not modified (content unchanged)
             with (self.temp_dir_path / "fx.py").open("rb") as f:
                 self.assertEqual(f.read(), self.fx_code.encode())
@@ -209,9 +219,10 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with unittest.mock.patch("sys.stderr", stderr):
                 with self.assertRaises(SystemExit) as cm:
-                    self._encode(infile, outfile)
+                    self._encode(infile, outfile, extra_args=["--verbosity", "error"])
             self.assertNotEqual(cm.exception.code, 0)
-            self.assertIn("seed.bin already exists. Refusing to overwrite.", stderr.getvalue())
+            err = stderr.getvalue()
+            self.assertIn("Error: seed.bin already exists. Refusing to overwrite.", err)
             # Ensure seed.bin was not modified (content unchanged)
             with (self.temp_dir_path / "seed.bin").open("rb") as f:
                 self.assertEqual(f.read(), b"myseed")
@@ -224,9 +235,10 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with unittest.mock.patch("sys.stderr", stderr):
                 with self.assertRaises(SystemExit) as cm:
-                    self._encode(infile, outfile)
+                    self._encode(infile, outfile, extra_args=["--verbosity", "error"])
             self.assertNotEqual(cm.exception.code, 0)
-            self.assertIn("output.enc already exists. Refusing to overwrite.", stderr.getvalue())
+            err = stderr.getvalue()
+            self.assertIn("Error: output.enc already exists. Refusing to overwrite.", err)
             # Ensure output file was not modified
             with (self.temp_dir_path / "output.enc").open("rb") as f:
                 self.assertEqual(f.read(), b"original data")
@@ -243,12 +255,115 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with unittest.mock.patch("sys.stderr", stderr):
                 with self.assertRaises(SystemExit) as cm:
-                    self._decode(encfile, outfile, fx_file, seed_file)
+                    self._decode(
+                        encfile, outfile, fx_file, seed_file, extra_args=["--verbosity", "error"]
+                    )
             self.assertNotEqual(cm.exception.code, 0)
-            self.assertIn("output.txt already exists. Refusing to overwrite.", stderr.getvalue())
+            err = stderr.getvalue()
+            self.assertIn("Error: output.txt already exists. Refusing to overwrite.", err)
             # Ensure output file was not modified
             with (self.temp_dir_path / "output.txt").open("rb") as f:
                 self.assertEqual(f.read(), b"original plain")
+
+    def test_verbosity_warning(self):
+        """Test that warnings and errors are printed with --verbosity warning (default)."""
+        infile = self._create_input()
+        outfile = self.temp_dir_path / "output.enc"
+        # Pre-create fx.py to trigger warning/error
+        self._create_fx()
+        with self._in_tempdir():
+            # First, run a successful encode to trigger a warning (fx.py generated)
+            # Remove fx.py so encode will generate it and print a warning
+            os.remove("fx.py")
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertDoesNotRaise(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "warning"])
+            out = stderr.getvalue()
+            self.assertIn("Warning:", out)
+
+            # Now, run a failed encode to trigger an error (output.enc exists)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "warning"])
+            self.assertNotEqual(cm.exception.code, 0)
+            out = stderr.getvalue()
+            self.assertIn("Error: output.enc already exists. Refusing to overwrite.", out)
+
+    def test_verbosity_error(self):
+        """Test that only errors are printed with --verbosity error and that warnings appear with warning level."""
+        infile = self._create_input()
+        outfile = self.temp_dir_path / "output.enc"
+        fx_path = self.temp_dir_path / "fx.py"
+        seed_path = self.temp_dir_path / "seed.bin"
+        if fx_path.exists():
+            fx_path.unlink()
+        if seed_path.exists():
+            seed_path.unlink()
+        with self._in_tempdir():
+            # First, run with --verbosity warning and check warning is present
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertDoesNotRaise(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "warning"])
+            out = stderr.getvalue()
+            self.assertIn("Warning:", out)
+            # Now, run with --verbosity error and check warning is NOT present
+            os.remove("output.enc")
+            if fx_path.exists():
+                fx_path.unlink()
+            if seed_path.exists():
+                seed_path.unlink()
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertDoesNotRaise(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "error"])
+            out = stderr.getvalue()
+            self.assertNotIn("Warning:", out)
+            # Also check that error is printed if we try to overwrite
+            os.remove("output.enc")
+            if fx_path.exists():
+                fx_path.unlink()
+            if seed_path.exists():
+                seed_path.unlink()
+            # Create output.enc to trigger the error
+            self._write_file("output.enc", b"original data")
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "error"])
+            self.assertNotEqual(cm.exception.code, 0)
+            out = stderr.getvalue()
+            self.assertIn("Error: output.enc already exists. Refusing to overwrite.", out)
+
+    def test_verbosity_none(self):
+        """Test that nothing is printed with --verbosity none, for both warnings and errors."""
+        infile = self._create_input()
+        outfile = self.temp_dir_path / "output.enc"
+        fx_path = self.temp_dir_path / "fx.py"
+        seed_path = self.temp_dir_path / "seed.bin"
+        # Ensure clean state
+        if fx_path.exists():
+            fx_path.unlink()
+        if seed_path.exists():
+            seed_path.unlink()
+        with self._in_tempdir():
+            # Test warning (successful encode, should print warning if verbosity != none)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertDoesNotRaise(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "none"])
+            out = stderr.getvalue()
+            self.assertEqual(out, "")
+            # Test error (attempt to overwrite output.enc)
+            stderr = StringIO()
+            with unittest.mock.patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit) as cm:
+                    self._encode(infile, outfile, extra_args=["--verbosity", "none"])
+            self.assertNotEqual(cm.exception.code, 0)
+            out = stderr.getvalue()
+            self.assertEqual(out, "")
 
 
 if __name__ == "__main__":

@@ -52,6 +52,28 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         default=True,
         help="Enable authenticated encryption (default: True).",
     )
+    p.add_argument(
+        "--verbosity",
+        choices=["warning", "error", "none"],
+        default="warning",
+        help="Verbosity level: warning (default), error, none.",
+    )
+
+
+def _vprint(msg: str, level: str, verbosity: str) -> None:
+    """
+    Conditionally print a message to stderr based on the verbosity level.
+
+    Args:
+        msg (str): The message to print.
+        level (str): The message level, either "warning" or "error".
+        verbosity (str): The verbosity setting: "warning", "error", or "none".
+    """
+    levels: dict[str, int] = {"warning": 1, "error": 2, "none": 3}
+    msg_level = levels[level]
+    user_level = levels[verbosity]
+    if msg_level >= user_level:
+        print(msg, file=sys.stderr)
 
 
 def main(args: list[str] | None = None) -> None:
@@ -89,6 +111,7 @@ def main(args: list[str] | None = None) -> None:
     _add_common_args(dec)
 
     parsed_args = parser.parse_args(args)
+    verbosity = parsed_args.verbosity
 
     infile = parsed_args.infile
     outfile = parsed_args.outfile
@@ -97,7 +120,7 @@ def main(args: list[str] | None = None) -> None:
 
     # Check if output file exists
     if outfile.exists():
-        print(f"Error: {outfile} already exists. Refusing to overwrite.", file=sys.stderr)
+        _vprint(f"Error: {outfile.name} already exists. Refusing to overwrite.", "error", verbosity)
         sys.exit(1)
 
     # Handle fx function
@@ -106,14 +129,16 @@ def main(args: list[str] | None = None) -> None:
     elif parsed_args.command == "encode":
         fx_py = Path("fx.py")
         if fx_py.exists():
-            print("Error: fx.py already exists. Refusing to overwrite.", file=sys.stderr)
+            _vprint("Error: fx.py already exists. Refusing to overwrite.", "error", verbosity)
             sys.exit(1)
         fx_obj = generate_default_fx(parsed_args.fx_complexity, vectorise=parsed_args.vectorise)
         fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
-        print("Generated fx.py in current directory. Store securely.", file=sys.stderr)
+        _vprint(
+            "Warning: Generated fx.py in current directory. Store securely.", "warning", verbosity
+        )
         fx = fx_obj
     else:
-        print("fx-file is required for decode.", file=sys.stderr)
+        _vprint("Error: fx-file is required for decode.", "error", verbosity)
         sys.exit(1)
 
     # Handle seed
@@ -122,19 +147,23 @@ def main(args: list[str] | None = None) -> None:
     elif parsed_args.command == "encode":
         seed_bin = Path("seed.bin")
         if seed_bin.exists():
-            print("Error: seed.bin already exists. Refusing to overwrite.", file=sys.stderr)
+            _vprint("Error: seed.bin already exists. Refusing to overwrite.", "error", verbosity)
             sys.exit(1)
         seed = VernamVeil.get_initial_seed()
         seed_bin.write_bytes(seed)
-        print("Generated seed.bin in current directory. Store securely.", file=sys.stderr)
+        _vprint(
+            "Warning: Generated seed.bin in current directory. Store securely.",
+            "warning",
+            verbosity,
+        )
     else:
-        print("seed-file is required for decode.", file=sys.stderr)
+        _vprint("Error: seed-file is required for decode.", "error", verbosity)
         sys.exit(1)
 
     # Optionally check fx sanity
     if parsed_args.command == "encode" and parsed_args.check_fx_sanity:
         if not check_fx_sanity(fx, seed):
-            print("fx sanity check failed.", file=sys.stderr)
+            _vprint("Error: fx sanity check failed.", "error", verbosity)
             sys.exit(1)
 
     # Prepare VernamVeil keyword arguments
