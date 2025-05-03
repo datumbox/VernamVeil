@@ -18,6 +18,11 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Set benchmark sizes
+        id: benchvars
+        run: |
+          echo "SIZES=1 5 25" >> $GITHUB_ENV
+
       - name: Install system dependencies and build C modules
         run: |
           sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
@@ -30,20 +35,20 @@ jobs:
       - name: Create benchmark data
         run: |
           mkdir -p benchdata
-          head -c 1M </dev/urandom >benchdata/input_1mb.bin
-          head -c 5M </dev/urandom >benchdata/input_5mb.bin
-          head -c 50M </dev/urandom >benchdata/input_50mb.bin
+          for size in $SIZES; do
+            head -c ${size}M </dev/urandom >benchdata/input_${size}mb.bin
+          done
 
       - name: Run CLI benchmarks
         run: |
           set -e
           NUM_RUNS=10
-          for size in 1mb 5mb 50mb; do
-            echo "Benchmarking size: $size"
+          for size in $SIZES; do
+            echo "Benchmarking size: ${size}mb"
             total_enc=0
             total_dec=0
             for i in $(seq 1 $NUM_RUNS); do
-              cp benchdata/input_${size}.bin input.bin
+              cp benchdata/input_${size}mb.bin input.bin
               # Clean up files each time to avoid overwrite errors
               rm -f fx.py seed.bin output.enc output.dec
               start_enc=$(date +%s%N)
@@ -61,8 +66,8 @@ jobs:
             avg_enc=$(awk "BEGIN {printf \"%.3f\", $total_enc / $NUM_RUNS / 1000000000}")
             avg_dec=$(awk "BEGIN {printf \"%.3f\", $total_dec / $NUM_RUNS / 1000000000}")
             avg_total=$(awk "BEGIN {printf \"%.3f\", ($total_enc + $total_dec) / $NUM_RUNS / 1000000000}")
-            echo "Average encode time for $size: ${avg_enc} s"
-            echo "Average decode time for $size: ${avg_dec} s"
-            echo "Average total time for $size: ${avg_total} s"
+            echo "Average encode time for ${size}mb: ${avg_enc} s"
+            echo "Average decode time for ${size}mb: ${avg_dec} s"
+            echo "Average total time for ${size}mb: ${avg_total} s"
             echo "---------------------------------------------"
           done
