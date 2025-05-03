@@ -102,7 +102,7 @@ class VernamVeil:
         """
         Generates a hash-based message authentication code (HMAC) using the Blake2b algorithm.
         Often used for refreshing the seed or generating a unique hash for a message.
-        
+
         Args:
             key (bytes or bytearray or memoryview): The key to hash.
             msg (bytes or memoryview, optional): The data to hash with the key. If None, the key is hashed alone.
@@ -142,9 +142,7 @@ class VernamVeil:
         else:
             # Standard: generate hashes one by one
             hashes: list[int] = [  # type: ignore[no-redef]
-                int.from_bytes(
-                    self._hmac(seed, i.to_bytes(8, "big")), "big"
-                )
+                int.from_bytes(self._hmac(seed, i.to_bytes(8, "big")), "big")
                 for i in range(1, total_count)
             ]
 
