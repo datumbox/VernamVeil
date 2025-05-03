@@ -45,18 +45,17 @@ jobs:
           NUM_RUNS=10
           for size in $SIZES; do
             echo "Benchmarking size: ${size}mb"
+            cp benchdata/input_${size}mb.bin input.bin
             total_enc=0
             total_dec=0
             for i in $(seq 1 $NUM_RUNS); do
-              cp benchdata/input_${size}mb.bin input.bin
-              # Clean up files each time to avoid overwrite errors
               rm -f fx.py seed.bin output.enc output.dec
+
               start_enc=$(date +%s%N)
               python -m vernamveil.cli encode --infile input.bin --outfile output.enc --verbosity error
               end_enc=$(date +%s%N)
               enc_time=$((end_enc - start_enc))
               enc_time_s=$(awk "BEGIN {printf \"%.3f\", $enc_time / 1000000000}")
-              echo "  Run $i encode time: ${enc_time_s} s"
               total_enc=$((total_enc + enc_time))
 
               start_dec=$(date +%s%N)
@@ -64,8 +63,9 @@ jobs:
               end_dec=$(date +%s%N)
               dec_time=$((end_dec - start_dec))
               dec_time_s=$(awk "BEGIN {printf \"%.3f\", $dec_time / 1000000000}")
-              echo "  Run $i decode time: ${dec_time_s} s"
               total_dec=$((total_dec + dec_time))
+
+              echo "  Run $i: encode time: ${enc_time_s} s, decode time: ${dec_time_s} s"
             done
             avg_enc=$(awk "BEGIN {printf \"%.3f\", $total_enc / $NUM_RUNS / 1000000000}")
             avg_dec=$(awk "BEGIN {printf \"%.3f\", $total_dec / $NUM_RUNS / 1000000000}")
