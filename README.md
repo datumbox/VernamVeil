@@ -84,8 +84,9 @@ If you're curious about how encryption works, or just want to mess with maths an
 - **Modular Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes.
 - **Obfuscation Techniques**: The cypher injects decoy chunks into ciphertext, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries. Note that chunk delimiters are randomly generated, encrypted and not exposed.
 - **Avalanche Effect**: Through hash-based seed refreshing, small changes in input result in large changes in output, enhancing unpredictability.
+- **Synthetic-IV-Inspired Seed Evolution**: Enabled by default, the initial seed is evolved using an HMAC of the plaintext and the initial seed, ensuring keystream uniqueness and resistance to seed reuse. Inspired from [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297).
 - **Authenticated Encryption**: Supports message authentication using MAC-before-decryption to detect tampering and prevent padding oracle-style issues.
-- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
+- **Highly Configurable**: The implementation allows the user to adjust key parameters such as `chunk_size`, `delimiter_size`, `padding_range`, `decoy_ratio`, `siv_seed_evolution`, and `auth_encrypt`, offering flexibility to tailor the encryption to specific needs. These parameters must be aligned between encoding and decoding, otherwise the MAC check will fail.
 - **Vectorisation**: All operations are vectorised using `numpy` if `vectorise=True`. Pure Python mode can be used as a fallback when `numpy` is unavailable by setting `vectorise=False`, but it is slower.
 - **Optional C-backed Fast Hashing**: For even faster vectorised `fx` functions, an optional C module (`nphash`) is provided. When installed (with `cffi` and system dependencies), it enables high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This can be used directly in user-defined `fx` methods or is automatically leveraged by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for build and usage details.
 ---
@@ -285,7 +286,7 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx
 
 > ⚠️ **Warning: CLI Parameter Consistency**
 >
-> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-evolution`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
 >
 > For example, the following will **fail** with a `MAC tag mismatch` error because the `--chunk-size` parameter differs between encoding and decoding:
 >

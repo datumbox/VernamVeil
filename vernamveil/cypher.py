@@ -35,6 +35,9 @@ class VernamVeil:
     VernamVeil is a modular, symmetric cypher inspired by One-Time Pad principles, featuring customisable key stream
     generation, layered obfuscation, and authenticated encryption. Stateful seed evolution ensures avalanche effects,
     while chunk shuffling, padding, and decoy injection enhance message secrecy. Designed for educational use.
+
+    When SIV seed evolution is enabled, an encrypted synthetic IV (SIV) is prepended to the ciphertext to ensure
+    keystream uniqueness and allow correct seed reconstruction during decryption.
     """
 
     def __init__(
@@ -44,6 +47,7 @@ class VernamVeil:
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
         decoy_ratio: float = 0.1,
+        siv_seed_evolution: bool = True,
         auth_encrypt: bool = True,
         vectorise: bool = False,
     ):
@@ -60,6 +64,8 @@ class VernamVeil:
             padding_range (tuple[int, int], optional): Range for padding length before and after
                 chunks. Defaults to (5, 15).
             decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
+            siv_seed_evolution (bool, optional): Enables synthetic-IV seed evolution based on the message to resist
+                seed reuse. Defaults to True.
             auth_encrypt (bool, optional): Enables authenticated encryption with integrity check. Defaults to True.
             vectorise (bool, optional): Whether to use numpy for vectorised operations. If True, numpy must be
                 installed and `fx` must support numpy arrays. Defaults to False.
@@ -94,8 +100,18 @@ class VernamVeil:
         self._delimiter_size = delimiter_size
         self._padding_range = padding_range
         self._decoy_ratio = decoy_ratio
+        self._siv_seed_evolution = siv_seed_evolution
         self._auth_encrypt = auth_encrypt
         self._vectorise = vectorise
+
+    @property
+    def _hmac_length(self) -> int:
+        """
+        Returns the length of the HMAC digest used in the VernamVeil class.
+
+        This is a constant value representing the size of the hash output from the BLAKE2b algorithm.
+        """
+        return 64
 
     @staticmethod
     def _hmac(key: bytes | bytearray | memoryview, msg: bytes | memoryview | None = None) -> bytes:
@@ -371,6 +387,7 @@ class VernamVeil:
             # Refresh the seed differently for encoding and decoding
             seed = self._hmac(seed, seed_data)
 
+        # TODO: can we avoid the below conversion and return a memoryview?
         if self._vectorise:
             result: bytearray = bytearray(processed)
         else:
@@ -388,10 +405,26 @@ class VernamVeil:
 
         Returns:
             tuple[bytearray, bytes]: Encrypted message and final seed.
+
+        Note:
+            The encrypted synthetic IV (SIV) is prepended to the ciphertext when SIV seed evolution is enabled.
+            The SIV is not reused for MAC computation, ensuring separation between seed evolution and authentication.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(message, memoryview):
             message = memoryview(message)
+
+        # SIV seed evolution: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
+        # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
+        if self._siv_seed_evolution:
+            # Generate the SIV hash from the initial seed and the message
+            siv_hash = self._hmac(seed, message)
+            # Encrypt the synthetic IV and involve the seed with it
+            encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
+            # Put the encrypted SIV hash at the start of the output
+            output = encrypted_siv_hash
+        else:
+            output = bytearray()
 
         # Produce a unique seed for Authenticated Encryption
         # This ensures integrity by generating a MAC tag for the cyphertext
@@ -409,14 +442,15 @@ class VernamVeil:
 
         # Encrypt the noisy message
         cyphertext, last_seed = self._xor_with_key(noisy, seed, True)
+        output.extend(cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             encrypted_hash = self._hmac(cyphertext)
             tag, _ = self._xor_with_key(memoryview(encrypted_hash), auth_seed, True)
-            cyphertext.extend(tag)
+            output.extend(tag)
 
-        return cyphertext, last_seed
+        return output, last_seed
 
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """
@@ -428,16 +462,30 @@ class VernamVeil:
 
         Returns:
             tuple[bytearray, bytes]: Decrypted message and final seed.
+
+        Note:
+            If SIV seed evolution is enabled, the encrypted synthetic IV (SIV) is consumed from the start of the
+            ciphertext to reconstruct the evolved seed. The SIV is not reused for MAC verification, maintaining
+            separation between seed evolution and authentication.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(cyphertext, memoryview):
             cyphertext = memoryview(cyphertext)
 
+        HMAC_LENGTH = self._hmac_length
+
+        # SIV seed evolution: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
+        # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
+        if self._siv_seed_evolution:
+            # Split the data by taking the first HMAC_LENGTH bytes
+            encrypted_siv_hash, cyphertext = cyphertext[:HMAC_LENGTH], cyphertext[HMAC_LENGTH:]
+            # Decrypt the SIV hash (throw away) and involve the seed with it
+            _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)
+
         # Authenticated Encryption
         if self._auth_encrypt:
-            # Split the data
-            blake2b_len = 64
-            encrypted_data, expected_tag = cyphertext[:-blake2b_len], cyphertext[-blake2b_len:]
+            # Split the data by taking the last HMAC_LENGTH bytes
+            encrypted_data, expected_tag = cyphertext[:-HMAC_LENGTH], cyphertext[-HMAC_LENGTH:]
 
             # Produce a unique seed for Authenticated Encryption
             auth_seed = self._hmac(seed, b"MAC")
@@ -517,6 +565,7 @@ class VernamVeil:
             "delimiter_size": 8,
             "padding_range": (10, 20),
             "decoy_ratio": 0.05,
+            "siv_seed_evolution": True,
             "auth_encrypt": True,
         }
 
