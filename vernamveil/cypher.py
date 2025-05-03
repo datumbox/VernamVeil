@@ -406,7 +406,7 @@ class VernamVeil:
             tuple[bytearray, bytes]: Encrypted message and final seed.
 
         Note:
-            The encrypted synthetic IV (SIV) is prepended to the ciphertext when SIV seed evolution is enabled.
+            The encrypted Synthetic IV (SIV) is prepended to the ciphertext when SIV seed evolution is enabled.
             The SIV is not reused for MAC computation, ensuring separation between seed evolution and authentication.
         """
         # Convert to memoryview for efficient slicing
@@ -427,7 +427,7 @@ class VernamVeil:
 
         # Produce a unique seed for Authenticated Encryption
         # This ensures integrity by generating a MAC tag for the cyphertext
-        auth_seed = self._hmac(seed, b"MAC") if self._auth_encrypt else b""
+        auth_seed = self._hmac(seed, b"auth") if self._auth_encrypt else b""
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
@@ -463,7 +463,7 @@ class VernamVeil:
             tuple[bytearray, bytes]: Decrypted message and final seed.
 
         Note:
-            If SIV seed evolution is enabled, the encrypted synthetic IV (SIV) is consumed from the start of the
+            If SIV seed evolution is enabled, the encrypted Synthetic IV (SIV) is consumed from the start of the
             ciphertext to reconstruct the evolved seed. The SIV is not reused for MAC verification, maintaining
             separation between seed evolution and authentication.
         """
@@ -487,7 +487,7 @@ class VernamVeil:
             encrypted_data, expected_tag = cyphertext[:-HMAC_LENGTH], cyphertext[-HMAC_LENGTH:]
 
             # Produce a unique seed for Authenticated Encryption
-            auth_seed = self._hmac(seed, b"MAC")
+            auth_seed = self._hmac(seed, b"auth")
 
             # Estimate the tag and compare it with the expected
             encrypted_hash = self._hmac(encrypted_data)

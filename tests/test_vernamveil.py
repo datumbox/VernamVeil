@@ -32,11 +32,11 @@ class TestVernamVeil(unittest.TestCase):
         """Set up a reusable initial seed for all tests."""
         cls.initial_seed = VernamVeil.get_initial_seed()
 
-    def for_all_modes(self, fx_complexity, test_func):
+    def for_all_modes(self, fx_complexity, test_func, **cipher_kwargs):
         """Run the given test function for all supported cipher modes."""
         for mode, vectorise, use_c_backend in get_test_modes():
-            with self.subTest(mode=mode):
-                print(f"mode={mode}")
+            with self.subTest(mode=mode, **cipher_kwargs):
+                print(f"mode={mode}, {cipher_kwargs}")
                 context = (
                     patch("vernamveil.hash_utils._HAS_C_MODULE", use_c_backend)
                     if use_c_backend is not None
@@ -44,7 +44,7 @@ class TestVernamVeil(unittest.TestCase):
                 )
                 with context:
                     fx = generate_default_fx(fx_complexity, vectorise=vectorise)
-                    cipher = VernamVeil(fx, vectorise=vectorise)
+                    cipher = VernamVeil(fx, vectorise=vectorise, **cipher_kwargs)
                     test_func(cipher, vectorise)
 
     def test_single_message_encryption(self):
@@ -58,7 +58,11 @@ class TestVernamVeil(unittest.TestCase):
             decrypted, _ = cipher.decode(encrypted, self.initial_seed)
             self.assertEqual(message, decrypted.decode())
 
-        self.for_all_modes(10, test)
+        # Test with all combinations of siv_seed_evolution and auth_encrypt
+        self.for_all_modes(10, test, siv_seed_evolution=True, auth_encrypt=True)
+        self.for_all_modes(10, test, siv_seed_evolution=False, auth_encrypt=True)
+        self.for_all_modes(10, test, siv_seed_evolution=True, auth_encrypt=False)
+        self.for_all_modes(10, test, siv_seed_evolution=False, auth_encrypt=False)
 
     def test_variable_length_encryption(self):
         """Test encryption and decryption for messages of varying lengths."""
@@ -70,7 +74,11 @@ class TestVernamVeil(unittest.TestCase):
                 decrypted, _ = cipher.decode(encrypted, self.initial_seed)
                 self.assertEqual(msg, decrypted.decode(), f"Failed at length {i}")
 
-        self.for_all_modes(10, test)
+        # Test with all combinations of siv_seed_evolution and auth_encrypt
+        self.for_all_modes(10, test, siv_seed_evolution=True, auth_encrypt=True)
+        self.for_all_modes(10, test, siv_seed_evolution=False, auth_encrypt=True)
+        self.for_all_modes(10, test, siv_seed_evolution=True, auth_encrypt=False)
+        self.for_all_modes(10, test, siv_seed_evolution=False, auth_encrypt=False)
 
     def test_file_encryption(self):
         """Test file encryption and decryption, verifying file integrity via checksum."""
@@ -87,28 +95,30 @@ class TestVernamVeil(unittest.TestCase):
             input_tmp.write(random.randbytes(65536))
             input_tmp.flush()
 
-        def test(_, vectorise):
-            fx = generate_default_fx(20, vectorise=vectorise)
-            cipher_args = dict(vectorise=vectorise)
+        def test(cipher, _):
             VernamVeil.process_file(
                 input_file,
                 output_file,
-                fx,
+                cipher._fx,
                 self.initial_seed,
                 mode="encode",
                 buffer_size=1024,
                 chunk_size=128,
-                **cipher_args,
+                vectorise=cipher._vectorise,
+                siv_seed_evolution=cipher._siv_seed_evolution,
+                auth_encrypt=cipher._auth_encrypt,
             )
             VernamVeil.process_file(
                 output_file,
                 decoded_file,
-                fx,
+                cipher._fx,
                 self.initial_seed,
                 mode="decode",
                 buffer_size=1024,
                 chunk_size=128,
-                **cipher_args,
+                vectorise=cipher._vectorise,
+                siv_seed_evolution=cipher._siv_seed_evolution,
+                auth_encrypt=cipher._auth_encrypt,
             )
             with input_file.open("rb") as f1, decoded_file.open("rb") as f2:
                 checksum_original = hashlib.blake2b(f1.read()).hexdigest()
@@ -117,7 +127,11 @@ class TestVernamVeil(unittest.TestCase):
             output_file.unlink()
             decoded_file.unlink()
 
-        self.for_all_modes(20, test)
+        # Test with all combinations of siv_seed_evolution and auth_encrypt
+        self.for_all_modes(20, test, siv_seed_evolution=True, auth_encrypt=True)
+        self.for_all_modes(20, test, siv_seed_evolution=False, auth_encrypt=True)
+        self.for_all_modes(20, test, siv_seed_evolution=True, auth_encrypt=False)
+        self.for_all_modes(20, test, siv_seed_evolution=False, auth_encrypt=False)
 
 
 if __name__ == "__main__":
