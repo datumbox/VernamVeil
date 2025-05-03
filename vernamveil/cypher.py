@@ -258,7 +258,7 @@ class VernamVeil:
 
         # Use the randomness of the positions to shuffle the chunks
         chunk_ranges_iter = self._generate_chunk_ranges(message_len)
-        shuffled_chunk_ranges = [(0, 0) for _ in range(total_count)]
+        shuffled_chunk_ranges = [(-1, -1) for _ in range(total_count)]
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
@@ -266,7 +266,7 @@ class VernamVeil:
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
         for i in range(total_count):
-            if shuffled_chunk_ranges[i] is not None:
+            if shuffled_chunk_ranges[i] != (-1, -1):
                 start, end = shuffled_chunk_ranges[i]
                 chunk: memoryview = message[start:end]
             else:
