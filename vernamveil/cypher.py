@@ -98,21 +98,22 @@ class VernamVeil:
         self._vectorise = vectorise
 
     @staticmethod
-    def _refresh_seed(seed: bytes, data: bytes | memoryview | None = None) -> bytes:
+    def _hmac(key: bytes | bytearray | memoryview, msg: bytes | memoryview | None = None) -> bytes:
         """
-        Rehashes the current seed with optional data to produce a new seed.
-
+        Generates a hash-based message authentication code (HMAC) using the Blake2b algorithm.
+        Often used for refreshing the seed or generating a unique hash for a message.
+        
         Args:
-            seed (bytes): Original seed.
-            data (bytes or memoryview, optional): Additional data to influence seed update.
+            key (bytes or bytearray or memoryview): The key to hash.
+            msg (bytes or memoryview, optional): The data to hash with the key. If None, the key is hashed alone.
 
         Returns:
-            bytes: A new refreshed seed.
+            bytes: A hash digest of the key and message.
         """
-        if data is not None:
-            return hmac.new(seed, data, digestmod="blake2b").digest()
+        if msg is not None:
+            return hmac.new(key, msg, digestmod="blake2b").digest()
         else:
-            return hashlib.blake2b(seed).digest()
+            return hashlib.blake2b(key).digest()
 
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
@@ -142,7 +143,7 @@ class VernamVeil:
             # Standard: generate hashes one by one
             hashes: list[int] = [  # type: ignore[no-redef]
                 int.from_bytes(
-                    hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big"
+                    self._hmac(seed, i.to_bytes(8, "big")), "big"
                 )
                 for i in range(1, total_count)
             ]
@@ -205,7 +206,7 @@ class VernamVeil:
             tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
         delimiter = self._generate_bytes(self._delimiter_size, seed)
-        seed = self._refresh_seed(seed, b"delimiter")
+        seed = self._hmac(seed, b"delimiter")
         return delimiter, seed
 
     def _generate_chunk_ranges(self, message_len: int) -> Iterator[tuple[int, int]]:
@@ -370,7 +371,7 @@ class VernamVeil:
                 seed_data: memoryview = arr[start:end] if is_encode else memoryview(processed)[start:end]  # type: ignore[no-redef]
 
             # Refresh the seed differently for encoding and decoding
-            seed = self._refresh_seed(seed, seed_data)
+            seed = self._hmac(seed, seed_data)
 
         if self._vectorise:
             result: bytearray = bytearray(processed)
@@ -396,14 +397,14 @@ class VernamVeil:
 
         # Produce a unique seed for Authenticated Encryption
         # This ensures integrity by generating a MAC tag for the cyphertext
-        auth_seed = self._refresh_seed(seed, b"MAC") if self._auth_encrypt else b""
+        auth_seed = self._hmac(seed, b"MAC") if self._auth_encrypt else b""
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during shuffling and to match the order
         # of operations with decode.
-        shuffle_seed = self._refresh_seed(seed, b"shuffle")
+        shuffle_seed = self._hmac(seed, b"shuffle")
 
         # Add noise and shuffle the message
         noisy = self._obfuscate(message, shuffle_seed, delimiter)
@@ -413,8 +414,8 @@ class VernamVeil:
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            blake_hash = hashlib.blake2b(cyphertext).digest()
-            tag, _ = self._xor_with_key(memoryview(blake_hash), auth_seed, True)
+            encrypted_hash = self._hmac(cyphertext)
+            tag, _ = self._xor_with_key(memoryview(encrypted_hash), auth_seed, True)
             cyphertext.extend(tag)
 
         return cyphertext, last_seed
@@ -441,11 +442,11 @@ class VernamVeil:
             encrypted_data, expected_tag = cyphertext[:-blake2b_len], cyphertext[-blake2b_len:]
 
             # Produce a unique seed for Authenticated Encryption
-            auth_seed = self._refresh_seed(seed, b"MAC")
+            auth_seed = self._hmac(seed, b"MAC")
 
             # Estimate the tag and compare it with the expected
-            blake_hash = hashlib.blake2b(encrypted_data).digest()
-            tag, _ = self._xor_with_key(memoryview(blake_hash), auth_seed, True)
+            encrypted_hash = self._hmac(encrypted_data)
+            tag, _ = self._xor_with_key(memoryview(encrypted_hash), auth_seed, True)
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
@@ -456,7 +457,7 @@ class VernamVeil:
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during unshuffling and to match the order
         # of operations with encode.
-        shuffle_seed = self._refresh_seed(seed, b"shuffle")
+        shuffle_seed = self._hmac(seed, b"shuffle")
 
         # Decrypt the noisy message
         decrypted, last_seed = self._xor_with_key(encrypted_data, seed, False)
