@@ -139,7 +139,32 @@ VernamVeil.process_file("plain.txt", "encrypted.dat", fx, initial_seed, mode="en
 VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode="decode")
 ```
 
-### 🧠 A marginally stronger `fx`
+---
+
+## 🧪💻 How to Design a Custom `fx`
+
+> ⚠️ **Warning: Designing cryptographic functions is difficult and risky**
+>
+> Creating your own cryptographic methods is a major undertaking, and even small mistakes can introduce severe vulnerabilities. The greatest weakness of this cypher is that it allows users to supply their own `fx` functions: a non-expert can easily "shoot themselves in the foot" by designing a function that is predictable, biased, or otherwise insecure, potentially making the encryption trivial to break. This project is strictly educational and not intended for real-world security. The following section provides some basic principles for designing `fx` functions, but it is not a comprehensive guide to cryptographic engineering.
+
+When creating your own key stream function (`fx`), it is essential to follow best practices to ensure the unpredictability and security of your cypher. Poorly designed functions can introduce vulnerabilities, bias, or even make the encryption reversible by attackers. Use the following guidelines:
+
+- **Non-Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
+- **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
+- **Respect the Bound**: Always ensure that the output of `fx` is within the range `[0, bound)`, where `bound` is provided as an argument.
+- **Type Correctness**: The function must return an `int` (or a NumPy `uint64` array in vectorised mode).
+- **Determinism**: `fx` must be deterministic for the same inputs. Do not use external state or randomness inside your function.
+- **Avoid Data-Dependent Branching or Timing**: Do not introduce data-dependent branching or timing in your `fx`, as this can lead to side-channel attacks.
+- **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
+
+**Recommended approach:**  
+Apply a unique, high-entropy transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure method such as HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.
+
+**Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
+
+Below we provide some example `fx` methods to illustrate these principles in practice:
+
+### 🧠 A more robust, HMAC-based scalar `fx` (not cryptographically standard)
 
 ```python
 import hmac
