@@ -160,14 +160,16 @@ def main(args: list[str] | None = None) -> None:
         out_path = Path(outfile)
         if out_path.exists():
             _vprint(
-                f"Error: {out_path.resolve()} already exists. Refusing to overwrite.",
+                f"Error: {out_path.resolve()} already exists. Refusing to overwrite.\n"
+                "Hint: Use a different output file or remove the existing file.",
                 "error",
                 verbosity,
             )
             sys.exit(1)
     elif sys.stdout.isatty():
         _vprint(
-            "Warning: Writing binary data to a terminal may corrupt your session.",
+            "Warning: Writing binary data to a terminal may corrupt your session.\n"
+            "Hint: Redirect output to a file or use --outfile.",
             "warning",
             verbosity,
         )
@@ -179,7 +181,8 @@ def main(args: list[str] | None = None) -> None:
         fx_py = Path("fx.py")
         if fx_py.exists():
             _vprint(
-                f"Error: {fx_py.resolve()} already exists. Refusing to overwrite.",
+                f"Error: {fx_py.resolve()} already exists. Refusing to overwrite.\n"
+                "Hint: Move or rename the existing fx.py file to proceed.",
                 "error",
                 verbosity,
             )
@@ -187,13 +190,19 @@ def main(args: list[str] | None = None) -> None:
         fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
         fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
         _vprint(
-            f"Warning: Generated an fx-file in {fx_py.resolve()}. Store securely.",
+            f"Warning: Generated an fx-file in {fx_py.resolve()}.\n"
+            "Hint: Store securely, this file contains your key stream function.",
             "warning",
             verbosity,
         )
         fx = fx_obj
     else:
-        _vprint("Error: fx-file is required for decode.", "error", verbosity)
+        _vprint(
+            "Error: --fx-file must be specified when decoding.\n"
+            "Hint: Provide the fx-file used for encoding with --fx-file.",
+            "error",
+            verbosity,
+        )
         sys.exit(1)
 
     # Handle seed
@@ -203,7 +212,8 @@ def main(args: list[str] | None = None) -> None:
         seed_bin = Path("seed.bin")
         if seed_bin.exists():
             _vprint(
-                f"Error: {seed_bin.resolve()} already exists. Refusing to overwrite.",
+                f"Error: {seed_bin.resolve()} already exists. Refusing to overwrite.\n"
+                "Hint: Move or rename the existing seed.bin file to proceed.",
                 "error",
                 verbosity,
             )
@@ -211,22 +221,32 @@ def main(args: list[str] | None = None) -> None:
         seed = VernamVeil.get_initial_seed()
         seed_bin.write_bytes(seed)
         _vprint(
-            f"Warning: Generated a seed-file in {seed_bin.resolve()}. Store securely.",
+            f"Warning: Generated a seed-file in {seed_bin.resolve()}.\n"
+            "Hint: Store securely, this file contains your encryption seed.",
             "warning",
             verbosity,
         )
     else:
-        _vprint("Error: seed-file is required for decode.", "error", verbosity)
+        _vprint(
+            "Error: --seed-file must be specified when decoding.\n"
+            "Hint: Provide the seed file used for encoding with --seed-file.",
+            "error",
+            verbosity,
+        )
         sys.exit(1)
 
     # Optionally check fx and seed sanity
     if parsed_args.command == "encode" and parsed_args.check_sanity:
         if not check_fx_sanity(fx, seed):
-            _vprint("Error: fx sanity check failed.", "error", verbosity)
+            _vprint(
+                "Error: fx sanity check failed.\n" "Hint: Check your fx function for correctness.",
+                "error",
+                verbosity,
+            )
             sys.exit(1)
         if len(seed) < 16:
             _vprint(
-                "Error: Seed is too short. It must be at least 16 bytes for security.",
+                "Error: Seed is too short.\n" "Hint: It must be at least 16 bytes for security.",
                 "error",
                 verbosity,
             )

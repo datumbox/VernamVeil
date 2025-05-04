@@ -300,8 +300,50 @@ def fx(i, seed, bound):
             self.assertIsInstance(out_bytes, bytes)
             self.assertGreater(len(out_bytes), 0)
 
-    def test_decode_requires_fx_and_seed_file_to_file(self):
-        """Test decoding requires fx and seed, file-to-file mode."""
+    def test_decode_requires_fx_file(self):
+        """Test that decoding without --fx-file produces the correct error message."""
+        with self._in_tempdir():
+            # Create a dummy input file and a dummy seed file
+            encfile = self._write_file("input.enc", b"dummydata")
+            seed_file = self._create_seed()
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                args = [
+                    "decode",
+                    "--infile",
+                    str(encfile),
+                    "--outfile",
+                    str(self.outfile),
+                    "--seed-file",
+                    str(seed_file),
+                    "--no-vectorise",
+                ]
+                main(args)
+            self.assertIn("Error: --fx-file must be specified when decoding.", stderr.getvalue())
+
+    def test_decode_requires_seed_file(self):
+        """Test that decoding without --seed-file produces the correct error message."""
+        with self._in_tempdir():
+            # Create a dummy input file and a dummy fx file
+            encfile = self._write_file("input.enc", b"dummydata")
+            fx_file = self._create_fx()
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                args = [
+                    "decode",
+                    "--infile",
+                    str(encfile),
+                    "--outfile",
+                    str(self.outfile),
+                    "--fx-file",
+                    str(fx_file),
+                    "--no-vectorise",
+                ]
+                main(args)
+            self.assertIn("Error: --seed-file must be specified when decoding.", stderr.getvalue())
+
+    def test_decode_file_to_file(self):
+        """Test decoding, file-to-file mode."""
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
@@ -309,8 +351,8 @@ def fx(i, seed, bound):
             self._decode(self.encfile, self.outfile, fx_file, seed_file)
             self.assertTrue(self.outfile.exists())
 
-    def test_decode_requires_fx_and_seed_file_to_stdout(self):
-        """Test decoding requires fx and seed, file-to-stdout mode."""
+    def test_decode_file_to_stdout(self):
+        """Test decoding, file-to-stdout mode."""
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
@@ -319,8 +361,8 @@ def fx(i, seed, bound):
             self.assertIsInstance(out_bytes, bytes)
             self.assertGreater(len(out_bytes), 0)
 
-    def test_decode_requires_fx_and_seed_stdin_to_file(self):
-        """Test decoding requires fx and seed, stdin-to-file mode."""
+    def test_decode_stdin_to_file(self):
+        """Test decoding, stdin-to-file mode."""
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
@@ -329,8 +371,8 @@ def fx(i, seed, bound):
             self._decode("-", self.outfile, fx_file, seed_file, stdin_data=enc_bytes)
             self.assertTrue(self.outfile.exists())
 
-    def test_decode_requires_fx_and_seed_stdin_to_stdout(self):
-        """Test decoding requires fx and seed, stdin-to-stdout mode."""
+    def test_decode_stdin_to_stdout(self):
+        """Test decoding, stdin-to-stdout mode."""
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
@@ -371,11 +413,12 @@ def fx(i, seed, bound):
                 extra_args=["--check-sanity"],
             )
         self.assertIn(
-            "Error: Seed is too short. It must be at least 16 bytes for security.",
+            "Error: Seed is too short.",
             stderr.getvalue(),
         )
 
     def _assert_encode_refuses_to_overwrite(self, file_path):
+        """Assert that encoding refuses to overwrite an existing file and preserves its content."""
         expected_error = f"Error: {file_path.resolve()} already exists. Refusing to overwrite."
         with file_path.open("rb") as f:
             expected_content = f.read()
@@ -427,11 +470,11 @@ def fx(i, seed, bound):
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "warning"])
             self.assertIn(
-                f"Warning: Generated an fx-file in {(self.temp_dir_path / 'fx.py').resolve()}. Store securely.",
+                f"Warning: Generated an fx-file in {(self.temp_dir_path / 'fx.py').resolve()}.",
                 stderr.getvalue(),
             )
             self.assertIn(
-                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}. Store securely.",
+                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
                 stderr.getvalue(),
             )
 

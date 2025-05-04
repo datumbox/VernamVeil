@@ -69,7 +69,7 @@ class VernamVeil:
 
         Raises:
             ValueError: If `delimiter_size` is less than 4.
-            ValueError: If `padding_range` is not a tuple of two integers.
+            TypeError: If `padding_range` is not a tuple of two integers.
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `vectorise` is True but numpy is not installed.
         """
@@ -81,7 +81,7 @@ class VernamVeil:
             and len(padding_range) == 2
             and all(isinstance(x, int) for x in padding_range)
         ):
-            raise ValueError("padding_range must be a tuple of two integers.")
+            raise TypeError("padding_range must be a tuple of two integers.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and not _HAS_NUMPY:
@@ -546,8 +546,11 @@ class VernamVeil:
             bytes: A random byte string of the specified length.
 
         Raises:
+            TypeError: If `num_bytes` is not an integer.
             ValueError: If `num_bytes` is not a positive integer.
         """
+        if not isinstance(num_bytes, int):
+            raise TypeError("num_bytes must be an integer.")
         if num_bytes <= 0:
             raise ValueError("num_bytes must be a positive integer.")
 

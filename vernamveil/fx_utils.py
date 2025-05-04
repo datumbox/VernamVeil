@@ -50,7 +50,7 @@ def generate_hmac_fx(
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
-    if not isinstance(hash_name, str) or hash_name not in ("blake2b", "sha256"):
+    if hash_name not in ("blake2b", "sha256"):
         raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
 
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
@@ -130,7 +130,7 @@ def generate_polynomial_fx(
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
         TypeError: If `degree` is not an integer.
-        ValueError: If `degree` is negative.
+        ValueError: If `degree` is not positive.
         TypeError: If `max_weight` is not an integer.
         ValueError: If `max_weight` is not positive.
     """
