@@ -152,7 +152,7 @@ VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode
 
 When creating your own key stream function (`fx`), it is essential to follow best practices to ensure the unpredictability and security of your cypher. Poorly designed functions can introduce vulnerabilities, bias, or even make the encryption reversible by attackers. Use the following guidelines:
 
-- **Non-Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
+- **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
 - **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
 - **Respect the Bound**: Always ensure that the output of `fx` is within the range `[0, bound)`, where `bound` is provided as an argument.
 - **Type Correctness**: The function must return an `int` (or a NumPy `uint64` array in vectorised mode).
@@ -313,7 +313,7 @@ vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py
 vernamveil encode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < plain.txt > encrypted.dat
 vernamveil decode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < encrypted.dat > decrypted.txt
 
-# Enable sanity check for fx and seed during encoding
+# Enable sanity check for fx and seed during encryption
 vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.bin --check-sanity
 ```
 
@@ -321,7 +321,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 >
 > When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
 >
-> For example, the following will **fail** with a `MAC tag mismatch` error because the `--chunk-size` parameter differs between encoding and decoding:
+> For example, the following will **fail** with a `Authentication failed: MAC tag mismatch.` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
 > ```commandline
 > vernamveil encode --infile plain.txt --outfile encrypted.dat --chunk-size 2048
@@ -332,14 +332,14 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 
 ### 🗄️ File Handling
 
-- For both `--infile` and `--outfile`, passing `-` or omitting the argument means stdin/stdout will be used. This allows for piping and streaming data directly.
+- For both `--infile` and `--outfile`, passing `-` or omitting the argument means `stdin`/`stdout` will be used. This allows for piping and streaming data directly.
 - When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current working directory. The absolute paths to these files are displayed after generation. **Store these files securely**; they are required for decryption.
 - When decoding, you **must** provide both `--fx-file` and `--seed-file` pointing to the originals used for encryption.
-- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does **not** apply when outputting to stdout.
+- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does **not** apply when outputting to `stdout`.
 
 > ⚠️ **Warning: Binary Output to Terminals**
 >
-> If you use `-` or omit `--outfile`, output will be written to stdout in binary mode. Writing binary data directly to a terminal may corrupt your session. Only redirect binary output to files or pipes, not to an interactive terminal.
+> If you use `-` or omit `--outfile`, output will be written to `stdout` in binary mode. Writing binary data directly to a terminal may corrupt your session. Only redirect binary output to files or pipes, not to an interactive terminal.
 
 See `vernamveil encode --help` and `vernamveil decode --help` for all available options.
 
@@ -347,7 +347,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 ## 🛠️ Technical Details
 
-- **Compact Implementation**: The cypher implementation is about 300 lines of code, excluding comments and documentation.
+- **Compact Implementation**: The cypher implementation is about 400 lines of code, excluding comments and documentation.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
 - **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
