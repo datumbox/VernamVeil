@@ -441,8 +441,7 @@ class VernamVeil:
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            encrypted_hash = self._hmac(cyphertext)
-            tag, _ = self._xor_with_key(memoryview(encrypted_hash), auth_seed, True)
+            tag = self._hmac(auth_seed, cyphertext)
             output.extend(tag)
 
         return output, last_seed
@@ -481,8 +480,7 @@ class VernamVeil:
             auth_seed = self._hmac(seed, b"auth")
 
             # Estimate the tag and compare it with the expected
-            encrypted_hash = self._hmac(encrypted_data)
-            tag, _ = self._xor_with_key(memoryview(encrypted_hash), auth_seed, True)
+            tag = self._hmac(auth_seed, encrypted_data)
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
