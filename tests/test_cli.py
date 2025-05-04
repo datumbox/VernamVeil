@@ -251,6 +251,30 @@ def fx(i, seed, bound):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "none"])
             self.assertEqual(stderr.getvalue(), "")
 
+    def test_decode_fails_with_mismatched_parameters(self):
+        """Test that decoding fails with mismatched encoding parameters."""
+        fx_file = self._create_fx()
+        seed_file = self._create_seed()
+        with self._in_tempdir():
+            # Encode with a specific chunk size
+            self._encode(
+                self.infile,
+                self.encfile,
+                fx_file=fx_file,
+                seed_file=seed_file,
+                extra_args=["--chunk-size", "2048"],
+            )
+            # Attempt to decode with a different chunk size
+            with self.assertRaises(ValueError) as context:
+                self._decode(
+                    self.encfile,
+                    self.outfile,
+                    fx_file=fx_file,
+                    seed_file=seed_file,
+                    extra_args=["--chunk-size", "1024"],
+                )
+            self.assertEqual(str(context.exception), "Authentication failed: MAC tag mismatch.")
+
 
 if __name__ == "__main__":
     unittest.main()

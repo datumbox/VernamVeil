@@ -78,7 +78,7 @@ This approach enables novel forms of key generation, especially for those who en
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
 - **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behaviour of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Use Secure Seeds & Avoid Reuse**: Generate initial seeds using the provided `VernamVeil.get_initial_seed()` method which is cryptographically safe. Treat each `initial_seed` as a one-time-use context and use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
-- **Message Ordering & Replay**: If transmitting encrypted chunks over time, ensure that any external metadata (e.g., message order, timestamps) is securely handled. While the evolving seed prevents keystream reuse, maintaining proper ordering and anti-replay mechanisms might still be necessary in some cases.
+- **Message Ordering & Replay**: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct `initial_seed`. The Synthetic IV mechanism provides additional resilience against accidental seed reuse for the first message. However, the cypher itself does not enforce message ordering or replay protection; these must be handled by the application. For most use cases, careful state management and unique seeds are sufficient, but applications with strict anti-replay or ordering requirements should implement explicit mechanisms at a higher layer.
 
 ---
 
