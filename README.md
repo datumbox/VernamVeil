@@ -311,7 +311,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 ## 🛠️ Technical Details
 
-- **Compact Implementation**: The cypher implementation is less than 300 lines of code, excluding comments and documentation.
+- **Compact Implementation**: The cypher implementation is about 300 lines of code, excluding comments and documentation.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
 - **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
