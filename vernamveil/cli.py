@@ -8,6 +8,7 @@ It supports custom key stream functions, seed management, and various encryption
 import argparse
 import sys
 from pathlib import Path
+from typing import IO, cast
 
 from .cypher import VernamVeil
 from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
@@ -20,8 +21,18 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     Args:
         p (argparse.ArgumentParser): The argument parser to which the arguments will be added.
     """
-    p.add_argument("--infile", type=Path, required=True, help="Input file path (required).")
-    p.add_argument("--outfile", type=Path, required=True, help="Output file path (required).")
+    p.add_argument(
+        "--infile",
+        type=str,
+        default="-",
+        help="Input file path (default: -, meaning stdin). Use - or omit for stdin. Always binary mode.",
+    )
+    p.add_argument(
+        "--outfile",
+        type=str,
+        default="-",
+        help="Output file path (default: -, meaning stdout). Use - or omit for stdout. Always binary mode.",
+    )
     p.add_argument("--fx-file", type=Path, help="Path to Python file containing the fx function.")
     p.add_argument("--seed-file", type=Path, help="Path to file containing the seed (bytes).")
     p.add_argument(
@@ -89,6 +100,25 @@ def _vprint(msg: str, level: str, verbosity: str) -> None:
         print(msg, file=sys.stderr)
 
 
+def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> IO[bytes]:
+    """
+    Opens a file in the specified binary mode or returns the provided standard stream if file is '-' or None.
+
+    Args:
+        file (str | None): Path to the file or '-' for the standard stream.
+        mode (str): File open mode, e.g., 'rb' or 'wb'.
+        std_stream (object): Standard stream to use if file is '-' or None.
+
+    Returns:
+        IO[bytes]: A file-like object opened for binary reading or writing.
+    """
+    if file == "-" or file is None:
+        # Return the binary buffer of a stream if available, else the stream itself.
+        return getattr(std_stream, "buffer", cast(IO[bytes], std_stream))
+    else:
+        return open(file, mode)
+
+
 def main(args: list[str] | None = None) -> None:
     """
     Entry point for the VernamVeil CLI utility.
@@ -126,13 +156,21 @@ def main(args: list[str] | None = None) -> None:
     seed_file = parsed_args.seed_file
 
     # Check if output file exists
-    if outfile.exists():
+    if outfile not in (None, "-"):
+        out_path = Path(outfile)
+        if out_path.exists():
+            _vprint(
+                f"Error: {out_path.resolve()} already exists. Refusing to overwrite.",
+                "error",
+                verbosity,
+            )
+            sys.exit(1)
+    elif sys.stdout.isatty():
         _vprint(
-            f"Error: {outfile.resolve()} already exists. Refusing to overwrite.",
-            "error",
+            "Warning: Writing binary data to a terminal may corrupt your session.",
+            "warning",
             verbosity,
         )
-        sys.exit(1)
 
     # Handle fx function
     if fx_file:
@@ -205,15 +243,23 @@ def main(args: list[str] | None = None) -> None:
         "vectorise": parsed_args.vectorise,
     }
 
-    # Only file-to-file mode is supported
-    VernamVeil.process_file(
-        infile,
-        outfile,
-        fx,
-        seed,
-        mode=parsed_args.command,
-        **vernamveil_kwargs,
-    )
+    # Open input/output (binary mode, handle stdin/stdout)
+    try:
+        with (
+            _open_file(infile, "rb", sys.stdin) as fin,
+            _open_file(outfile, "wb", sys.stdout) as fout,
+        ):
+            VernamVeil.process_file(
+                fin,
+                fout,
+                fx,
+                seed,
+                mode=parsed_args.command,
+                **vernamveil_kwargs,
+            )
+    except (BrokenPipeError, OSError) as e:
+        _vprint(f"Error: I/O error during read/write: {e}", "error", verbosity)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

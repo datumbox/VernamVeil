@@ -288,7 +288,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 
 ### ⚙️ Features
 
-- **Encrypt and decrypt files** using a user-defined or auto-generated `fx` function and seed.
+- **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed.
 - **Auto-generate `fx.py` and `seed.bin`** during encoding if not provided; these files are saved in the current working directory.
 - **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.bin` for both encoding and decoding.
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more.
@@ -299,6 +299,10 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 ```commandline
 # Encrypt a file with auto-generated fx and seed
 vernamveil encode --infile plain.txt --outfile encrypted.dat
+
+# Encrypt and Decrypt from stdin to stdout (using - or omitting the argument)
+vernamveil encode --infile - --outfile - --fx-file my_fx.py --seed-file my_seed.bin < plain.txt > encrypted.dat
+vernamveil decode --infile - --outfile - --fx-file my_fx.py --seed-file my_seed.bin < encrypted.dat > decrypted.txt
 
 # Encrypt a file with a custom fx function and seed
 vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin
@@ -325,9 +329,14 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py 
 
 ### 🗄️ File Handling
 
-- When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current directory. **Store these files securely**; they are required for decryption.
+- For both `--infile` and `--outfile`, passing `-` or omitting the argument means stdin/stdout will be used. This allows for piping and streaming data directly.
+- When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current working directory. The absolute paths to these files are displayed after generation. **Store these files securely**; they are required for decryption.
 - When decoding, you **must** provide both `--fx-file` and `--seed-file` pointing to the originals used for encryption.
-- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command.
+- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does **not** apply when outputting to stdout.
+
+> ⚠️ **Warning: Binary Output to Terminals**
+>
+> If you use `-` or omit `--outfile`, output will be written to stdout in binary mode. Writing binary data directly to a terminal may corrupt your session. Only redirect binary output to files or pipes, not to an interactive terminal.
 
 See `vernamveil encode --help` and `vernamveil decode --help` for all available options.
 
