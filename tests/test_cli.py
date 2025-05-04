@@ -180,7 +180,7 @@ def fx(i, seed, bound):
         )
 
     def _assert_encode_refuses_to_overwrite(self, file_path):
-        expected_error = f"Error: {file_path.name} already exists. Refusing to overwrite."
+        expected_error = f"Error: {file_path.resolve()} already exists. Refusing to overwrite."
         with file_path.open("rb") as f:
             expected_content = f.read()
         with self._in_tempdir():
@@ -216,7 +216,8 @@ def fx(i, seed, bound):
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
                 self._decode(self.encfile, self.outfile, fx_file, seed_file)
             self.assertIn(
-                "Error: output.txt already exists. Refusing to overwrite.", stderr.getvalue()
+                f"Error: {(self.temp_dir_path / 'output.txt').resolve()} already exists. Refusing to overwrite.",
+                stderr.getvalue(),
             )
             # Ensure output file was not modified
             with (self.temp_dir_path / "output.txt").open("rb") as f:
@@ -229,13 +230,23 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "warning"])
-            self.assertIn("Warning:", stderr.getvalue())
+            self.assertIn(
+                f"Warning: Generated an fx file in {(self.temp_dir_path / 'fx.py').resolve()}. Store securely.",
+                stderr.getvalue(),
+            )
+            self.assertIn(
+                f"Warning: Generated a seed file in {(self.temp_dir_path / 'seed.bin').resolve()}. Store securely.",
+                stderr.getvalue(),
+            )
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "warning"])
-            self.assertIn("Error:", stderr.getvalue())
+            self.assertIn(
+                f"Error: {(self.temp_dir_path / 'output.enc').resolve()} already exists. Refusing to overwrite.",
+                stderr.getvalue(),
+            )
 
     def test_verbosity_error(self):
         """Test that only errors are printed with --verbosity error and that warnings are not."""
@@ -250,7 +261,10 @@ def fx(i, seed, bound):
             stderr = StringIO()
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "error"])
-            self.assertIn("Error:", stderr.getvalue())
+            self.assertIn(
+                f"Error: {(self.temp_dir_path / 'output.enc').resolve()} already exists. Refusing to overwrite.",
+                stderr.getvalue(),
+            )
             self.assertNotIn("Warning:", stderr.getvalue())
 
     def test_verbosity_none(self):

@@ -127,7 +127,11 @@ def main(args: list[str] | None = None) -> None:
 
     # Check if output file exists
     if outfile.exists():
-        _vprint(f"Error: {outfile.name} already exists. Refusing to overwrite.", "error", verbosity)
+        _vprint(
+            f"Error: {outfile.resolve()} already exists. Refusing to overwrite.",
+            "error",
+            verbosity,
+        )
         sys.exit(1)
 
     # Handle fx function
@@ -136,12 +140,18 @@ def main(args: list[str] | None = None) -> None:
     elif parsed_args.command == "encode":
         fx_py = Path("fx.py")
         if fx_py.exists():
-            _vprint("Error: fx.py already exists. Refusing to overwrite.", "error", verbosity)
+            _vprint(
+                f"Error: {fx_py.resolve()} already exists. Refusing to overwrite.",
+                "error",
+                verbosity,
+            )
             sys.exit(1)
         fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
         fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
         _vprint(
-            "Warning: Generated fx.py in current directory. Store securely.", "warning", verbosity
+            f"Warning: Generated an fx file in {fx_py.resolve()}. Store securely.",
+            "warning",
+            verbosity,
         )
         fx = fx_obj
     else:
@@ -154,12 +164,16 @@ def main(args: list[str] | None = None) -> None:
     elif parsed_args.command == "encode":
         seed_bin = Path("seed.bin")
         if seed_bin.exists():
-            _vprint("Error: seed.bin already exists. Refusing to overwrite.", "error", verbosity)
+            _vprint(
+                f"Error: {seed_bin.resolve()} already exists. Refusing to overwrite.",
+                "error",
+                verbosity,
+            )
             sys.exit(1)
         seed = VernamVeil.get_initial_seed()
         seed_bin.write_bytes(seed)
         _vprint(
-            "Warning: Generated seed.bin in current directory. Store securely.",
+            f"Warning: Generated a seed file in {seed_bin.resolve()}. Store securely.",
             "warning",
             verbosity,
         )
