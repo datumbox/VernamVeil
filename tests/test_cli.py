@@ -36,6 +36,13 @@ class _FakeStdin:
         self.buffer = buffer
 
 
+class _BrokenPipeBytesIO(BytesIO):
+    """BytesIO that raises BrokenPipeError on write to simulate a broken pipe."""
+
+    def write(self, b):
+        raise BrokenPipeError("Simulated broken pipe")
+
+
 class TestVernamVeilCLI(unittest.TestCase):
     """Unit tests for the VernamVeil CLI covering all supported scenarios."""
 
@@ -513,6 +520,17 @@ def fx(i, seed, bound):
                 stderr.getvalue(),
             )
             self.assertGreater(len(fake_buffer.getvalue()), 0)
+
+    def test_broken_pipe_error_handling(self):
+        """Test that BrokenPipeError during output is handled gracefully."""
+        with self._in_tempdir():
+            # Patch sys.stdout to simulate a broken pipe on write
+            fake_stdout = _FakeStdout(_BrokenPipeBytesIO(), isatty=False)
+            stderr = StringIO()
+            with patch("sys.stdout", fake_stdout), patch("sys.stderr", stderr):
+                with self.assertRaises(SystemExit):
+                    self._encode(self.infile, "-")
+            self.assertIn("Error: I/O error during read/write:", stderr.getvalue())
 
 
 if __name__ == "__main__":
