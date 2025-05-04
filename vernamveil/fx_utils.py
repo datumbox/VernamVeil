@@ -274,14 +274,14 @@ def check_fx_sanity(
 
     # Try to detect if fx supports numpy arrays
     try:
-        test_input = np.arange(num_samples, dtype=np.uint64)
+        test_input = np.arange(1, num_samples + 1, dtype=np.uint64)
         test_output = fx(test_input, seed, bound)
         is_vectorised = isinstance(test_output, np.ndarray)
     except Exception:
         is_vectorised = False
 
     if is_vectorised:
-        arr = np.arange(num_samples, dtype=np.uint64)
+        arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed, bound)
         if isinstance(outputs, np.ndarray):
             if outputs.dtype != np.uint64:
@@ -293,7 +293,7 @@ def check_fx_sanity(
             passed = False
             outputs_list = list(outputs)  # type: ignore[arg-type]
     else:
-        outputs_list = [fx(i, seed, bound) for i in range(num_samples)]
+        outputs_list = [fx(i, seed, bound) for i in range(1, num_samples + 1)]
 
     # 1. Non-constant output for varying i
     if len(set(outputs_list)) < num_samples // 10:
@@ -303,14 +303,14 @@ def check_fx_sanity(
     # 2. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if is_vectorised:
-        arr = np.arange(num_samples, dtype=np.uint64)
+        arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed, bound)
         if isinstance(outputs_alt, np.ndarray):
             outputs_alt_list = outputs_alt.tolist()
         else:
             outputs_alt_list = list(outputs_alt)  # type: ignore[arg-type]
     else:
-        outputs_alt_list = [fx(i, alt_seed, bound) for i in range(num_samples)]
+        outputs_alt_list = [fx(i, alt_seed, bound) for i in range(1, num_samples + 1)]
     if outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
