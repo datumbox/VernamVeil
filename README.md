@@ -356,7 +356,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 To install the library with all optional dependencies (development tools, NumPy for vectorisation, and cffi for the C module):
 ```
-    pip install .[dev,numpy,cffi]
+pip install .[dev,numpy,cffi]
 ```
 
 - The `[dev]` extra installs development and testing dependencies.

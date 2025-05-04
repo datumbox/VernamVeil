@@ -60,6 +60,8 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
    This will compile the C code and generate libraries named `_npblake2bffi.*.so` and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
+   Following successful compilation, the C extension reinstall the `vernamveil` package to ensure the new C extension is used.
+
 ## Usage
 
 After building, you can import and use the extension from Python code:
