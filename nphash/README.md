@@ -60,7 +60,13 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
    This will compile the C code and generate libraries named `_npblake2bffi.*.so` and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
-   Following successful compilation, the C extension reinstall the `vernamveil` package to ensure the new C extension is used.
+4. **Re-install the library**
+
+   Following successful compilation, the C extension reinstall the `vernamveil` package to ensure the new C extension is used. Execute the following from the root of the project:
+
+   ```
+   pip install .
+   ```
 
 ## Usage
 

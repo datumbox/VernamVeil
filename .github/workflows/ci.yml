@@ -26,6 +26,8 @@ jobs:
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
@@ -33,6 +35,8 @@ jobs:
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
@@ -40,6 +44,8 @@ jobs:
               cd nphash
               python build.py
               dir _npblake2bffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
     name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
     runs-on: ${{ matrix.os }}
     steps:
