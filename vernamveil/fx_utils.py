@@ -120,7 +120,7 @@ def generate_polynomial_fx(
 
     Args:
         degree (int): Degree of the polynomial. Defaults to 10.
-        max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to 10 ** 5.
+        max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to `10 ** 5`.
         vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
