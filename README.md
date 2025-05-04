@@ -306,9 +306,8 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py 
 # Decrypt a file (requires the same fx and seed used for encryption)
 vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin
 
-# Enable fx sanity check during encoding or decoding
-vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin --check-fx-sanity
-vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin --check-fx-sanity
+# Enable sanity check for fx and seed during encoding
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin --check-sanity
 ```
 
 > ⚠️ **Warning: CLI Parameter Consistency**

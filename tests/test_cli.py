@@ -144,23 +144,40 @@ def fx(i, seed, bound):
             self._decode(self.encfile, self.outfile, fx_file, seed_file)
         self.assertTrue(self.outfile.exists())
 
-    def test_encode_with_check_fx_sanity(self):
-        """Test encoding with fx sanity check enabled."""
+    def test_encode_with_check_sanity(self):
+        """Test encoding with sanity check for fx and seed enabled."""
         with self._in_tempdir():
-            self._encode(self.infile, self.encfile, extra_args=["--check-fx-sanity"])
+            self._encode(self.infile, self.encfile, extra_args=["--check-sanity"])
         self.assertTrue(self.encfile.exists())
 
-    def test_encode_with_check_fx_sanity_fails(self):
-        """Test that fx sanity check fails if fx does not depend on seed."""
+    def test_encode_with_check_sanity_fails_fx(self):
+        """Test that sanity check fails if fx does not depend on seed."""
         stderr = StringIO()
         with self._in_tempdir(), patch("sys.stderr", stderr), self.assertRaises(SystemExit):
             self._encode(
                 self.infile,
                 self.encfile,
                 fx_file=self._create_fx(),
-                extra_args=["--check-fx-sanity"],
+                extra_args=["--check-sanity"],
             )
         self.assertIn("Error: fx sanity check failed.", stderr.getvalue())
+
+    def test_encode_with_check_sanity_fails_seed(self):
+        """Test that sanity check fails if the seed is too short."""
+        short_seed = b"short"
+        seed_file = self._create_seed(content=short_seed)
+        stderr = StringIO()
+        with self._in_tempdir(), patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+            self._encode(
+                self.infile,
+                self.encfile,
+                seed_file=seed_file,
+                extra_args=["--check-sanity"],
+            )
+        self.assertIn(
+            "Error: Seed is too short. It must be at least 16 bytes for security.",
+            stderr.getvalue(),
+        )
 
     def _assert_encode_refuses_to_overwrite(self, file_path):
         expected_error = f"Error: {file_path.name} already exists. Refusing to overwrite."

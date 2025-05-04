@@ -108,9 +108,9 @@ def main(args: list[str] | None = None) -> None:
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
     _add_common_args(enc)
     enc.add_argument(
-        "--check-fx-sanity",
+        "--check-sanity",
         action="store_true",
-        help="Check the loaded/generated fx with check_fx_sanity.",
+        help="Check the loaded/generated fx and seed for appropriateness.",
     )
 
     # Decode subcommand
@@ -167,10 +167,17 @@ def main(args: list[str] | None = None) -> None:
         _vprint("Error: seed-file is required for decode.", "error", verbosity)
         sys.exit(1)
 
-    # Optionally check fx sanity
-    if parsed_args.command == "encode" and parsed_args.check_fx_sanity:
+    # Optionally check fx and seed sanity
+    if parsed_args.command == "encode" and parsed_args.check_sanity:
         if not check_fx_sanity(fx, seed):
             _vprint("Error: fx sanity check failed.", "error", verbosity)
+            sys.exit(1)
+        if len(seed) < 16:
+            _vprint(
+                "Error: Seed is too short. It must be at least 16 bytes for security.",
+                "error",
+                verbosity,
+            )
             sys.exit(1)
 
     # Prepare VernamVeil keyword arguments
