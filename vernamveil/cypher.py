@@ -9,7 +9,7 @@ import math
 import secrets
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterator, Literal, TypeAlias
+from typing import IO, Any, Callable, Iterator, Literal, TypeAlias
 
 from .hash_utils import _UINT64_BOUND, hash_numpy
 
@@ -555,8 +555,8 @@ class VernamVeil:
 
     @staticmethod
     def process_file(
-        input_file: str | Path,
-        output_file: str | Path,
+        input_file: str | Path | IO[bytes],
+        output_file: str | Path | IO[bytes],
         fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
         seed: bytes,
         buffer_size: int = 1024 * 1024,
@@ -564,14 +564,14 @@ class VernamVeil:
         **vernamveil_kwargs: dict[str, Any],
     ) -> None:
         """
-        Processes a file in blocks using VernamVeil encryption or decryption.
+        Processes a file or stream in blocks using VernamVeil encryption or decryption.
 
         Args:
-            input_file (str | Path): Path to the input file.
-            output_file (str | Path): Path to write the output.
+            input_file (str | Path | IO[bytes]): Path or file-like object for input.
+            output_file (str | Path | IO[bytes]): Path or file-like object for output.
             fx (Callable): Key stream generator function.
             seed (bytes): Initial seed for processing.
-            buffer_size (int, optional): Bytes to read from the file at a time. Defaults to 1MB.
+            buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
             mode (Literal["encode", "decode"], optional): Operation mode. Defaults to "encode".
             **vernamveil_kwargs: Additional parameters for VernamVeil configuration.
 
@@ -595,13 +595,18 @@ class VernamVeil:
         # Initialise the VernamVeil object
         cypher = VernamVeil(fx, **defaults)
 
-        # Convert to Path if necessary
-        input_path = Path(input_file)
-        output_path = Path(output_file)
+        # Open the input and output if necessary
+        def _open_if_path(obj: str | Path | IO[bytes], mode: str) -> IO[bytes]:
+            if isinstance(obj, str):
+                return open(obj, mode)
+            elif isinstance(obj, Path):
+                return obj.open(mode)
+            else:
+                return obj
 
-        # Open the input and output files
-        with input_path.open("rb") as infile, output_path.open("wb") as outfile:
-            # Generate the initial block delimiter
+        infile = _open_if_path(input_file, "rb")
+        outfile = _open_if_path(output_file, "wb")
+        try:
             block_delimiter, current_seed = cypher._generate_delimiter(seed)
 
             if mode == "encode":
@@ -655,3 +660,8 @@ class VernamVeil:
 
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
+        finally:
+            if isinstance(input_file, (str, Path)):
+                infile.close()
+            if isinstance(output_file, (str, Path)):
+                outfile.close()
