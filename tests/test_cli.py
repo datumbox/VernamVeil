@@ -471,7 +471,7 @@ def fx(i, seed, bound):
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "warning"])
             self.assertIn(
-                f"Warning: Generated an fx-file in {(self.temp_dir_path / 'fx.py').resolve()}.",
+                f"Warning: Generated a fx-file in {(self.temp_dir_path / 'fx.py').resolve()}.",
                 stderr.getvalue(),
             )
             self.assertIn(

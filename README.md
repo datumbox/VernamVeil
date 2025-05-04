@@ -303,18 +303,18 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 # Encrypt a file with auto-generated fx and seed
 vernamveil encode --infile plain.txt --outfile encrypted.dat
 
-# Encrypt and Decrypt from stdin to stdout (using - or omitting the argument)
-vernamveil encode --infile - --outfile - --fx-file my_fx.py --seed-file my_seed.bin < plain.txt > encrypted.dat
-vernamveil decode --infile - --outfile - --fx-file my_fx.py --seed-file my_seed.bin < encrypted.dat > decrypted.txt
-
 # Encrypt a file with a custom fx function and seed
-vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.bin
 
 # Decrypt a file (requires the same fx and seed used for encryption)
-vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file my_fx.py --seed-file my_seed.bin
+vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.bin
+
+# Encrypt and Decrypt from stdin to stdout (using - or omitting the argument)
+vernamveil encode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < plain.txt > encrypted.dat
+vernamveil decode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < encrypted.dat > decrypted.txt
 
 # Enable sanity check for fx and seed during encoding
-vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file my_fx.py --seed-file my_seed.bin --check-sanity
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.bin --check-sanity
 ```
 
 > ⚠️ **Warning: CLI Parameter Consistency**
