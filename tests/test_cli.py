@@ -164,6 +164,11 @@ def fx(i, seed, bound):
             main(args)
         return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
 
+    def _assert_decoded_matches_input(self, original_path, decoded_path):
+        """Assert that the decoded output matches the original input."""
+        with open(original_path, "rb") as f1, open(decoded_path, "rb") as f2:
+            self.assertEqual(f1.read(), f2.read())
+
     def test_encode_generates_fx_and_seed_file_to_file(self):
         """Test encoding with auto-generated fx and seed, file-to-file mode."""
         with self._in_tempdir():
@@ -342,6 +347,7 @@ def fx(i, seed, bound):
             self._encode(self.infile, self.encfile, fx_file=fx_file, seed_file=seed_file)
             self._decode(self.encfile, self.outfile, fx_file, seed_file)
             self.assertTrue(self.outfile.exists())
+            self._assert_decoded_matches_input(self.infile, self.outfile)
 
     def test_decode_file_to_stdout(self):
         """Test decoding, file-to-stdout mode."""
@@ -352,6 +358,7 @@ def fx(i, seed, bound):
             out_bytes = self._decode(self.encfile, "-", fx_file, seed_file)
             self.assertIsInstance(out_bytes, bytes)
             self.assertGreater(len(out_bytes), 0)
+            self.assertEqual(self.infile.read_bytes(), out_bytes)
 
     def test_decode_stdin_to_file(self):
         """Test decoding, stdin-to-file mode."""
@@ -362,6 +369,7 @@ def fx(i, seed, bound):
             enc_bytes = self.encfile.read_bytes()
             self._decode("-", self.outfile, fx_file, seed_file, stdin_data=enc_bytes)
             self.assertTrue(self.outfile.exists())
+            self._assert_decoded_matches_input(self.infile, self.outfile)
 
     def test_decode_stdin_to_stdout(self):
         """Test decoding, stdin-to-stdout mode."""
@@ -373,6 +381,7 @@ def fx(i, seed, bound):
             out_bytes = self._decode("-", "-", fx_file, seed_file, stdin_data=enc_bytes)
             self.assertIsInstance(out_bytes, bytes)
             self.assertGreater(len(out_bytes), 0)
+            self.assertEqual(self.infile.read_bytes(), out_bytes)
 
     def test_encode_with_check_sanity(self):
         """Test encoding with sanity check for fx and seed enabled."""
