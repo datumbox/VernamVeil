@@ -187,7 +187,7 @@ def main(args: list[str] | None = None) -> None:
         fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
         fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
         _vprint(
-            f"Warning: Generated an fx file in {fx_py.resolve()}. Store securely.",
+            f"Warning: Generated an fx-file in {fx_py.resolve()}. Store securely.",
             "warning",
             verbosity,
         )
@@ -211,7 +211,7 @@ def main(args: list[str] | None = None) -> None:
         seed = VernamVeil.get_initial_seed()
         seed_bin.write_bytes(seed)
         _vprint(
-            f"Warning: Generated a seed file in {seed_bin.resolve()}. Store securely.",
+            f"Warning: Generated a seed-file in {seed_bin.resolve()}. Store securely.",
             "warning",
             verbosity,
         )

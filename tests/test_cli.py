@@ -4,11 +4,36 @@ import sys  # noqa: F401
 import tempfile
 import unittest
 from contextlib import contextmanager
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil.cli import main
+
+
+class _UnclosableBytesIO(BytesIO):
+    """Buffer that prevents closing during the test"""
+
+    def close(self):
+        pass
+
+
+class _FakeStdout:
+    """Fake stdout class to simulate a non-tty buffer for testing purposes."""
+
+    def __init__(self, buffer, isatty=False):
+        self.buffer = buffer
+        self._isatty = isatty
+
+    def isatty(self):
+        return self._isatty
+
+
+class _FakeStdin:
+    """Fake stdin class with a buffer attribute for simulating binary input in tests."""
+
+    def __init__(self, buffer):
+        self.buffer = buffer
 
 
 class TestVernamVeilCLI(unittest.TestCase):
@@ -69,8 +94,31 @@ def fx(i, seed, bound):
             if Path.cwd() != cwd:
                 os.chdir(cwd)
 
-    def _encode(self, infile, outfile, fx_file=None, seed_file=None, extra_args=None):
-        """Helper to run the encode CLI command with optional fx and seed files."""
+    @contextmanager
+    def _patch_stdio(self, infile, outfile, stdin_data=None):
+        patches = []
+        if infile == "-":
+            patches.append(patch("sys.stdin", new=_FakeStdin(BytesIO(stdin_data))))
+        # Only patch sys.stdout if not already patched
+        if not isinstance(sys.stdout, _FakeStdout):
+            fake_stdout_buffer = _UnclosableBytesIO()
+            fake_stdout = _FakeStdout(fake_stdout_buffer, isatty=False)
+            patches.append(patch("sys.stdout", new=fake_stdout))
+        else:
+            fake_stdout_buffer = getattr(sys.stdout, "buffer", None)
+        with contextmanager(lambda: (yield))():
+            for p in patches:
+                p.start()
+            try:
+                yield fake_stdout_buffer
+            finally:
+                for p in reversed(patches):
+                    p.stop()
+
+    def _encode(
+        self, infile, outfile, fx_file=None, seed_file=None, extra_args=None, stdin_data=None
+    ):
+        """Helper to run the encode CLI command with optional fx and seed files. Supports stdin/stdout via '-'."""
         args = ["encode", "--infile", infile, "--outfile", outfile]
         if fx_file:
             args += ["--fx-file", fx_file]
@@ -82,10 +130,12 @@ def fx(i, seed, bound):
         args = [str(arg) for arg in args]
         if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
-        main(args)
+        with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
+            main(args)
+        return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
 
-    def _decode(self, infile, outfile, fx_file, seed_file, extra_args=None):
-        """Helper to run the decode CLI command with required fx and seed files."""
+    def _decode(self, infile, outfile, fx_file, seed_file, extra_args=None, stdin_data=None):
+        """Helper to run the decode CLI command with required fx and seed files. Supports stdin/stdout via '-'."""
         args = [
             "decode",
             "--infile",
@@ -103,46 +153,185 @@ def fx(i, seed, bound):
         args = [str(arg) for arg in args]
         if not any(arg.endswith("vectorise") for arg in args):
             args += ["--no-vectorise"]
-        main(args)
+        with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
+            main(args)
+        return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
 
-    def test_encode_generates_fx_and_seed(self):
-        """Test encoding with auto-generated fx and seed."""
+    def test_encode_generates_fx_and_seed_file_to_file(self):
+        """Test encoding with auto-generated fx and seed, file-to-file mode."""
         with self._in_tempdir():
             self._encode(self.infile, self.encfile)
-        self.assertTrue(self.encfile.exists())
-        self.assertTrue((self.temp_dir_path / "fx.py").exists())
-        self.assertTrue((self.temp_dir_path / "seed.bin").exists())
+            self.assertTrue(self.encfile.exists())
+            self.assertTrue((self.temp_dir_path / "fx.py").exists())
+            self.assertTrue((self.temp_dir_path / "seed.bin").exists())
 
-    def test_encode_with_custom_fx(self):
-        """Test encoding with a user-supplied fx file."""
+    def test_encode_generates_fx_and_seed_file_to_stdout(self):
+        """Test encoding with auto-generated fx and seed, file-to-stdout mode."""
         with self._in_tempdir():
-            self._encode(self.infile, self.encfile, fx_file=self._create_fx())
-        self.assertTrue(self.encfile.exists())
-        self.assertTrue((self.temp_dir_path / "seed.bin").exists())
+            out_bytes = self._encode(self.infile, "-")
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
 
-    def test_encode_with_custom_seed(self):
-        """Test encoding with a user-supplied seed file."""
+    def test_encode_generates_fx_and_seed_stdin_to_file(self):
+        """Test encoding with auto-generated fx and seed, stdin-to-file mode."""
         with self._in_tempdir():
-            self._encode(self.infile, self.encfile, seed_file=self._create_seed())
-        self.assertTrue(self.encfile.exists())
-        self.assertTrue((self.temp_dir_path / "fx.py").exists())
+            in_bytes = self.infile.read_bytes()
+            self._encode("-", self.encfile, stdin_data=in_bytes)
+            self.assertTrue(self.encfile.exists())
 
-    def test_encode_with_custom_fx_and_seed(self):
-        """Test encoding with both custom fx and seed files."""
+    def test_encode_generates_fx_and_seed_stdin_to_stdout(self):
+        """Test encoding with auto-generated fx and seed, stdin-to-stdout mode."""
         with self._in_tempdir():
+            in_bytes = self.infile.read_bytes()
+            out_bytes = self._encode("-", "-", stdin_data=in_bytes)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_fx_file_to_file(self):
+        """Test encoding with custom fx, file-to-file mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            self._encode(self.infile, self.encfile, fx_file=fx_path)
+            self.assertTrue(self.encfile.exists())
+            self.assertTrue((self.temp_dir_path / "seed.bin").exists())
+
+    def test_encode_with_custom_fx_file_to_stdout(self):
+        """Test encoding with custom fx, file-to-stdout mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            out_bytes = self._encode(self.infile, "-", fx_file=fx_path)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_fx_stdin_to_file(self):
+        """Test encoding with custom fx, stdin-to-file mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            in_bytes = self.infile.read_bytes()
+            self._encode("-", self.encfile, fx_file=fx_path, stdin_data=in_bytes)
+            self.assertTrue(self.encfile.exists())
+
+    def test_encode_with_custom_fx_stdin_to_stdout(self):
+        """Test encoding with custom fx, stdin-to-stdout mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            in_bytes = self.infile.read_bytes()
+            out_bytes = self._encode("-", "-", fx_file=fx_path, stdin_data=in_bytes)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_seed_file_to_file(self):
+        """Test encoding with custom seed, file-to-file mode."""
+        with self._in_tempdir():
+            seed_path = self._create_seed()
+            self._encode(self.infile, self.encfile, seed_file=seed_path)
+            self.assertTrue(self.encfile.exists())
+            self.assertTrue((self.temp_dir_path / "fx.py").exists())
+
+    def test_encode_with_custom_seed_file_to_stdout(self):
+        """Test encoding with custom seed, file-to-stdout mode."""
+        with self._in_tempdir():
+            seed_path = self._create_seed()
+            out_bytes = self._encode(self.infile, "-", seed_file=seed_path)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_seed_stdin_to_file(self):
+        """Test encoding with custom seed, stdin-to-file mode."""
+        with self._in_tempdir():
+            seed_path = self._create_seed()
+            in_bytes = self.infile.read_bytes()
+            self._encode("-", self.encfile, seed_file=seed_path, stdin_data=in_bytes)
+            self.assertTrue(self.encfile.exists())
+
+    def test_encode_with_custom_seed_stdin_to_stdout(self):
+        """Test encoding with custom seed, stdin-to-stdout mode."""
+        with self._in_tempdir():
+            seed_path = self._create_seed()
+            in_bytes = self.infile.read_bytes()
+            out_bytes = self._encode("-", "-", seed_file=seed_path, stdin_data=in_bytes)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_fx_and_seed_file_to_file(self):
+        """Test encoding with custom fx and seed, file-to-file mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+            self._encode(self.infile, self.encfile, fx_file=fx_path, seed_file=seed_path)
+            self.assertTrue(self.encfile.exists())
+
+    def test_encode_with_custom_fx_and_seed_file_to_stdout(self):
+        """Test encoding with custom fx and seed, file-to-stdout mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+            out_bytes = self._encode(self.infile, "-", fx_file=fx_path, seed_file=seed_path)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_encode_with_custom_fx_and_seed_stdin_to_file(self):
+        """Test encoding with custom fx and seed, stdin-to-file mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+            in_bytes = self.infile.read_bytes()
             self._encode(
-                self.infile, self.encfile, fx_file=self._create_fx(), seed_file=self._create_seed()
+                "-", self.encfile, fx_file=fx_path, seed_file=seed_path, stdin_data=in_bytes
             )
-        self.assertTrue(self.encfile.exists())
+            self.assertTrue(self.encfile.exists())
 
-    def test_decode_requires_fx_and_seed(self):
-        """Test decoding requires both fx and seed files."""
+    def test_encode_with_custom_fx_and_seed_stdin_to_stdout(self):
+        """Test encoding with custom fx and seed, stdin-to-stdout mode."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+            in_bytes = self.infile.read_bytes()
+            out_bytes = self._encode(
+                "-", "-", fx_file=fx_path, seed_file=seed_path, stdin_data=in_bytes
+            )
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_decode_requires_fx_and_seed_file_to_file(self):
+        """Test decoding requires fx and seed, file-to-file mode."""
         fx_file = self._create_fx()
         seed_file = self._create_seed()
         with self._in_tempdir():
             self._encode(self.infile, self.encfile, fx_file=fx_file, seed_file=seed_file)
             self._decode(self.encfile, self.outfile, fx_file, seed_file)
-        self.assertTrue(self.outfile.exists())
+            self.assertTrue(self.outfile.exists())
+
+    def test_decode_requires_fx_and_seed_file_to_stdout(self):
+        """Test decoding requires fx and seed, file-to-stdout mode."""
+        fx_file = self._create_fx()
+        seed_file = self._create_seed()
+        with self._in_tempdir():
+            self._encode(self.infile, self.encfile, fx_file=fx_file, seed_file=seed_file)
+            out_bytes = self._decode(self.encfile, "-", fx_file, seed_file)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
+
+    def test_decode_requires_fx_and_seed_stdin_to_file(self):
+        """Test decoding requires fx and seed, stdin-to-file mode."""
+        fx_file = self._create_fx()
+        seed_file = self._create_seed()
+        with self._in_tempdir():
+            self._encode(self.infile, self.encfile, fx_file=fx_file, seed_file=seed_file)
+            enc_bytes = self.encfile.read_bytes()
+            self._decode("-", self.outfile, fx_file, seed_file, stdin_data=enc_bytes)
+            self.assertTrue(self.outfile.exists())
+
+    def test_decode_requires_fx_and_seed_stdin_to_stdout(self):
+        """Test decoding requires fx and seed, stdin-to-stdout mode."""
+        fx_file = self._create_fx()
+        seed_file = self._create_seed()
+        with self._in_tempdir():
+            self._encode(self.infile, self.encfile, fx_file=fx_file, seed_file=seed_file)
+            enc_bytes = self.encfile.read_bytes()
+            out_bytes = self._decode("-", "-", fx_file, seed_file, stdin_data=enc_bytes)
+            self.assertIsInstance(out_bytes, bytes)
+            self.assertGreater(len(out_bytes), 0)
 
     def test_encode_with_check_sanity(self):
         """Test encoding with sanity check for fx and seed enabled."""
@@ -231,11 +420,11 @@ def fx(i, seed, bound):
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "warning"])
             self.assertIn(
-                f"Warning: Generated an fx file in {(self.temp_dir_path / 'fx.py').resolve()}. Store securely.",
+                f"Warning: Generated an fx-file in {(self.temp_dir_path / 'fx.py').resolve()}. Store securely.",
                 stderr.getvalue(),
             )
             self.assertIn(
-                f"Warning: Generated a seed file in {(self.temp_dir_path / 'seed.bin').resolve()}. Store securely.",
+                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}. Store securely.",
                 stderr.getvalue(),
             )
 
@@ -305,6 +494,25 @@ def fx(i, seed, bound):
                     extra_args=["--chunk-size", "1024"],
                 )
             self.assertEqual(str(context.exception), "Authentication failed: MAC tag mismatch.")
+
+    def test_warning_binary_output_to_terminal(self):
+        """Test that a warning is printed when outputting binary data to a terminal."""
+
+        with self._in_tempdir():
+            stderr = StringIO()
+            fake_buffer = _UnclosableBytesIO()
+            # Patch sys.stdout directly here, so _patch_stdio will not patch it again
+            with (
+                patch("sys.stdout", new=_FakeStdout(fake_buffer, isatty=True)),
+                patch("sys.stderr", stderr),
+            ):
+                self._encode(self.infile, "-", extra_args=["--verbosity", "warning"])
+
+            self.assertIn(
+                "Warning: Writing binary data to a terminal may corrupt your session.",
+                stderr.getvalue(),
+            )
+            self.assertGreater(len(fake_buffer.getvalue()), 0)
 
 
 if __name__ == "__main__":
