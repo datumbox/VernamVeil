@@ -10,7 +10,7 @@ The C code is compiled and wrapped for Python using the [cffi](https://cffi.read
 
 Before building, ensure you have the following dependencies installed:
 
-- **Python 3.x**
+- **Python 3.10 or later**
 - **pip** (Python package manager)
 - **gcc** (GNU Compiler Collection)
 - **OpenMP** (usually included with gcc)
@@ -60,7 +60,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
    This will compile the C code and generate libraries named `_npblake2bffi.*.so` and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
-4. **Re-install the library**
+4. **Reinstall the library**
 
    Following successful compilation, the C extension reinstall the `vernamveil` package to ensure the new C extension is used. Execute the following from the root of the project:
 
@@ -82,5 +82,5 @@ If the C extension is not built or importable, `hash_numpy` will transparently f
 
 ## Notes
 
-- If you change the C code in `build.py`, rerun `python build.py` to rebuild the extension.
+- If you change the C code in `build.py`, rerun `python build.py` to rebuild the extension. Reinstall the package afterwards.
 - If you encounter errors about missing OpenMP or OpenSSL, ensure the development libraries are installed as shown above.
