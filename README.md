@@ -139,6 +139,9 @@ VernamVeil.process_file("plain.txt", "encrypted.dat", fx, initial_seed, mode="en
 VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode="decode")
 ```
 
+> **Note:**  
+> The `process_file` method uses background threads and queues to perform asynchronous I/O for both reading and writing, enabling efficient processing of large files without blocking the main thread.
+
 ---
 
 ## 🧪💻 How to Design a Custom `fx`

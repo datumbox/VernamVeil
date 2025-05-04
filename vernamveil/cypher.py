@@ -580,8 +580,10 @@ class VernamVeil:
             seed (bytes): Initial seed for processing.
             buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
             mode (Literal["encode", "decode"], optional): Operation mode. Defaults to "encode".
-            read_queue_size (int, optional): Max number of blocks in the read queue. Defaults to 4.
-            write_queue_size (int, optional): Max number of blocks in the write queue. Defaults to 4.
+            read_queue_size (int, optional): Maximum number of data blocks buffered in the
+                queue between the IO reader thread and the main processing thread. Defaults to 4.
+            write_queue_size (int, optional): Maximum number of data blocks buffered in the
+                queue between the main processing thread and the IO writer thread. Defaults to 4.
             **vernamveil_kwargs: Additional parameters for VernamVeil configuration.
 
         Raises:
