@@ -586,8 +586,26 @@ class VernamVeil:
 
         Raises:
             ValueError: If `mode` is not "encode" or "decode".
+            TypeError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not an integer.
+            ValueError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not a positive integer.
             ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
         """
+        # Input validation
+        if mode not in ("encode", "decode"):
+            raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
+        if not isinstance(buffer_size, int):
+            raise TypeError("buffer_size must be an integer.")
+        if buffer_size <= 0:
+            raise ValueError("buffer_size must be a positive integer.")
+        if not isinstance(read_queue_size, int):
+            raise TypeError("read_queue_size must be an integer.")
+        if read_queue_size <= 0:
+            raise ValueError("read_queue_size must be a positive integer.")
+        if not isinstance(write_queue_size, int):
+            raise TypeError("write_queue_size must be an integer.")
+        if write_queue_size <= 0:
+            raise ValueError("write_queue_size must be a positive integer.")
+
         # Define default VernamVeil parameters suitable for large files
         defaults: dict[str, Any] = {
             "chunk_size": 4096,
@@ -617,7 +635,7 @@ class VernamVeil:
         outfile = _open_if_path(output_file, "wb")
 
         # Reader and Writer threads used for asynchronous IO
-        read_q: queue.Queue[bytes] = queue.Queue(maxsize=read_queue_size)
+        read_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=read_queue_size)
         write_q: queue.Queue[bytes | None] = queue.Queue(maxsize=write_queue_size)
         exception_queue: queue.Queue[BaseException] = queue.Queue()
 
@@ -702,13 +720,14 @@ class VernamVeil:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
         finally:
             # Wait for threads to finish
+            if reader_thread.is_alive():
+                reader_thread.join()
             if writer_thread.is_alive():
                 # Signal the writer thread to stop
                 write_q.put(None)
                 writer_thread.join()
-            if reader_thread.is_alive():
-                reader_thread.join()
 
+            # Close the input and output files if they were opened
             if isinstance(input_file, (str, Path)):
                 infile.close()
             if isinstance(output_file, (str, Path)):
