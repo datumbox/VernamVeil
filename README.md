@@ -328,7 +328,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 > vernamveil decode --infile encrypted.dat --outfile decrypted.txt --chunk-size 1024 --fx-file fx.py --seed-file seed.bin
 > ```
 >
-> **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure.
+> **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure. The only exception is the `--buffer-size` parameter, which can be different for encoding and decoding.
 
 ### 🗄️ File Handling
 
