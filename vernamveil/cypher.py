@@ -564,8 +564,8 @@ class VernamVeil:
         output_file: str | Path | IO[bytes],
         fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
         seed: bytes,
-        buffer_size: int = 1024 * 1024,
         mode: Literal["encode", "decode"] = "encode",
+        buffer_size: int = 1024 * 1024,
         read_queue_size: int = 4,
         write_queue_size: int = 4,
         **vernamveil_kwargs: dict[str, Any],
@@ -578,8 +578,8 @@ class VernamVeil:
             output_file (str | Path | IO[bytes]): Path or file-like object for output.
             fx (Callable): Key stream generator function.
             seed (bytes): Initial seed for processing.
-            buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
             mode (Literal["encode", "decode"], optional): Operation mode. Defaults to "encode".
+            buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
             read_queue_size (int, optional): Maximum number of data blocks buffered in the
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
             write_queue_size (int, optional): Maximum number of data blocks buffered in the

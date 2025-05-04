@@ -36,6 +36,12 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--fx-file", type=Path, help="Path to Python file containing the fx function.")
     p.add_argument("--seed-file", type=Path, help="Path to file containing the seed (bytes).")
     p.add_argument(
+        "--buffer-size",
+        type=int,
+        default=1024 * 1024,
+        help="Buffer size in bytes for reading blocks (default: 1048576, i.e., 1MB).",
+    )
+    p.add_argument(
         "--vectorise",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -275,6 +281,7 @@ def main(args: list[str] | None = None) -> None:
                 fx,
                 seed,
                 mode=parsed_args.command,
+                buffer_size=parsed_args.buffer_size,
                 **vernamveil_kwargs,
             )
     except (BrokenPipeError, OSError) as e:
@@ -284,3 +291,4 @@ def main(args: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
