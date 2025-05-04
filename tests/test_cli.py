@@ -109,7 +109,7 @@ def fx(i, seed, bound):
         # Only patch sys.stdout if not already patched
         if not isinstance(sys.stdout, _FakeStdout):
             fake_stdout_buffer = _UnclosableBytesIO()
-            fake_stdout = _FakeStdout(fake_stdout_buffer, isatty=False)
+            fake_stdout = _FakeStdout(fake_stdout_buffer)
             patches.append(patch("sys.stdout", new=fake_stdout))
         else:
             fake_stdout_buffer = getattr(sys.stdout, "buffer", None)
@@ -569,11 +569,14 @@ def fx(i, seed, bound):
         """Test that BrokenPipeError during output is handled gracefully."""
         with self._in_tempdir():
             # Patch sys.stdout to simulate a broken pipe on write
-            fake_stdout = _FakeStdout(_BrokenPipeBytesIO(), isatty=False)
+            fake_stdout = _FakeStdout(_BrokenPipeBytesIO())
             stderr = StringIO()
-            with patch("sys.stdout", fake_stdout), patch("sys.stderr", stderr):
-                with self.assertRaises(SystemExit):
-                    self._encode(self.infile, "-")
+            with (
+                patch("sys.stdout", fake_stdout),
+                patch("sys.stderr", stderr),
+                self.assertRaises(SystemExit),
+            ):
+                self._encode(self.infile, "-")
             self.assertIn("Error: I/O error during read/write:", stderr.getvalue())
 
 

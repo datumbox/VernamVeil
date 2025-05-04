@@ -6,7 +6,9 @@ Defines the main encryption class and core cryptographic operations.
 import hashlib
 import hmac
 import math
+import queue
 import secrets
+import threading
 import warnings
 from pathlib import Path
 from typing import IO, Any, Callable, Iterator, Literal, TypeAlias
@@ -564,6 +566,8 @@ class VernamVeil:
         seed: bytes,
         buffer_size: int = 1024 * 1024,
         mode: Literal["encode", "decode"] = "encode",
+        read_queue_size: int = 4,
+        write_queue_size: int = 4,
         **vernamveil_kwargs: dict[str, Any],
     ) -> None:
         """
@@ -576,6 +580,8 @@ class VernamVeil:
             seed (bytes): Initial seed for processing.
             buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
             mode (Literal["encode", "decode"], optional): Operation mode. Defaults to "encode".
+            read_queue_size (int, optional): Max number of blocks in the read queue. Defaults to 4.
+            write_queue_size (int, optional): Max number of blocks in the write queue. Defaults to 4.
             **vernamveil_kwargs: Additional parameters for VernamVeil configuration.
 
         Raises:
@@ -609,13 +615,44 @@ class VernamVeil:
 
         infile = _open_if_path(input_file, "rb")
         outfile = _open_if_path(output_file, "wb")
+
+        # Reader and Writer threads used for asynchronous IO
+        read_q: queue.Queue[bytes] = queue.Queue(maxsize=read_queue_size)
+        write_q: queue.Queue[bytes | None] = queue.Queue(maxsize=write_queue_size)
+        exception_queue: queue.Queue[BaseException] = queue.Queue()
+
+        def reader_thread_func() -> None:
+            try:
+                while True:
+                    block = infile.read(buffer_size)
+                    read_q.put(block)
+                    if not block:  # Empty block indicates EOF
+                        break
+            except Exception as e:
+                exception_queue.put(e)
+
+        def writer_thread_func() -> None:
+            try:
+                while True:
+                    data = write_q.get()
+                    if data is None:  # Signal to stop
+                        break
+                    outfile.write(data)
+            except Exception as e:
+                exception_queue.put(e)
+
+        reader_thread = threading.Thread(target=reader_thread_func, daemon=True)
+        writer_thread = threading.Thread(target=writer_thread_func, daemon=True)
+        reader_thread.start()
+        writer_thread.start()
+
         try:
             block_delimiter, current_seed = cypher._generate_delimiter(seed)
 
             if mode == "encode":
                 while True:
                     # Read from the file
-                    block = infile.read(buffer_size)
+                    block = read_q.get()
                     if not block:
                         break  # End of file
 
@@ -623,17 +660,17 @@ class VernamVeil:
                     processed_block, current_seed = cypher.encode(block, current_seed)
 
                     # Write the processed block to the output file
-                    outfile.write(processed_block)
+                    write_q.put(processed_block)
 
                     # Write a fixed delimiter to mark the end of the block
-                    outfile.write(block_delimiter)
+                    write_q.put(block_delimiter)
 
                     # Refresh the block delimiter
                     block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
             elif mode == "decode":
                 buffer = bytearray()
                 while True:
-                    block = infile.read(buffer_size)
+                    block = read_q.get()
                     if not block and not buffer:
                         break  # End of file and nothing left to process
 
@@ -648,7 +685,7 @@ class VernamVeil:
 
                         # Decode the complete block
                         processed_block, current_seed = cypher.decode(complete_block, current_seed)
-                        outfile.write(processed_block)
+                        write_q.put(processed_block)
 
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + cypher._delimiter_size :]
@@ -664,7 +701,19 @@ class VernamVeil:
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
         finally:
+            # Wait for threads to finish
+            if writer_thread.is_alive():
+                # Signal the writer thread to stop
+                write_q.put(None)
+                writer_thread.join()
+            if reader_thread.is_alive():
+                reader_thread.join()
+
             if isinstance(input_file, (str, Path)):
                 infile.close()
             if isinstance(output_file, (str, Path)):
                 outfile.close()
+
+            # Check for exceptions from the threads
+            if not exception_queue.empty():
+                raise exception_queue.get()
