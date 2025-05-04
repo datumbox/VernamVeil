@@ -149,11 +149,11 @@ def fx(i, seed, bound):
             infile,
             "--outfile",
             outfile,
-            "--fx-file",
-            fx_file,
-            "--seed-file",
-            seed_file,
         ]
+        if fx_file:
+            args += ["--fx-file", fx_file]
+        if seed_file:
+            args += ["--seed-file", seed_file]
         if extra_args:
             args += extra_args
 
@@ -308,17 +308,13 @@ def fx(i, seed, bound):
             seed_file = self._create_seed()
             stderr = StringIO()
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
-                args = [
-                    "decode",
-                    "--infile",
-                    str(encfile),
-                    "--outfile",
-                    str(self.outfile),
-                    "--seed-file",
-                    str(seed_file),
-                    "--no-vectorise",
-                ]
-                main(args)
+                self._decode(
+                    encfile,
+                    self.outfile,
+                    fx_file=None,
+                    seed_file=seed_file,
+                    extra_args=["--no-vectorise"],
+                )
             self.assertIn("Error: --fx-file must be specified when decoding.", stderr.getvalue())
 
     def test_decode_requires_seed_file(self):
@@ -329,17 +325,13 @@ def fx(i, seed, bound):
             fx_file = self._create_fx()
             stderr = StringIO()
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
-                args = [
-                    "decode",
-                    "--infile",
-                    str(encfile),
-                    "--outfile",
-                    str(self.outfile),
-                    "--fx-file",
-                    str(fx_file),
-                    "--no-vectorise",
-                ]
-                main(args)
+                self._decode(
+                    encfile,
+                    self.outfile,
+                    fx_file=fx_file,
+                    seed_file=None,
+                    extra_args=["--no-vectorise"],
+                )
             self.assertIn("Error: --seed-file must be specified when decoding.", stderr.getvalue())
 
     def test_decode_file_to_file(self):
