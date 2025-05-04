@@ -580,12 +580,8 @@ class VernamVeil:
 
         # Open the input and output files
         with input_path.open("rb") as infile, output_path.open("wb") as outfile:
-            current_seed = seed
-
-            # Unencrypted fixed-size delimiter to separate encoded blocks
-            # This ensures that variable-sized blocks can be identified during decoding
-            block_delimiter = b"|END_OF_BLOCK|"
-            block_delimiter_size = len(block_delimiter)
+            # Generate the initial block delimiter
+            block_delimiter, current_seed = cypher._generate_delimiter(seed)
 
             if mode == "encode":
                 while True:
@@ -602,6 +598,9 @@ class VernamVeil:
 
                     # Write a fixed delimiter to mark the end of the block
                     outfile.write(block_delimiter)
+
+                    # Refresh the block delimiter
+                    block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
             elif mode == "decode":
                 buffer = bytearray()
                 while True:
@@ -623,8 +622,10 @@ class VernamVeil:
                         outfile.write(processed_block)
 
                         # Remove the processed block and delimiter from the buffer
-                        buffer = buffer[delim_index + block_delimiter_size :]
+                        buffer = buffer[delim_index + cypher._delimiter_size :]
 
+                        # Refresh block delimiter
+                        block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
                     if not block:
                         # No more data to read, but there may be leftover data without a delimiter
                         if buffer:
