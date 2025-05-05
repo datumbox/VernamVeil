@@ -286,26 +286,49 @@ class VernamVeil:
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
-        # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray()
+        # Approximate conservative size based on chunks and padding
         pad_min, pad_max = self._padding_range
+        estimated_size = (
+            2 * total_count * (self._delimiter_size + pad_min)
+            + message_len
+            + decoy_count * self._chunk_size
+        )
+
+        # Build the noisy message by combining fake and shuffled real chunks
+        noisy_blocks = bytearray(estimated_size)  # Preallocate with estimated_size
+        current_loc = 0
         for i in range(total_count):
-            if shuffled_chunk_ranges[i] != (-1, -1):
-                start, end = shuffled_chunk_ranges[i]
+            start, end = shuffled_chunk_ranges[i]
+            if start != -1:
                 chunk: memoryview = message[start:end]
+                chunk_len = end - start
             else:
                 chunk: bytes = secrets.token_bytes(self._chunk_size)  # type: ignore[no-redef]
+                chunk_len = self._chunk_size
 
             # Pre-pad
             pre_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
-            noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
-            noisy_blocks.extend(delimiter)
+            noisy_blocks[current_loc : current_loc + pre_pad_len] = secrets.token_bytes(pre_pad_len)
+            current_loc += pre_pad_len
+
+            # Delimiter
+            noisy_blocks[current_loc : current_loc + self._delimiter_size] = delimiter
+            current_loc += self._delimiter_size
+
             # Actual data
-            noisy_blocks.extend(chunk)
+            noisy_blocks[current_loc : current_loc + chunk_len] = chunk
+            current_loc += chunk_len
+
+            # Post delimiter
+            noisy_blocks[current_loc : current_loc + self._delimiter_size] = delimiter
+            current_loc += self._delimiter_size
+
             # Post-pad
-            noisy_blocks.extend(delimiter)
             post_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
-            noisy_blocks.extend(secrets.token_bytes(post_pad_len))
+            noisy_blocks[current_loc : current_loc + post_pad_len] = secrets.token_bytes(
+                post_pad_len
+            )
+            current_loc += post_pad_len
 
         return memoryview(noisy_blocks)
 
@@ -358,12 +381,24 @@ class VernamVeil:
         # Estimate the shuffled real positions
         shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
 
+        # Calculate exact size from the chunk ranges
+        exact_size = sum(
+            end - start for start, end in (all_chunk_ranges[pos] for pos in shuffled_positions)
+        )
+
         # Reconstruct and unshuffle the message
-        message = bytearray()
+        message = bytearray(exact_size)  # preallocate with the exact size
         view = memoryview(noisy)
+        current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
-            message.extend(view[start:end])
+            chunk_len = end - start
+
+            # Copy the chunk to the correct position
+            message[current_loc : current_loc + chunk_len] = view[start:end]
+
+            # Update the current location
+            current_loc += chunk_len
 
         return message
 
