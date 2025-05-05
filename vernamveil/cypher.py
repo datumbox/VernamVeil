@@ -641,11 +641,37 @@ class VernamVeil:
         write_q: queue.Queue[bytes | None] = queue.Queue(maxsize=write_queue_size)
         exception_queue: queue.Queue[BaseException] = queue.Queue()
 
+        def queue_get(
+            q: queue.Queue[bytes | memoryview | None],
+        ) -> tuple[bytes | memoryview | None, bool]:
+            # Gets from queue in a blocking way with timeout, as long as the exception queue is empty
+            # Returns the data and True if successful, None and False if an error occurs
+            while exception_queue.empty():
+                try:
+                    return q.get(block=True, timeout=0.1), True
+                except queue.Empty:
+                    continue
+            return None, False
+
+        def queue_put(
+            q: queue.Queue[bytes | memoryview | None], data: bytes | memoryview | None
+        ) -> bool:
+            # Puts in queue in a blocking way with timeout, as long as the exception queue is empty
+            # Returns True if successful, False if an error occurs
+            while exception_queue.empty():
+                try:
+                    q.put(data, block=True, timeout=0.1)
+                    return True
+                except queue.Full:
+                    continue
+            return False
+
         def reader_thread_func() -> None:
             try:
-                while True:
+                while exception_queue.empty():
                     block = infile.read(buffer_size)
-                    read_q.put(block)
+                    if not queue_put(read_q, block):
+                        break  # Exception occurred
                     if not block:  # Empty block indicates EOF
                         break
             except Exception as e:
@@ -653,9 +679,9 @@ class VernamVeil:
 
         def writer_thread_func() -> None:
             try:
-                while True:
-                    data = write_q.get()
-                    if data is None:  # Signal to stop
+                while exception_queue.empty():
+                    data, success = queue_get(write_q)
+                    if data is None or not success:  # Signal to stop or exception occurred
                         break
                     outfile.write(data)
             except Exception as e:
@@ -670,32 +696,34 @@ class VernamVeil:
             block_delimiter, current_seed = cypher._generate_delimiter(seed)
 
             if mode == "encode":
-                while True:
+                while exception_queue.empty():
                     # Read from the file
-                    block = read_q.get()
-                    if not block:
-                        break  # End of file
+                    block, success = queue_get(read_q)
+                    if not block or not success:
+                        break  # End of file or exception occurred
 
                     # Encode the content block
                     processed_block, current_seed = cypher.encode(block, current_seed)
 
                     # Write the processed block to the output file
-                    write_q.put(processed_block)
+                    if not queue_put(write_q, processed_block):
+                        break
 
                     # Write a fixed delimiter to mark the end of the block
-                    write_q.put(block_delimiter)
+                    if not queue_put(write_q, block_delimiter):
+                        break
 
                     # Refresh the block delimiter
                     block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
             elif mode == "decode":
                 buffer = bytearray()
-                while True:
-                    block = read_q.get()
-                    if not block and not buffer:
-                        break  # End of file and nothing left to process
+                while exception_queue.empty():
+                    block, success = queue_get(read_q)
+                    if (not block and not buffer) or not success:
+                        break  # End of file with nothing left to process or exception occurred
 
                     buffer.extend(block)
-                    while True:
+                    while exception_queue.empty():
                         delim_index = buffer.find(block_delimiter)
                         if delim_index == -1:
                             break  # No complete block in buffer yet
@@ -705,7 +733,8 @@ class VernamVeil:
 
                         # Decode the complete block
                         processed_block, current_seed = cypher.decode(complete_block, current_seed)
-                        write_q.put(processed_block)
+                        if not queue_put(write_q, processed_block):
+                            break
 
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + cypher._delimiter_size :]
@@ -715,18 +744,28 @@ class VernamVeil:
                     if not block:
                         # No more data to read, but there may be leftover data without a delimiter
                         if buffer:
-                            raise ValueError("Incomplete block at end of file: missing delimiter.")
+                            exception_queue.put(
+                                ValueError("Incomplete block at end of file: missing delimiter.")
+                            )
                         break
 
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
+        except Exception as main_exc:
+            # Signal the threads to stop
+            exception_queue.put(main_exc)
+            raise
         finally:
             # Wait for threads to finish
             if reader_thread.is_alive():
                 reader_thread.join()
             if writer_thread.is_alive():
-                # Signal the writer thread to stop
-                write_q.put(None)
+                try:
+                    # Signal the writer thread to stop
+                    queue_put(write_q, None)
+                except Exception:
+                    # Ensure that the files are closed below
+                    pass
                 writer_thread.join()
 
             # Close the input and output files if they were opened
