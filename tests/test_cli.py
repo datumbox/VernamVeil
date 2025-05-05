@@ -1,4 +1,5 @@
 import os
+import random
 import shutil
 import sys  # noqa: F401
 import tempfile
@@ -168,6 +169,55 @@ def fx(i, seed, bound):
         """Assert that the decoded output matches the original input."""
         with open(original_path, "rb") as f1, open(decoded_path, "rb") as f2:
             self.assertEqual(f1.read(), f2.read())
+
+    def _file_to_file_encrypt_decrypt(self, chunk_size, enc_buffer_size, dec_buffer_size):
+        """Utility to test file-to-file encryption and decryption with configurable buffer sizes."""
+        total_size = 41 * 1024
+
+        with self._in_tempdir():
+            random_data = random.randbytes(total_size)
+            infile = self._write_file("big_input.bin", random_data)
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+
+            encfile = self.temp_dir_path / "big_output.enc"
+            decfile = self.temp_dir_path / "big_output.dec"
+
+            self._encode(
+                infile,
+                encfile,
+                fx_file=fx_path,
+                seed_file=seed_path,
+                extra_args=[
+                    "--chunk-size", str(chunk_size),
+                    "--buffer-size", str(enc_buffer_size),
+                ]
+            )
+            self._decode(
+                encfile,
+                decfile,
+                fx_file=fx_path,
+                seed_file=seed_path,
+                extra_args=[
+                    "--chunk-size", str(chunk_size),
+                    "--buffer-size", str(dec_buffer_size),
+                ]
+            )
+            self._assert_decoded_matches_input(infile, decfile)
+
+    def test_file_to_file_encrypt_small_buffer_decrypt_large_buffer(self):
+        """Test file-to-file encryption with small buffer, decryption with large buffer."""
+        chunk_size = 32
+        small_buffer = 10 * chunk_size
+        large_buffer = 100 * chunk_size
+        self._file_to_file_encrypt_decrypt(chunk_size, small_buffer, large_buffer)
+
+    def test_file_to_file_encrypt_large_buffer_decrypt_small_buffer(self):
+        """Test file-to-file encryption with large buffer, decryption with small buffer."""
+        chunk_size = 32
+        small_buffer = 10 * chunk_size
+        large_buffer = 100 * chunk_size
+        self._file_to_file_encrypt_decrypt(chunk_size, large_buffer, small_buffer)
 
     def test_encode_generates_fx_and_seed_file_to_file(self):
         """Test encoding with auto-generated fx and seed, file-to-file mode."""
@@ -582,3 +632,4 @@ def fx(i, seed, bound):
 
 if __name__ == "__main__":
     unittest.main()
+
