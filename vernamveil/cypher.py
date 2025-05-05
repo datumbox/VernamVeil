@@ -643,15 +643,15 @@ class VernamVeil:
 
         def queue_get(
             q: queue.Queue[bytes | memoryview],
-        ) -> tuple[bytes | memoryview, bool]:
+        ) -> bytes | memoryview:
             # Gets from queue in a blocking way with timeout, as long as the exception queue is empty
-            # Returns the data and True if successful, None and False if an error occurs
+            # Returns the data if successful, Empty data if an error occurs
             while exception_queue.empty():
                 try:
-                    return q.get(block=True, timeout=0.1), True
+                    return q.get(block=True, timeout=0.1)
                 except queue.Empty:
                     continue
-            return b"", False
+            return b""
 
         def queue_put(q: queue.Queue[bytes | memoryview], data: bytes | memoryview) -> bool:
             # Puts in queue in a blocking way with timeout, as long as the exception queue is empty
@@ -678,8 +678,8 @@ class VernamVeil:
         def writer_thread_func() -> None:
             try:
                 while exception_queue.empty():
-                    data, success = queue_get(write_q)
-                    if not data or not success:  # Signal to stop or exception occurred
+                    data = queue_get(write_q)
+                    if not data:  # Signal to stop or exception occurred
                         break
                     outfile.write(data)
             except Exception as e:
@@ -696,8 +696,8 @@ class VernamVeil:
             if mode == "encode":
                 while exception_queue.empty():
                     # Read from the file
-                    block, success = queue_get(read_q)
-                    if not block or not success:
+                    block = queue_get(read_q)
+                    if not block:
                         break  # End of file or exception occurred
 
                     # Encode the content block
@@ -716,8 +716,8 @@ class VernamVeil:
             elif mode == "decode":
                 buffer = bytearray()
                 while exception_queue.empty():
-                    block, success = queue_get(read_q)
-                    if (not block and not buffer) or not success:
+                    block = queue_get(read_q)
+                    if not block and not buffer:
                         break  # End of file with nothing left to process or exception occurred
 
                     buffer.extend(block)
