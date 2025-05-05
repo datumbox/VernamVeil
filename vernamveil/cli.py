@@ -310,6 +310,9 @@ def main(args: list[str] | None = None) -> None:
     except (BrokenPipeError, OSError) as e:
         _vprint(f"Error: I/O error during read/write: {e}", "error", verbosity)
         sys.exit(1)
+    except KeyboardInterrupt:
+        _vprint("\nOperation cancelled by user.", "error", verbosity)
+        sys.exit(130)
 
 
 if __name__ == "__main__":
