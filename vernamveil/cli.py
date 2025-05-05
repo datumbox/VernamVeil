@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import IO, Callable, cast
 
+from . import __version__
 from .cypher import VernamVeil
 from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
 
@@ -259,6 +260,13 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
+
+    # Print version and platform information
+    _vprint(
+        f"VernamVeil CLI v{__version__} | Python {sys.version_info.major}.{sys.version_info.minor} | Platform: {sys.platform}",
+        "info",
+        verbosity,
+    )
 
     # Prepare VernamVeil keyword arguments
     vernamveil_kwargs = {

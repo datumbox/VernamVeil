@@ -9,6 +9,7 @@ from .fx_utils import (
 from .hash_utils import hash_numpy
 
 __all__ = [
+    "__version__",
     "check_fx_sanity",
     "generate_default_fx",
     "generate_hmac_fx",
@@ -17,3 +18,13 @@ __all__ = [
     "load_fx_from_file",
     "VernamVeil",
 ]
+
+try:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:
+    from importlib_metadata import PackageNotFoundError, version  # type: ignore[no-redef]
+
+try:
+    __version__ = version("vernamveil")
+except PackageNotFoundError:
+    __version__ = "unknown"
