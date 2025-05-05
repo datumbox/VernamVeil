@@ -780,7 +780,7 @@ class VernamVeil:
                         break
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
-        except Exception as main_exc:
+        except BaseException as main_exc:
             # Signal the threads to stop
             exception_queue.put(main_exc)
             raise
