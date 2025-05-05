@@ -638,12 +638,12 @@ class VernamVeil:
 
         # Reader and Writer threads used for asynchronous IO
         read_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=read_queue_size)
-        write_q: queue.Queue[bytes | None] = queue.Queue(maxsize=write_queue_size)
+        write_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=write_queue_size)
         exception_queue: queue.Queue[BaseException] = queue.Queue()
 
         def queue_get(
-            q: queue.Queue[bytes | memoryview | None],
-        ) -> tuple[bytes | memoryview | None, bool]:
+            q: queue.Queue[bytes | memoryview],
+        ) -> tuple[bytes | memoryview, bool]:
             # Gets from queue in a blocking way with timeout, as long as the exception queue is empty
             # Returns the data and True if successful, None and False if an error occurs
             while exception_queue.empty():
@@ -651,11 +651,9 @@ class VernamVeil:
                     return q.get(block=True, timeout=0.1), True
                 except queue.Empty:
                     continue
-            return None, False
+            return b"", False
 
-        def queue_put(
-            q: queue.Queue[bytes | memoryview | None], data: bytes | memoryview | None
-        ) -> bool:
+        def queue_put(q: queue.Queue[bytes | memoryview], data: bytes | memoryview) -> bool:
             # Puts in queue in a blocking way with timeout, as long as the exception queue is empty
             # Returns True if successful, False if an error occurs
             while exception_queue.empty():
@@ -681,7 +679,7 @@ class VernamVeil:
             try:
                 while exception_queue.empty():
                     data, success = queue_get(write_q)
-                    if data is None or not success:  # Signal to stop or exception occurred
+                    if not data or not success:  # Signal to stop or exception occurred
                         break
                     outfile.write(data)
             except Exception as e:
@@ -762,7 +760,7 @@ class VernamVeil:
             if writer_thread.is_alive():
                 try:
                     # Signal the writer thread to stop
-                    queue_put(write_q, None)
+                    queue_put(write_q, b"")
                 except Exception:
                     # Ensure that the files are closed below
                     pass
