@@ -87,7 +87,8 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         "--verbosity",
         choices=["info", "warning", "error", "none"],
         default="warning",
-        help="Verbosity level: info, warning (default), error, none.",
+        help="Verbosity level: info, warning (default), error, none. "
+        "Info shows all messages, including progress information.",
     )
 
 
