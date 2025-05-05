@@ -13,6 +13,7 @@ import warnings
 from pathlib import Path
 from typing import IO, Any, Callable, Iterator, Literal, TypeAlias
 
+from .cache import NumpyCacheMixin
 from .hash_utils import _UINT64_BOUND, hash_numpy
 
 try:
@@ -30,7 +31,7 @@ except ImportError:
 __all__ = ["VernamVeil"]
 
 
-class VernamVeil:
+class VernamVeil(NumpyCacheMixin):
     """
     VernamVeil is a modular, symmetric stream cypher inspired by One-Time Pad principles. It features customisable
     keystream generation, synthetic IV seed initialisation, stateful seed evolution for avalanche effects,
@@ -75,6 +76,8 @@ class VernamVeil:
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `vectorise` is True but numpy is not installed.
         """
+        super().__init__()
+
         # Validate input
         if delimiter_size < 4:
             raise ValueError("delimiter_size must be at least 4 bytes.")
@@ -174,7 +177,7 @@ class VernamVeil:
 
         if self._vectorise:
             # Vectorised: generate all hashes at once
-            i_arr = np.arange(1, total_count, dtype=np.uint64)
+            i_arr: NDArray[np.uint64] = self._np_arange(1, total_count, np.uint64)
             hashes: NDArray[np.uint64] = hash_numpy(i_arr, seed, "blake2b")
         else:
             # Standard: generate hashes one by one
@@ -213,7 +216,7 @@ class VernamVeil:
             # Vectorised generation using numpy
             # Generate enough uint64s to cover the length
             n_uint64 = math.ceil(length / 8)
-            indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
+            indices: NDArray[np.uint64] = self._np_arange(1, n_uint64 + 1, np.uint64)
             # Unbounded, get the full uint64 range
             keystream: NDArray[np.uint64] = self._fx(indices, seed, None)
             # Ensure output is a numpy array of integers in [0, 255]
@@ -385,7 +388,7 @@ class VernamVeil:
         data_len = len(data)
         if self._vectorise:
             arr: NDArray[np.uint8] = np.frombuffer(data, dtype=np.uint8)
-            processed: NDArray[np.uint8] = np.empty_like(arr)
+            processed: NDArray[np.uint8] = self._np_empty(data_len, np.uint8)
         else:
             arr: memoryview = data  # type: ignore[no-redef]
             processed: bytearray = bytearray(data_len)  # type: ignore[no-redef]
@@ -771,6 +774,9 @@ class VernamVeil:
                 infile.close()
             if isinstance(output_file, (str, Path)):
                 outfile.close()
+
+            # Clear Cache
+            cypher.clear_cache()
 
             # Check for exceptions from the threads
             if not exception_queue.empty():
