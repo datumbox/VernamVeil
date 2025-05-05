@@ -7,6 +7,7 @@ It supports custom key stream functions, seed management, and various encryption
 
 import argparse
 import sys
+import time
 from pathlib import Path
 from typing import IO, cast
 
@@ -84,9 +85,9 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--verbosity",
-        choices=["warning", "error", "none"],
+        choices=["info", "warning", "error", "none"],
         default="warning",
-        help="Verbosity level: warning (default), error, none.",
+        help="Verbosity level: info, warning (default), error, none.",
     )
 
 
@@ -96,10 +97,10 @@ def _vprint(msg: str, level: str, verbosity: str) -> None:
 
     Args:
         msg (str): The message to print.
-        level (str): The message level, either "warning" or "error".
-        verbosity (str): The verbosity setting: "warning", "error", or "none".
+        level (str): The message level: 'info', 'warning', or 'error'.
+        verbosity (str): The verbosity setting: 'info', 'warning', 'error', or 'none'.
     """
-    levels: dict[str, int] = {"warning": 1, "error": 2, "none": 3}
+    levels: dict[str, int] = {"info": 0, "warning": 1, "error": 2, "none": 3}
     msg_level = levels[level]
     user_level = levels[verbosity]
     if msg_level >= user_level:
@@ -275,6 +276,7 @@ def main(args: list[str] | None = None) -> None:
             _open_file(infile, "rb", sys.stdin) as fin,
             _open_file(outfile, "wb", sys.stdout) as fout,
         ):
+            start_time = time.perf_counter()
             VernamVeil.process_file(
                 fin,
                 fout,
@@ -284,6 +286,8 @@ def main(args: list[str] | None = None) -> None:
                 buffer_size=parsed_args.buffer_size,
                 **vernamveil_kwargs,
             )
+            elapsed = time.perf_counter() - start_time
+            _vprint(f"Info: {parsed_args.command} took {elapsed:.3f} seconds.", "info", verbosity)
     except (BrokenPipeError, OSError) as e:
         _vprint(f"Error: I/O error during read/write: {e}", "error", verbosity)
         sys.exit(1)

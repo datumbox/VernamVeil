@@ -517,8 +517,36 @@ def fx(i, seed, bound):
             with (self.temp_dir_path / "output.txt").open("rb") as f:
                 self.assertEqual(f.read(), b"original plain")
 
+    def test_verbosity_info(self):
+        """Test that info, warnings, and errors are printed with --verbosity info."""
+        with self._in_tempdir():
+            # Run a successful encode to trigger info and warning messages
+            stderr = StringIO()
+            with patch("sys.stderr", stderr):
+                self._encode(self.infile, self.encfile, extra_args=["--verbosity", "info"])
+            self.assertIn(
+                f"Warning: Generated a fx-file in {(self.temp_dir_path / 'fx.py').resolve()}.",
+                stderr.getvalue(),
+            )
+            self.assertIn(
+                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
+                stderr.getvalue(),
+            )
+            self.assertIn("Info: encode took", stderr.getvalue())
+
+            # Now, run a failed encode to trigger an error (output.enc exists)
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                self._encode(self.infile, self.encfile, extra_args=["--verbosity", "info"])
+            self.assertIn(
+                f"Error: {(self.temp_dir_path / 'output.enc').resolve()} already exists. Refusing to overwrite.",
+                stderr.getvalue(),
+            )
+            self.assertNotIn("Warning: Generated a fx-file", stderr.getvalue())
+            self.assertNotIn("Info: encode took", stderr.getvalue())
+
     def test_verbosity_warning(self):
-        """Test that warnings and errors are printed with --verbosity warning (default)."""
+        """Test that warnings and errors are printed with --verbosity warning (default). Info is not."""
         with self._in_tempdir():
             # First, run a successful encode to trigger a warning (fx.py generated)
             stderr = StringIO()
@@ -532,6 +560,7 @@ def fx(i, seed, bound):
                 f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
                 stderr.getvalue(),
             )
+            self.assertNotIn("Info: encode took", stderr.getvalue())
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
@@ -541,15 +570,17 @@ def fx(i, seed, bound):
                 f"Error: {(self.temp_dir_path / 'output.enc').resolve()} already exists. Refusing to overwrite.",
                 stderr.getvalue(),
             )
+            self.assertNotIn("Info: encode took", stderr.getvalue())
 
     def test_verbosity_error(self):
-        """Test that only errors are printed with --verbosity error and that warnings are not."""
+        """Test that only errors are printed with --verbosity error and that warnings/info are not."""
         with self._in_tempdir():
-            # First, run a successful encode to check warning is NOT present
+            # First, run a successful encode to check warning/info are NOT present
             stderr = StringIO()
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "error"])
             self.assertNotIn("Warning:", stderr.getvalue())
+            self.assertNotIn("Info: encode took", stderr.getvalue())
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
@@ -560,11 +591,12 @@ def fx(i, seed, bound):
                 stderr.getvalue(),
             )
             self.assertNotIn("Warning:", stderr.getvalue())
+            self.assertNotIn("Info: encode took", stderr.getvalue())
 
     def test_verbosity_none(self):
-        """Test that nothing is printed with --verbosity none, for both warnings and errors."""
+        """Test that nothing is printed with --verbosity none, for info, warnings and errors."""
         with self._in_tempdir():
-            # Test warning (successful encode, should print nothing)
+            # Test warning/info (successful encode, should print nothing)
             stderr = StringIO()
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "none"])
