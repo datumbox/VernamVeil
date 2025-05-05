@@ -172,7 +172,7 @@ def fx(i, seed, bound):
 
     def _file_to_file_encrypt_decrypt(self, chunk_size, enc_buffer_size, dec_buffer_size):
         """Utility to test file-to-file encryption and decryption with configurable buffer sizes."""
-        total_size = 41 * 1024
+        total_size = 41 * 1024 + 1
 
         with self._in_tempdir():
             random_data = random.randbytes(total_size)
@@ -189,9 +189,11 @@ def fx(i, seed, bound):
                 fx_file=fx_path,
                 seed_file=seed_path,
                 extra_args=[
-                    "--chunk-size", str(chunk_size),
-                    "--buffer-size", str(enc_buffer_size),
-                ]
+                    "--chunk-size",
+                    str(chunk_size),
+                    "--buffer-size",
+                    str(enc_buffer_size),
+                ],
             )
             self._decode(
                 encfile,
@@ -199,9 +201,11 @@ def fx(i, seed, bound):
                 fx_file=fx_path,
                 seed_file=seed_path,
                 extra_args=[
-                    "--chunk-size", str(chunk_size),
-                    "--buffer-size", str(dec_buffer_size),
-                ]
+                    "--chunk-size",
+                    str(chunk_size),
+                    "--buffer-size",
+                    str(dec_buffer_size),
+                ],
             )
             self._assert_decoded_matches_input(infile, decfile)
 
@@ -632,4 +636,3 @@ def fx(i, seed, bound):
 
 if __name__ == "__main__":
     unittest.main()
-
