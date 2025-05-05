@@ -6,8 +6,10 @@ Defines the main encryption class and core cryptographic operations.
 import hashlib
 import hmac
 import math
+import os
 import queue
 import secrets
+import stat
 import threading
 import warnings
 from pathlib import Path
@@ -568,6 +570,7 @@ class VernamVeil:
         buffer_size: int = 1024 * 1024,
         read_queue_size: int = 4,
         write_queue_size: int = 4,
+        progress_callback: Callable[[int, int], None] | None = None,
         **vernamveil_kwargs: dict[str, Any],
     ) -> None:
         """
@@ -584,6 +587,8 @@ class VernamVeil:
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
             write_queue_size (int, optional): Maximum number of data blocks buffered in the
                 queue between the main processing thread and the IO writer thread. Defaults to 4.
+            progress_callback (Callable[[float], None] | None, optional): Callback for progress reporting.
+                Receives two arguments: bytes processed and total size. Defaults to None.
             **vernamveil_kwargs: Additional parameters for VernamVeil configuration.
 
         Raises:
@@ -635,6 +640,24 @@ class VernamVeil:
 
         infile = _open_if_path(input_file, "rb")
         outfile = _open_if_path(output_file, "wb")
+
+        # Progress tracking setup
+        total_size = 0
+        bytes_processed = 0
+        try:
+            if hasattr(infile, "fileno"):
+                fileno = infile.fileno()
+                if not os.isatty(fileno):
+                    file_stat = os.fstat(fileno)
+                    if stat.S_ISREG(file_stat.st_mode):
+                        total_size = file_stat.st_size
+        except Exception:
+            pass  # Not a regular file or can't determine size
+
+        if total_size <= 0:
+            progress_callback = None
+        elif progress_callback is not None:
+            progress_callback(0, total_size)
 
         # Reader and Writer threads used for asynchronous IO
         read_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=read_queue_size)
@@ -713,6 +736,10 @@ class VernamVeil:
 
                     # Refresh the block delimiter
                     block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
+
+                    if progress_callback:
+                        bytes_processed += len(block)
+                        progress_callback(bytes_processed, total_size)
             elif mode == "decode":
                 buffer = bytearray()
                 while exception_queue.empty():
@@ -739,6 +766,11 @@ class VernamVeil:
 
                         # Refresh block delimiter
                         block_delimiter, current_seed = cypher._generate_delimiter(current_seed)
+
+                    if progress_callback:
+                        bytes_processed += len(block)
+                        progress_callback(bytes_processed, total_size)
+
                     if not block:
                         # No more data to read, but there may be leftover data without a delimiter
                         if buffer:
@@ -746,7 +778,6 @@ class VernamVeil:
                                 ValueError("Incomplete block at end of file: missing delimiter.")
                             )
                         break
-
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
         except Exception as main_exc:

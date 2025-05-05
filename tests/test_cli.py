@@ -1,5 +1,6 @@
 import os
 import random
+import re
 import shutil
 import sys  # noqa: F401
 import tempfile
@@ -532,7 +533,7 @@ def fx(i, seed, bound):
                 f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
                 stderr.getvalue(),
             )
-            self.assertIn("Info: encode took", stderr.getvalue())
+            self.assertIn("The 'encode' step", stderr.getvalue())
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
@@ -543,7 +544,7 @@ def fx(i, seed, bound):
                 stderr.getvalue(),
             )
             self.assertNotIn("Warning: Generated a fx-file", stderr.getvalue())
-            self.assertNotIn("Info: encode took", stderr.getvalue())
+            self.assertNotIn("The 'encode' step", stderr.getvalue())
 
     def test_verbosity_warning(self):
         """Test that warnings and errors are printed with --verbosity warning (default). Info is not."""
@@ -560,7 +561,7 @@ def fx(i, seed, bound):
                 f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
                 stderr.getvalue(),
             )
-            self.assertNotIn("Info: encode took", stderr.getvalue())
+            self.assertNotIn("The 'encode' step", stderr.getvalue())
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
@@ -570,7 +571,7 @@ def fx(i, seed, bound):
                 f"Error: {(self.temp_dir_path / 'output.enc').resolve()} already exists. Refusing to overwrite.",
                 stderr.getvalue(),
             )
-            self.assertNotIn("Info: encode took", stderr.getvalue())
+            self.assertNotIn("The 'encode' step", stderr.getvalue())
 
     def test_verbosity_error(self):
         """Test that only errors are printed with --verbosity error and that warnings/info are not."""
@@ -580,7 +581,7 @@ def fx(i, seed, bound):
             with patch("sys.stderr", stderr):
                 self._encode(self.infile, self.encfile, extra_args=["--verbosity", "error"])
             self.assertNotIn("Warning:", stderr.getvalue())
-            self.assertNotIn("Info: encode took", stderr.getvalue())
+            self.assertNotIn("The 'encode' step", stderr.getvalue())
 
             # Now, run a failed encode to trigger an error (output.enc exists)
             stderr = StringIO()
@@ -591,7 +592,7 @@ def fx(i, seed, bound):
                 stderr.getvalue(),
             )
             self.assertNotIn("Warning:", stderr.getvalue())
-            self.assertNotIn("Info: encode took", stderr.getvalue())
+            self.assertNotIn("The 'encode' step", stderr.getvalue())
 
     def test_verbosity_none(self):
         """Test that nothing is printed with --verbosity none, for info, warnings and errors."""
@@ -664,6 +665,79 @@ def fx(i, seed, bound):
             ):
                 self._encode(self.infile, "-")
             self.assertIn("Error: I/O error during read/write:", stderr.getvalue())
+
+    def test_progress_callback_called_for_regular_file_with_verbosity_info(self):
+        """Progress callback is called for regular files with verbosity info."""
+        with self._in_tempdir():
+            self._write_file("small.txt", b"abcde")
+            stderr = StringIO()
+            with patch("sys.stderr", stderr):
+                self._encode(
+                    self.temp_dir_path / "small.txt",
+                    self.temp_dir_path / "small.enc",
+                    extra_args=["--verbosity", "info"],
+                )
+            self.assertIn("Progress: 100.00%", stderr.getvalue())
+
+    def test_progress_callback_not_called_for_stdin_input(self):
+        """Progress callback is not called for stdin input."""
+        with self._in_tempdir():
+            stderr = StringIO()
+            with patch("sys.stderr", stderr):
+                self._encode(
+                    "-",
+                    self.temp_dir_path / "stdin.enc",
+                    extra_args=["--verbosity", "info"],
+                    stdin_data=b"abcdefg",
+                )
+            self.assertNotIn("Progress:", stderr.getvalue())
+
+    def test_progress_callback_not_called_for_non_info_verbosity(self):
+        """Progress callback is not called for non-info verbosity."""
+        with self._in_tempdir():
+            fx_path = self._create_fx()
+            seed_path = self._create_seed()
+            self._write_file("file.txt", b"1234567890")
+            encfile = self.temp_dir_path / "file.enc"
+            for verbosity in ["warning", "error", "none"]:
+                stderr = StringIO()
+                with patch("sys.stderr", stderr):
+                    self._encode(
+                        self.temp_dir_path / "file.txt",
+                        encfile,
+                        fx_file=fx_path,
+                        seed_file=seed_path,
+                        extra_args=["--verbosity", verbosity],
+                    )
+                self.assertNotIn("Progress:", stderr.getvalue())
+                encfile.unlink()
+
+    def _assert_progress_monotonic_and_complete(self, file_size, extra_args):
+        """Utility to check progress callback for a file of given size and CLI args."""
+        with self._in_tempdir():
+            file_path = self._write_file(f"file_{file_size}.bin", b"x" * file_size)
+            stderr = StringIO()
+            with patch("sys.stderr", stderr):
+                self._encode(
+                    file_path,
+                    self.temp_dir_path / f"file_{file_size}.enc",
+                    extra_args=["--verbosity", "info"] + extra_args,
+                )
+            progress_vals = [
+                float(match) for match in re.findall(r"Progress:\s*([\d.]+)%", stderr.getvalue())
+            ]
+            self.assertTrue(progress_vals == sorted(progress_vals))
+            self.assertTrue(progress_vals[-1] == 100.0)
+            if file_size > 32 * 1024:
+                self.assertTrue(len(progress_vals) > 1)
+
+    def test_progress_callback_handles_small_file(self):
+        """Progress callback for small file: percentage increases monotonically and ends at 100%."""
+        self._assert_progress_monotonic_and_complete(10, [])
+
+    def test_progress_callback_handles_large_file(self):
+        """Progress callback for large file: percentage increases monotonically, ends at 100%, and has multiple updates."""
+        self._assert_progress_monotonic_and_complete(128 * 1024, ["--chunk-size", "4096"])
 
 
 if __name__ == "__main__":

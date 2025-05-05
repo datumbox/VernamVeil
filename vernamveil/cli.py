@@ -9,7 +9,7 @@ import argparse
 import sys
 import time
 from pathlib import Path
-from typing import IO, cast
+from typing import IO, Callable, cast
 
 from .cypher import VernamVeil
 from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
@@ -270,6 +270,20 @@ def main(args: list[str] | None = None) -> None:
         "vectorise": parsed_args.vectorise,
     }
 
+    # Define progress callback if verbosity is "info"
+    progress_callback: Callable[[int, int], None] | None
+    if verbosity == "info":
+
+        def progress_callback(processed: int, total: int) -> None:
+            percent = 100.0 * processed / total if total > 0 else 0.0
+            print(f"\rProgress: {percent:.2f}%", end="", file=sys.stderr, flush=True)
+            if processed >= total:
+                print("\rProgress: 100.00%", end="", file=sys.stderr, flush=True)
+                print("", file=sys.stderr, flush=True)
+
+    else:
+        progress_callback = None
+
     # Open input/output (binary mode, handle stdin/stdout)
     try:
         with (
@@ -284,10 +298,15 @@ def main(args: list[str] | None = None) -> None:
                 seed,
                 mode=parsed_args.command,
                 buffer_size=parsed_args.buffer_size,
+                progress_callback=progress_callback,
                 **vernamveil_kwargs,
             )
-            elapsed = time.perf_counter() - start_time
-            _vprint(f"Info: {parsed_args.command} took {elapsed:.3f} seconds.", "info", verbosity)
+            # Print elapsed time
+            _vprint(
+                f"The '{parsed_args.command}' step took {time.perf_counter() - start_time:.3f} seconds.",
+                "info",
+                verbosity,
+            )
     except (BrokenPipeError, OSError) as e:
         _vprint(f"Error: I/O error during read/write: {e}", "error", verbosity)
         sys.exit(1)
