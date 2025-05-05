@@ -1,3 +1,8 @@
+try:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:
+    from importlib_metadata import PackageNotFoundError, version  # type: ignore[no-redef]
+
 from .cypher import VernamVeil
 from .fx_utils import (
     check_fx_sanity,
@@ -7,6 +12,11 @@ from .fx_utils import (
     load_fx_from_file,
 )
 from .hash_utils import hash_numpy
+
+try:
+    __version__ = version("vernamveil")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 __all__ = [
     "__version__",
@@ -18,13 +28,3 @@ __all__ = [
     "load_fx_from_file",
     "VernamVeil",
 ]
-
-try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    from importlib_metadata import PackageNotFoundError, version  # type: ignore[no-redef]
-
-try:
-    __version__ = version("vernamveil")
-except PackageNotFoundError:
-    __version__ = "unknown"
