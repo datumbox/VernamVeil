@@ -118,6 +118,32 @@ class VernamVeil(Cypher):
             f"vectorise={self._vectorise})"
         )
 
+    @classmethod
+    def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
+        """
+        Generates a cryptographically secure initial random seed.
+
+        This method uses the `secrets` module to generate a random sequence of bytes
+        suitable for cryptographic use. It returns a byte string of the specified length.
+
+        Args:
+            num_bytes (int, optional): The number of bytes to generate for the seed.
+                Defaults to 64 bytes if not provided.
+
+        Returns:
+            bytes: A random byte string of the specified length.
+
+        Raises:
+            TypeError: If `num_bytes` is not an integer.
+            ValueError: If `num_bytes` is not a positive integer.
+        """
+        if not isinstance(num_bytes, int):
+            raise TypeError("num_bytes must be an integer.")
+        if num_bytes <= 0:
+            raise ValueError("num_bytes must be a positive integer.")
+
+        return secrets.token_bytes(num_bytes)
+
     @property
     def _hmac_length(self) -> int:
         """
