@@ -27,9 +27,9 @@ jobs:
       - name: Install dependencies
         run: python -m pip install .[dev]
 
-      - name: Generate docs with pdoc
+      - name: Build docs with Sphinx
         run: |
-          pdoc ./vernamveil --output-dir docs-html --docformat google
+          sphinx-build -b html docs docs-html
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4

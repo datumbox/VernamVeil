@@ -21,7 +21,6 @@ class Cypher(ABC):
     @abstractmethod
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
         """
-        @private
         This abstract method is used to generate a delimiter. See VernamVeil for details.
         """
         pass
@@ -29,7 +28,6 @@ class Cypher(ABC):
     @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """
-        @private
         This abstract method is used to encode a message using the cypher. See VernamVeil for details.
         """
         pass
@@ -37,7 +35,6 @@ class Cypher(ABC):
     @abstractmethod
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """
-        @private
         This abstract method is used to decode a message using the cypher. See VernamVeil for details.
         """
         pass

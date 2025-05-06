@@ -6,8 +6,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
-docs/
 docs-html/
 .env
 nphash/_npsha256ffi*
 nphash/_npblake2bffi*
+reports/

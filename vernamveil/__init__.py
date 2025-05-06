@@ -1,6 +1,5 @@
 from importlib.metadata import PackageNotFoundError, version
 
-from vernamveil._cypher import Cypher
 from vernamveil._fx_utils import (
     check_fx_sanity,
     generate_default_fx,
@@ -20,7 +19,6 @@ except PackageNotFoundError:
 
 __all__ = [
     "__version__",
-    "Cypher",
     "VernamVeil",
     "check_fx_sanity",
     "generate_default_fx",
