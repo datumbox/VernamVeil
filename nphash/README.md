@@ -84,3 +84,8 @@ If the C extension is not built or importable, `hash_numpy` will transparently f
 
 - If you change the C code in `build.py`, rerun `python build.py` to rebuild the extension. Reinstall the package afterwards.
 - If you encounter errors about missing OpenMP or OpenSSL, ensure the development libraries are installed as shown above.
+- **Apple Silicon (M1/M2/M3) macOS users:** If you see linker warnings about missing `x86_64` architecture or universal/fat binaries, set the following environment variable before building to ensure the build targets only your native architecture:
+   ```bash
+   export ARCHFLAGS=-arch arm64
+   python build.py
+   ```
