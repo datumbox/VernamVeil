@@ -1,7 +1,4 @@
-"""
-nphash/build.py
-
-Build script for the nphash CFFI extension.
+"""Build script for the nphash CFFI extension.
 
 This script uses cffi to compile the _npblake2bffi and _npsha256ffi C extensions that provide fast, parallelised
 BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
@@ -21,8 +18,7 @@ from cffi import FFI
 
 
 def _get_c_source(path: Path, name: str) -> str:
-    """
-    Read and return the contents of a C source file.
+    """Read and return the contents of a C source file.
 
     Args:
         path (Path): Path to the C source file.
@@ -48,8 +44,7 @@ def _print_build_summary(
     include_dirs: list[Path],
     library_dirs: list[Path],
 ) -> None:
-    """
-    Print a summary of the build configuration.
+    """Print a summary of the build configuration.
 
     Args:
         libraries (list): Libraries to link against.
@@ -68,11 +63,10 @@ def _print_build_summary(
 
 
 def main() -> None:
-    """
-    Main entry point for building the nphash CFFI extensions.
+    """Main entry point for building the nphash CFFI extensions.
+
     Sets up platform-specific build options, reads C source files, and compiles the extensions.
     """
-
     # FFI builders
     ffibuilder_blake2b = FFI()
     ffibuilder_blake2b.cdef(

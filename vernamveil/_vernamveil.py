@@ -1,5 +1,5 @@
-"""
-Implements the VernamVeil stream cypher and related utilities.
+"""Implements the VernamVeil stream cypher and related utilities.
+
 Defines the main encryption class and core cryptographic operations.
 """
 
@@ -32,12 +32,12 @@ __all__ = ["VernamVeil"]
 
 
 class VernamVeil(Cypher):
-    """
-    VernamVeil is a modular, symmetric stream cypher inspired by One-Time Pad principles. It features customisable
-    keystream generation, synthetic IV seed initialisation, stateful seed evolution for avalanche effects,
-    authenticated encryption, and layered message obfuscation (chunk shuffling, padding, decoy injection). Supports
-    vectorised operations (NumPy) and optional C-backed hashing for performance. Designed for educational and
-    experimental use.
+    """VernamVeil is a modular, symmetric stream cypher.
+
+    Inspired by One-Time Pad principles, it features customisable keystream generation, synthetic IV seed initialisation,
+    stateful seed evolution for avalanche effects, authenticated encryption, and layered message obfuscation (chunk
+    shuffling, padding, decoy injection). Supports vectorised operations (NumPy) and optional C-backed hashing for
+    performance. Designed for educational and experimental use.
     """
 
     def __init__(
@@ -51,8 +51,7 @@ class VernamVeil(Cypher):
         auth_encrypt: bool = True,
         vectorise: bool = False,
     ):
-        """
-        Initialise the VernamVeil encryption cypher with configurable parameters.
+        """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
@@ -105,9 +104,7 @@ class VernamVeil(Cypher):
         self._vectorise = vectorise
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the VernamVeil instance, including its parameters.
-        """
+        """Return a string representation of the VernamVeil instance."""
         return (
             f"VernamVeil(chunk_size={self._chunk_size}, "
             f"delimiter_size={self._delimiter_size}, "
@@ -120,8 +117,7 @@ class VernamVeil(Cypher):
 
     @classmethod
     def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
-        """
-        Generates a cryptographically secure initial random seed.
+        """Generate a cryptographically secure initial random seed.
 
         This method uses the `secrets` module to generate a random sequence of bytes
         suitable for cryptographic use. It returns a byte string of the specified length.
@@ -146,8 +142,7 @@ class VernamVeil(Cypher):
 
     @property
     def _hmac_length(self) -> int:
-        """
-        Returns the length of the HMAC digest used in the VernamVeil class.
+        """Return the length of the HMAC digest used in the VernamVeil class.
 
         This is a constant value representing the size of the hash output from the BLAKE2b algorithm.
         """
@@ -157,8 +152,7 @@ class VernamVeil(Cypher):
     def _hmac(
         key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
-        """
-        Generates a hash-based message authentication code (HMAC) using the Blake2b algorithm.
+        """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
 
         If `msg_list` is provided, each element is sequentially fed into the HMAC as message data.
         If `msg_list` is `None`, only the key is hashed.
@@ -182,9 +176,9 @@ class VernamVeil(Cypher):
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
     ) -> list[int]:
-        """
-        Implements the Fisher–Yates shuffle algorithm, to determine the shuffled positions for real
-        chunks based on a deterministic seed.
+        """Implement the Fisher–Yates shuffle algorithm.
+
+        Determines the shuffled positions for real chunks based on a deterministic seed.
 
         Uses `hash_numpy` for vectorised hashing if available.
 
@@ -222,8 +216,7 @@ class VernamVeil(Cypher):
         return positions[:real_count]
 
     def _generate_bytes(self, length: int, seed: bytes) -> memoryview:
-        """
-        Produces a byte stream of the given length using the key generator function.
+        """Produce a byte stream of the given length using the key generator function.
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
 
@@ -259,8 +252,7 @@ class VernamVeil(Cypher):
             return memoryview(result)[:length]
 
     def _generate_chunk_ranges(self, message_len: int) -> Iterator[tuple[int, int]]:
-        """
-        Splits a message into chunk index ranges based on the configured chunk size.
+        """Split a message into chunk index ranges based on the configured chunk size.
 
         Args:
             message_len (int): Length of the message in bytes.
@@ -274,8 +266,7 @@ class VernamVeil(Cypher):
         )
 
     def _obfuscate(self, message: memoryview, seed: bytes, delimiter: memoryview) -> memoryview:
-        """
-        Injects noise and padding into the message and shuffles the real chunk positions.
+        """Inject noise and padding into the message and shuffle the real chunk positions.
 
         Args:
             message (memoryview): Original message.
@@ -324,8 +315,7 @@ class VernamVeil(Cypher):
         return memoryview(noisy_blocks)
 
     def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
-        """
-        Removes noise and extracts real chunks from a shuffled noisy message.
+        """Remove noise and extract real chunks from a shuffled noisy message.
 
         Args:
             noisy (bytearray): Encrypted and obfuscated message.
@@ -384,8 +374,7 @@ class VernamVeil(Cypher):
     def _xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
     ) -> tuple[memoryview, bytes]:
-        """
-        Encrypts or decrypts data using XOR with the generated keystream.
+        """Encrypt or decrypt data using XOR with the generated keystream.
 
         Args:
             data (memoryview): Input data to process.
@@ -430,8 +419,7 @@ class VernamVeil(Cypher):
         return result, seed
 
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
-        """
-        Creates a delimiter sequence using the key stream and updates the seed.
+        """Create a delimiter sequence using the key stream and update the seed.
 
         Args:
             seed (bytes): Seed used for generating the delimiter.
@@ -444,8 +432,7 @@ class VernamVeil(Cypher):
         return delimiter, seed
 
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        Encrypts a message.
+        """Encrypt a message.
 
         Args:
             message (bytes or memoryview): Message to encode.
@@ -500,8 +487,7 @@ class VernamVeil(Cypher):
         return output, last_seed
 
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        Decrypts an encoded message.
+        """Decrypt an encoded message.
 
         Args:
             cyphertext (bytes or memoryview): Encrypted and obfuscated message.

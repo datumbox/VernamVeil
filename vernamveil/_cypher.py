@@ -1,6 +1,4 @@
-"""
-Implements the Cypher class, the base class for stream cyphers.
-"""
+"""Implements the Cypher class, the base class for stream cyphers."""
 
 import os
 import queue
@@ -14,29 +12,21 @@ __all__ = ["Cypher"]
 
 
 class Cypher(ABC):
-    """
-    Abstract base class for cyphers; provides utils that are common to all subclasses.
-    """
+    """Abstract base class for cyphers; provides utils that are common to all subclasses."""
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
-        """
-        This abstract method is used to generate a delimiter. See VernamVeil for details.
-        """
+        """Generate a delimiter. See VernamVeil for details."""
         pass
 
     @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        This abstract method is used to encode a message using the cypher. See VernamVeil for details.
-        """
+        """Encode a message using the cypher. See VernamVeil for details."""
         pass
 
     @abstractmethod
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        This abstract method is used to decode a message using the cypher. See VernamVeil for details.
-        """
+        """Decode a message using the cypher. See VernamVeil for details."""
         pass
 
     def process_file(
@@ -50,8 +40,7 @@ class Cypher(ABC):
         write_queue_size: int = 4,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
-        """
-        Processes a file or stream in blocks using the provided Cypher for encryption or decryption.
+        """Processes a file or stream in blocks using the provided Cypher for encryption or decryption.
 
         Args:
             input_file (str | Path | IO[bytes]): Path or file-like object for input.

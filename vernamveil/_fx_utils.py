@@ -1,5 +1,4 @@
-"""
-Key stream function utilities for library.
+"""Key stream function utilities for library.
 
 This module provides utilities for generating, loading, and checking the sanity of key stream functions (fx)
 used by the VernamVeil cypher.
@@ -35,8 +34,7 @@ def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
-    """
-    Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
+    """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
         hash_name (str, optional): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
@@ -114,8 +112,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 def generate_polynomial_fx(
     degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
-    """
-    Generate a random polynomial-based secret function to act as a deterministic key stream generator.
+    """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
+
     The transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
     Though any mathematical function with domain the positive integers can be used, this utility only supports
     polynomials and is used for testing.
@@ -229,8 +227,7 @@ generate_default_fx = generate_polynomial_fx
 
 
 def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
-    """
-    Load the fx function from a Python file.
+    """Load the fx function from a Python file.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
@@ -252,8 +249,8 @@ def check_fx_sanity(
     bound: int = 256,
     num_samples: int = 1000,
 ) -> bool:
-    """
-    Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
+    """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
+
     Automatically detects if fx is vectorised (NumPy) or scalar (int) and tests accordingly.
 
     Checks performed:
