@@ -1,4 +1,4 @@
-vernamveil documentation
+VernamVeil documentation
 ========================
 
 .. toctree::
