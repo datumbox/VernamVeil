@@ -11,9 +11,10 @@ import time
 from pathlib import Path
 from typing import IO, Callable, cast
 
-from . import __version__
-from .cypher import VernamVeil
-from .fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil import __version__
+from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._hash_utils import _HAS_C_MODULE
+from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
@@ -263,7 +264,8 @@ def main(args: list[str] | None = None) -> None:
 
     # Print version and platform information
     _vprint(
-        f"VernamVeil CLI v{__version__} | Python {sys.version_info.major}.{sys.version_info.minor} | Platform: {sys.platform}",
+        f"VernamVeil CLI v{__version__} (numpy: {_HAS_NUMPY}, nphash: {_HAS_C_MODULE}) | "
+        f"Python v{sys.version_info.major}.{sys.version_info.minor} | Platform: {sys.platform}",
         "info",
         verbosity,
     )
@@ -278,6 +280,9 @@ def main(args: list[str] | None = None) -> None:
         "auth_encrypt": parsed_args.auth_encrypt,
         "vectorise": parsed_args.vectorise,
     }
+
+    # Initialise the VernamVeil object
+    cypher = VernamVeil(fx, **vernamveil_kwargs)
 
     # Define progress callback if verbosity is "info"
     progress_callback: Callable[[int, int], None] | None
@@ -300,15 +305,13 @@ def main(args: list[str] | None = None) -> None:
             _open_file(outfile, "wb", sys.stdout) as fout,
         ):
             start_time = time.perf_counter()
-            VernamVeil.process_file(
+            cypher.process_file(
+                parsed_args.command,
                 fin,
                 fout,
-                fx,
                 seed,
-                mode=parsed_args.command,
                 buffer_size=parsed_args.buffer_size,
                 progress_callback=progress_callback,
-                **vernamveil_kwargs,
             )
             # Print elapsed time
             _vprint(

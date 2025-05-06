@@ -7,9 +7,9 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
-from vernamveil.cypher import _HAS_NUMPY, VernamVeil
-from vernamveil.fx_utils import generate_default_fx
-from vernamveil.hash_utils import _HAS_C_MODULE
+from vernamveil._fx_utils import generate_default_fx
+from vernamveil._hash_utils import _HAS_C_MODULE
+from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 def get_test_modes():
@@ -38,7 +38,7 @@ class TestVernamVeil(unittest.TestCase):
             with self.subTest(mode=mode, **cypher_kwargs):
                 print(f"mode={mode}, {cypher_kwargs}")
                 context = (
-                    patch("vernamveil.hash_utils._HAS_C_MODULE", use_c_backend)
+                    patch("vernamveil._hash_utils._HAS_C_MODULE", use_c_backend)
                     if use_c_backend is not None
                     else nullcontext()
                 )
@@ -96,29 +96,19 @@ class TestVernamVeil(unittest.TestCase):
             input_tmp.flush()
 
         def test(cypher, _):
-            VernamVeil.process_file(
+            cypher.process_file(
+                "encode",
                 input_file,
                 output_file,
-                cypher._fx,
                 self.initial_seed,
-                mode="encode",
                 buffer_size=1024,
-                chunk_size=128,
-                vectorise=cypher._vectorise,
-                siv_seed_initialisation=cypher._siv_seed_initialisation,
-                auth_encrypt=cypher._auth_encrypt,
             )
-            VernamVeil.process_file(
+            cypher.process_file(
+                "decode",
                 output_file,
                 decoded_file,
-                cypher._fx,
                 self.initial_seed,
-                mode="decode",
                 buffer_size=1024,
-                chunk_size=128,
-                vectorise=cypher._vectorise,
-                siv_seed_initialisation=cypher._siv_seed_initialisation,
-                auth_encrypt=cypher._auth_encrypt,
             )
             with input_file.open("rb") as f1, decoded_file.open("rb") as f2:
                 checksum_original = hashlib.blake2b(f1.read()).hexdigest()

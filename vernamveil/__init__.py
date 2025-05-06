@@ -3,16 +3,19 @@ try:
 except ImportError:
     from importlib_metadata import PackageNotFoundError, version  # type: ignore[no-redef]
 
-from .cypher import VernamVeil
-from .fx_utils import (
+from vernamveil._cypher import Cypher
+from vernamveil._fx_utils import (
     check_fx_sanity,
     generate_default_fx,
     generate_hmac_fx,
     generate_polynomial_fx,
     load_fx_from_file,
 )
-from .hash_utils import hash_numpy
+from vernamveil._hash_utils import hash_numpy
+from vernamveil._vernamveil import VernamVeil
 
+__version__: str
+"""The version of the library."""
 try:
     __version__ = version("vernamveil")
 except PackageNotFoundError:
@@ -20,11 +23,12 @@ except PackageNotFoundError:
 
 __all__ = [
     "__version__",
+    "Cypher",
+    "VernamVeil",
     "check_fx_sanity",
     "generate_default_fx",
     "generate_hmac_fx",
     "generate_polynomial_fx",
     "hash_numpy",
     "load_fx_from_file",
-    "VernamVeil",
 ]

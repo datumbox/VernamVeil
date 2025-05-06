@@ -3,8 +3,8 @@ import unittest
 import warnings
 from pathlib import Path
 
-from vernamveil.cypher import _HAS_NUMPY
-from vernamveil.fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._vernamveil import _HAS_NUMPY
 
 try:
     import numpy as np

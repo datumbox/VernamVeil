@@ -27,7 +27,7 @@ cffi = [
 ]
 
 [project.scripts]
-vernamveil = "vernamveil.cli:main"
+vernamveil = "vernamveil._cli:main"
 
 [build-system]
 requires = ["setuptools>=68.1", "wheel"]

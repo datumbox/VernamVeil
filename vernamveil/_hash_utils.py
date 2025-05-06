@@ -1,5 +1,5 @@
 """
-Hashing utilities for VernamVeil.
+Hashing utilities for the library.
 
 This module provides fast, optionally C-accelerated hashing functions for use in key stream generation.
 """

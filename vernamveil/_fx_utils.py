@@ -1,5 +1,5 @@
 """
-Key stream function utilities for VernamVeil.
+Key stream function utilities for library.
 
 This module provides utilities for generating, loading, and checking the sanity of key stream functions (fx)
 used by the VernamVeil cypher.
@@ -17,8 +17,8 @@ except ImportError:
     np = None
 
 
-from .cypher import _IntOrArray
-from .hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._vernamveil import _IntOrArray
 
 __all__ = [
     "check_fx_sanity",

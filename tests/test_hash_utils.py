@@ -4,8 +4,8 @@ import secrets
 import unittest
 from unittest.mock import patch
 
-from vernamveil.cypher import _HAS_NUMPY
-from vernamveil.hash_utils import _HAS_C_MODULE, _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE, _UINT64_BOUND, hash_numpy
+from vernamveil._vernamveil import _HAS_NUMPY
 
 try:
     import numpy as np
@@ -35,7 +35,7 @@ class TestHashUtils(unittest.TestCase):
             for hash_name in ("sha256", "blake2b"):
                 with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
                     print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
-                    with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
+                    with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
                         seed = secrets.token_bytes(64)
                         i = np.arange(1, 1000, dtype=np.uint64)
 
@@ -68,7 +68,7 @@ class TestHashUtils(unittest.TestCase):
             for hash_name in ("sha256", "blake2b"):
                 with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
                     print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
-                    with patch("vernamveil.hash_utils._HAS_C_MODULE", has_c):
+                    with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
                         i = np.arange(1, 1000, dtype=np.uint64)
 
                         output = hash_numpy(i, None, hash_name)

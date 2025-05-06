@@ -132,14 +132,17 @@ fx = generate_default_fx()  # remember to store fx._source_code securely
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
 
-# Step 3: Encrypt a file
-VernamVeil.process_file("plain.txt", "encrypted.dat", fx, initial_seed, mode="encode")
+# Step 3: Initialise VernamVeil with the custom fx and parameters
+cypher = VernamVeil(fx, chunk_size=64, decoy_ratio=0.2)
 
-# Step 4: Decrypt the file
-VernamVeil.process_file("encrypted.dat", "decrypted.txt", fx, initial_seed, mode="decode")
+# Step 4: Encrypt a file
+cypher.process_file("encode", "plain.txt", "encrypted.dat", initial_seed)
+
+# Step 5: Decrypt the file
+cypher.process_file("decode", "encrypted.dat", "decrypted.txt", initial_seed)
 ```
 
-> **Note:**  
+> **Note:**
 > The `process_file` method uses background threads and queues to perform asynchronous I/O for both reading and writing, enabling efficient processing of large files without blocking the main thread.
 
 ---

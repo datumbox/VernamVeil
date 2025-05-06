@@ -10,7 +10,7 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from unittest.mock import patch
 
-from vernamveil.cli import main
+from vernamveil._cli import main
 
 
 class _UnclosableBytesIO(BytesIO):
