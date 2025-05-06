@@ -198,7 +198,7 @@ def main(args: list[str] | None = None) -> None:
             )
             sys.exit(1)
         fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
-        fx_py.write_text(fx_obj._source_code)  # type: ignore[attr-defined]
+        fx_py.write_text(getattr(fx_obj, "_source_code"))
         _vprint(
             f"Warning: Generated a fx-file in {fx_py.resolve()}. "
             "Store securely, this file contains your key stream function.",

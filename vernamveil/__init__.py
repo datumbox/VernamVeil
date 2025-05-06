@@ -1,7 +1,4 @@
-try:
-    from importlib.metadata import PackageNotFoundError, version
-except ImportError:
-    from importlib_metadata import PackageNotFoundError, version  # type: ignore[no-redef]
+from importlib.metadata import PackageNotFoundError, version
 
 from vernamveil._cypher import Cypher
 from vernamveil._fx_utils import (

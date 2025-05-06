@@ -11,14 +11,16 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
-try:
-    import numpy as np
-except ImportError:
-    np = None
-
-
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 from vernamveil._vernamveil import _IntOrArray
+
+np: Any
+try:
+    import numpy
+
+    np = numpy
+except ImportError:
+    np = None
 
 __all__ = [
     "check_fx_sanity",
@@ -104,7 +106,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 
     # Attach the code string directly to the function object for later reference
     fx = local_vars["fx"]
-    fx._source_code = function_code  # type: ignore[attr-defined, unused-ignore]
+    fx._source_code = function_code
 
     return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
@@ -217,7 +219,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     fx = local_vars["fx"]
 
     # Attach the code string directly to the function object for later reference
-    fx._source_code = function_code  # type: ignore[attr-defined, unused-ignore]
+    fx._source_code = function_code
 
     return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
@@ -291,7 +293,7 @@ def check_fx_sanity(
         else:
             warnings.warn("fx output is not a NumPy array.")
             passed = False
-            outputs_list = list(outputs)  # type: ignore[arg-type]
+            outputs_list = list(outputs)
     else:
         outputs_list = [fx(i, seed, bound) for i in range(1, num_samples + 1)]
 
@@ -308,7 +310,7 @@ def check_fx_sanity(
         if isinstance(outputs_alt, np.ndarray):
             outputs_alt_list = outputs_alt.tolist()
         else:
-            outputs_alt_list = list(outputs_alt)  # type: ignore[arg-type]
+            outputs_alt_list = list(outputs_alt)
     else:
         outputs_alt_list = [fx(i, alt_seed, bound) for i in range(1, num_samples + 1)]
     if outputs_list == outputs_alt_list:
