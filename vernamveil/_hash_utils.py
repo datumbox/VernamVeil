@@ -12,8 +12,7 @@ try:
     import numpy as np
     from numpy.typing import NDArray
 
-    from nphash import _npblake2bffi  # type: ignore[attr-defined]
-    from nphash import _npsha256ffi  # type: ignore[attr-defined]
+    from nphash import _npblake2bffi, _npsha256ffi
 
     _HAS_C_MODULE = True
 except ImportError:

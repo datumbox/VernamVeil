@@ -8,22 +8,25 @@ import hmac
 import math
 import secrets
 import warnings
-from typing import Callable, Iterator, TypeAlias
+from typing import Any, Callable, Iterator
 
 from vernamveil._cypher import Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 
+np: Any
+_IntOrArray: Any
 try:
-    import numpy as np
+    import numpy
     from numpy.typing import NDArray
 
-    _IntOrArray: TypeAlias = int | NDArray[np.uint64]
+    np = numpy
+    _IntOrArray = int | NDArray
     _HAS_NUMPY = True
 except ImportError:
     np = None
-
-    _IntOrArray: TypeAlias = int  # type: ignore[misc, no-redef]
+    _IntOrArray = int
     _HAS_NUMPY = False
+
 
 __all__ = ["VernamVeil"]
 
@@ -170,13 +173,14 @@ class VernamVeil(Cypher):
         # Create a list with all positions
         positions = list(range(total_count))
 
+        hashes: Any
         if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes: NDArray[np.uint64] = hash_numpy(i_arr, seed, "blake2b")
+            hashes = hash_numpy(i_arr, seed, "blake2b")
         else:
             # Standard: generate hashes one by one
-            hashes: list[int] = [  # type: ignore[no-redef]
+            hashes = [
                 int.from_bytes(self._hmac(seed, [i.to_bytes(8, "big")]), "big")
                 for i in range(1, total_count)
             ]
@@ -213,7 +217,7 @@ class VernamVeil(Cypher):
             n_uint64 = math.ceil(length / 8)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
             # Unbounded, get the full uint64 range
-            keystream: NDArray[np.uint64] = self._fx(indices, seed, None)
+            keystream = self._fx(indices, seed, None)
             # Ensure output is a numpy array of integers in [0, 255]
             memview: memoryview = keystream.view(np.uint8)[:length].data
             return memview
@@ -276,9 +280,9 @@ class VernamVeil(Cypher):
         for i in range(total_count):
             if shuffled_chunk_ranges[i] != (-1, -1):
                 start, end = shuffled_chunk_ranges[i]
-                chunk: memoryview = message[start:end]
+                chunk: memoryview | bytes = message[start:end]
             else:
-                chunk: bytes = secrets.token_bytes(self._chunk_size)  # type: ignore[no-redef]
+                chunk = secrets.token_bytes(self._chunk_size)
 
             # Pre-pad
             pre_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
@@ -368,11 +372,11 @@ class VernamVeil(Cypher):
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
         if self._vectorise:
-            arr: NDArray[np.uint8] = np.frombuffer(data, dtype=np.uint8)
-            processed: NDArray[np.uint8] = np.empty_like(arr)
+            arr = np.frombuffer(data, dtype="uint8")
+            processed = np.empty_like(arr)
         else:
-            arr: memoryview = data  # type: ignore[no-redef]
-            processed: bytearray = bytearray(data_len)  # type: ignore[no-redef]
+            arr = data
+            processed = bytearray(data_len)
 
         for start, end in self._generate_chunk_ranges(data_len):
             # Generate a key using fx
@@ -382,12 +386,12 @@ class VernamVeil(Cypher):
             # XOR the chunk with the key
             if self._vectorise:
                 np.bitwise_xor(arr[start:end], keystream, out=processed[start:end])
-                seed_data: memoryview = (arr[start:end] if is_encode else processed[start:end]).data
+                seed_data = (arr[start:end] if is_encode else processed[start:end]).data
             else:
                 for i in range(chunk_len):
                     pos = start + i
                     processed[pos] = arr[pos] ^ keystream[i]
-                seed_data: memoryview = arr[start:end] if is_encode else memoryview(processed)[start:end]  # type: ignore[no-redef]
+                seed_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
 
             # Refresh the seed differently for encoding and decoding
             seed = self._hmac(seed, [seed_data])
