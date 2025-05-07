@@ -16,17 +16,43 @@ class Cypher(ABC):
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
-        # Generate a delimiter.
+        """Create a delimiter sequence using the key stream and update the seed.
+
+        Args:
+            seed (bytes): Seed used for generating the delimiter.
+
+        Returns:
+            tuple[memoryview, bytes]: The delimiter and the refreshed seed.
+        """
         pass
 
     @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        # Encode a message using the cypher.
+        """Encrypt a message.
+
+        Args:
+            message (bytes or memoryview): Message to encode.
+            seed (bytes): Initial seed for encryption.
+
+        Returns:
+            tuple[bytearray, bytes]: Encrypted message and final seed.
+        """
         pass
 
     @abstractmethod
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        # Decode a message using the cypher.
+        """Decrypt an encoded message.
+
+        Args:
+            cyphertext (bytes or memoryview): Encrypted and obfuscated message.
+            seed (bytes): Initial seed for decryption.
+
+        Returns:
+            tuple[bytearray, bytes]: Decrypted message and final seed.
+
+        Raises:
+            ValueError: If the authentication tag does not match.
+        """
         pass
 
     def process_file(
@@ -60,7 +86,7 @@ class Cypher(ABC):
             TypeError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not an integer.
             ValueError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not a positive integer.
             ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
-            RuntimeError: If an unexpected error occurs in the reader or writer threads.
+            exception: If an unexpected error occurs in the reader or writer threads.
         """
         # Input validation
         if mode not in ("encode", "decode"):
@@ -254,4 +280,5 @@ class Cypher(ABC):
 
             # Check for exceptions from the threads
             if not exception_queue.empty():
-                raise RuntimeError(exception_queue.get())
+                exception = exception_queue.get()
+                raise exception

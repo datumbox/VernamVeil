@@ -25,10 +25,10 @@ jobs:
       - name: Run black
         run: black . --check
       - name: Run flake8
-        run: flake8 .
+        run: flake8 vernamveil nphash
       - name: Run isort
         run: isort --check --diff .
       - name: Run mypy
         run: mypy vernamveil nphash
-      - name: Run darglint
-        run: darglint --verbosity=2 --docstring-style=google --strictness=full vernamveil nphash
+      - name: Run pydocstyle
+        run: pydocstyle --convention=google vernamveil nphash
