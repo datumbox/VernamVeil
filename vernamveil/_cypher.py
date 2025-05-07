@@ -8,10 +8,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import IO, Callable, Literal
 
-__all__ = ["Cypher"]
+__all__: list[str] = []
 
 
-class Cypher(ABC):
+class _Cypher(ABC):
     """Abstract base class for cyphers; provides utils that are common to all subclasses."""
 
     @abstractmethod

@@ -10,7 +10,7 @@ import secrets
 import warnings
 from typing import Any, Callable, Iterator
 
-from vernamveil._cypher import Cypher
+from vernamveil._cypher import _Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 
 np: Any
@@ -31,7 +31,7 @@ except ImportError:
 __all__ = ["VernamVeil"]
 
 
-class VernamVeil(Cypher):
+class VernamVeil(_Cypher):
     """VernamVeil is a modular, symmetric stream cypher.
 
     Inspired by One-Time Pad principles, it features customisable keystream generation, synthetic IV seed initialisation,
