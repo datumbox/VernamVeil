@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import math
 import secrets
+import time
 import warnings
 from typing import Any, Callable, Iterator
 
@@ -455,8 +456,9 @@ class VernamVeil(_Cypher):
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
         if self._siv_seed_initialisation:
-            # Generate the SIV hash from the initial seed and the message
-            siv_hash = self._hmac(seed, [message])
+            # Generate the SIV hash from the initial seed, the timestamp and the message
+            timestamp = int(time.time_ns()).to_bytes(8, "big")
+            siv_hash = self._hmac(seed, [message, timestamp])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Put the encrypted SIV hash at the start of the output
