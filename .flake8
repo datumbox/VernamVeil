@@ -1,5 +1,5 @@
 [flake8]
-ignore = E203,W503,E501
+ignore = DAR,E203,W503,E501
 exclude =
     .venv,
     .idea,
