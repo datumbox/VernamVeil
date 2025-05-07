@@ -1,5 +1,4 @@
-"""
-VernamVeil CLI utility.
+"""VernamVeil CLI utility.
 
 This module provides a command-line interface for encrypting and decrypting files using the VernamVeil cypher.
 It supports custom key stream functions, seed management, and various encryption parameters.
@@ -18,8 +17,7 @@ from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
-    """
-    Add common CLI arguments for both encode and decode subcommands.
+    """Add common CLI arguments for both encode and decode subcommands.
 
     Args:
         p (argparse.ArgumentParser): The argument parser to which the arguments will be added.
@@ -95,8 +93,7 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
 
 
 def _vprint(msg: str, level: str, verbosity: str) -> None:
-    """
-    Conditionally print a message to stderr based on the verbosity level.
+    """Conditionally print a message to stderr based on the verbosity level.
 
     Args:
         msg (str): The message to print.
@@ -111,8 +108,7 @@ def _vprint(msg: str, level: str, verbosity: str) -> None:
 
 
 def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> IO[bytes]:
-    """
-    Opens a file in the specified binary mode or returns the provided standard stream if file is '-' or None.
+    """Opens a file in the specified binary mode or returns the provided standard stream if file is '-' or None.
 
     Args:
         file (str | None): Path to the file or '-' for the standard stream.
@@ -130,8 +126,8 @@ def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> I
 
 
 def main(args: list[str] | None = None) -> None:
-    """
-    Entry point for the VernamVeil CLI utility.
+    """Entry point for the VernamVeil CLI utility.
+
     Parses arguments, handles key management, and dispatches encode/decode.
 
     Args:

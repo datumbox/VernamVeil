@@ -1,5 +1,4 @@
-"""
-Hashing utilities for the library.
+"""Hashing utilities for the library.
 
 This module provides fast, optionally C-accelerated hashing functions for use in key stream generation.
 """
@@ -29,8 +28,8 @@ def hash_numpy(
     seed: bytes | None = None,
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
 ) -> "NDArray[np.uint64]":
-    """
-    Computes a 64-bit integer NumPy array by HMAC-ing each index with a seed using a hashing algorithm.
+    """Compute a 64-bit integer NumPy array by HMAC-ing each index with a seed using a hashing algorithm.
+
     If no seed is provided, the index is hashed directly.
 
     This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation

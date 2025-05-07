@@ -1,6 +1,4 @@
-"""
-Implements the Cypher class, the base class for stream cyphers.
-"""
+"""Implements the Cypher class, the base class for stream cyphers."""
 
 import os
 import queue
@@ -14,28 +12,46 @@ __all__ = ["Cypher"]
 
 
 class Cypher(ABC):
-    """
-    Abstract base class for cyphers; provides utils that are common to all subclasses.
-    """
+    """Abstract base class for cyphers; provides utils that are common to all subclasses."""
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
-        """
-        This abstract method is used to generate a delimiter. See VernamVeil for details.
+        """Create a delimiter sequence using the key stream and update the seed.
+
+        Args:
+            seed (bytes): Seed used for generating the delimiter.
+
+        Returns:
+            tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
         pass
 
     @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        This abstract method is used to encode a message using the cypher. See VernamVeil for details.
+        """Encrypt a message.
+
+        Args:
+            message (bytes or memoryview): Message to encode.
+            seed (bytes): Initial seed for encryption.
+
+        Returns:
+            tuple[bytearray, bytes]: Encrypted message and final seed.
         """
         pass
 
     @abstractmethod
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """
-        This abstract method is used to decode a message using the cypher. See VernamVeil for details.
+        """Decrypt an encoded message.
+
+        Args:
+            cyphertext (bytes or memoryview): Encrypted and obfuscated message.
+            seed (bytes): Initial seed for decryption.
+
+        Returns:
+            tuple[bytearray, bytes]: Decrypted message and final seed.
+
+        Raises:
+            ValueError: If the authentication tag does not match.
         """
         pass
 
@@ -50,27 +66,27 @@ class Cypher(ABC):
         write_queue_size: int = 4,
         progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
-        """
-        Processes a file or stream in blocks using the provided Cypher for encryption or decryption.
+        """Processes a file or stream in blocks using the provided Cypher for encryption or decryption.
 
         Args:
             input_file (str | Path | IO[bytes]): Path or file-like object for input.
             output_file (str | Path | IO[bytes]): Path or file-like object for output.
             seed (bytes): Initial seed for processing.
             mode (Literal["encode", "decode"]): Operation mode ("encode" for encryption, "decode" for decryption).
-            buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
-            read_queue_size (int, optional): Maximum number of data blocks buffered in the
+            buffer_size (int): Bytes to read at a time. Defaults to 1MB.
+            read_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
-            write_queue_size (int, optional): Maximum number of data blocks buffered in the
+            write_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the main processing thread and the IO writer thread. Defaults to 4.
-            progress_callback (Callable[[float], None] | None, optional): Callback for progress reporting.
-                Receives two arguments: bytes processed and total size. Defaults to None.
+            progress_callback (Callable, optional): Callback for progress reporting.
+                Receives two arguments: bytes_processed and total_size. Defaults to None.
 
         Raises:
             ValueError: If `mode` is not "encode" or "decode".
             TypeError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not an integer.
             ValueError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not a positive integer.
             ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
+            exception: If an unexpected error occurs in the reader or writer threads.
         """
         # Input validation
         if mode not in ("encode", "decode"):
@@ -264,4 +280,5 @@ class Cypher(ABC):
 
             # Check for exceptions from the threads
             if not exception_queue.empty():
-                raise exception_queue.get()
+                exception = exception_queue.get()
+                raise exception

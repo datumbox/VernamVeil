@@ -1,3 +1,5 @@
+"""VernamVeil: A Function-Based Stream Cypher."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 from vernamveil._fx_utils import (
