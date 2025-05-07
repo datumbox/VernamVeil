@@ -18,3 +18,4 @@ exclude_patterns = []
 html_theme = "sphinx_rtd_theme"
 
 autodoc_inherit_docstrings = True
+autoclass_content = "both"
