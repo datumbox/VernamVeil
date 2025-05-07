@@ -39,7 +39,7 @@ def hash_numpy(
     Args:
         i (NDArray[np.uint64]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index.
-        hash_name (Literal["blake2b", "sha256"], optional): Hash algorithm to use. Defaults to "blake2b".
+        hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
         NDArray[np.uint64]: An array of 64-bit integers derived from the HMAC of each index.
