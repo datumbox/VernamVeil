@@ -57,16 +57,16 @@ class VernamVeil(Cypher):
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
                 int or np.ndarray. This function is critical for the encryption process and should be carefully
                 designed to ensure cryptographic security.
-            chunk_size (int, optional): Size of message chunks. Defaults to 32.
-            delimiter_size (int, optional): The delimiter size in bytes used for separating chunks; must be
+            chunk_size (int): Size of message chunks. Defaults to 32.
+            delimiter_size (int): The delimiter size in bytes used for separating chunks; must be
                 at least 4. Defaults to 8.
-            padding_range (tuple[int, int], optional): Range for padding length before and after
+            padding_range (tuple[int, int]): Range for padding length before and after
                 chunks. Defaults to (5, 15).
-            decoy_ratio (float, optional): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
-            siv_seed_initialisation (bool, optional): Enables synthetic IV seed initialisation based on the message to
+            decoy_ratio (float): Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.
+            siv_seed_initialisation (bool): Enables synthetic IV seed initialisation based on the message to
                 resist seed reuse. Defaults to True.
-            auth_encrypt (bool, optional): Enables authenticated encryption with integrity check. Defaults to True.
-            vectorise (bool, optional): Whether to use numpy for vectorised operations. If True, numpy must be
+            auth_encrypt (bool): Enables authenticated encryption with integrity check. Defaults to True.
+            vectorise (bool): Whether to use numpy for vectorised operations. If True, numpy must be
                 installed and `fx` must support numpy arrays. Defaults to False.
 
         Raises:
@@ -104,7 +104,11 @@ class VernamVeil(Cypher):
         self._vectorise = vectorise
 
     def __str__(self) -> str:
-        """Return a string representation of the VernamVeil instance."""
+        """Return a string representation of the VernamVeil instance.
+
+        Returns:
+            str: A string representation of the VernamVeil instance, including its parameters.
+        """
         return (
             f"VernamVeil(chunk_size={self._chunk_size}, "
             f"delimiter_size={self._delimiter_size}, "
@@ -123,7 +127,7 @@ class VernamVeil(Cypher):
         suitable for cryptographic use. It returns a byte string of the specified length.
 
         Args:
-            num_bytes (int, optional): The number of bytes to generate for the seed.
+            num_bytes (int): The number of bytes to generate for the seed.
                 Defaults to 64 bytes if not provided.
 
         Returns:
@@ -145,6 +149,9 @@ class VernamVeil(Cypher):
         """Return the length of the HMAC digest used in the VernamVeil class.
 
         This is a constant value representing the size of the hash output from the BLAKE2b algorithm.
+
+        Returns:
+            int: The length of the HMAC digest in bytes.
         """
         return 64
 
@@ -495,6 +502,9 @@ class VernamVeil(Cypher):
 
         Returns:
             tuple[bytearray, bytes]: Decrypted message and final seed.
+
+        Raises:
+            ValueError: If the authentication tag does not match.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(cyphertext, memoryview):

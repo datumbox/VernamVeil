@@ -26,9 +26,6 @@ def _get_c_source(path: Path, name: str) -> str:
 
     Returns:
         str: Contents of the C source file.
-
-    Raises:
-        SystemExit: If the file does not exist.
     """
     if not path.exists():
         print(f"Error: C source file '{path}' for {name} not found.")
@@ -66,6 +63,9 @@ def main() -> None:
     """Main entry point for building the nphash CFFI extensions.
 
     Sets up platform-specific build options, reads C source files, and compiles the extensions.
+
+    Raises:
+        RuntimeError: If the platform is unsupported.
     """
     # FFI builders
     ffibuilder_blake2b = FFI()

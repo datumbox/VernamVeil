@@ -16,17 +16,17 @@ class Cypher(ABC):
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
-        """Generate a delimiter. See VernamVeil for details."""
+        # Generate a delimiter.
         pass
 
     @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """Encode a message using the cypher. See VernamVeil for details."""
+        # Encode a message using the cypher.
         pass
 
     @abstractmethod
     def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
-        """Decode a message using the cypher. See VernamVeil for details."""
+        # Decode a message using the cypher.
         pass
 
     def process_file(
@@ -47,19 +47,20 @@ class Cypher(ABC):
             output_file (str | Path | IO[bytes]): Path or file-like object for output.
             seed (bytes): Initial seed for processing.
             mode (Literal["encode", "decode"]): Operation mode ("encode" for encryption, "decode" for decryption).
-            buffer_size (int, optional): Bytes to read at a time. Defaults to 1MB.
-            read_queue_size (int, optional): Maximum number of data blocks buffered in the
+            buffer_size (int): Bytes to read at a time. Defaults to 1MB.
+            read_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
-            write_queue_size (int, optional): Maximum number of data blocks buffered in the
+            write_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the main processing thread and the IO writer thread. Defaults to 4.
-            progress_callback (Callable[[float], None] | None, optional): Callback for progress reporting.
-                Receives two arguments: bytes processed and total size. Defaults to None.
+            progress_callback (Callable, optional): Callback for progress reporting.
+                Receives two arguments: bytes_processed and total_size. Defaults to None.
 
         Raises:
             ValueError: If `mode` is not "encode" or "decode".
             TypeError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not an integer.
             ValueError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not a positive integer.
             ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
+            RuntimeError: If an unexpected error occurs in the reader or writer threads.
         """
         # Input validation
         if mode not in ("encode", "decode"):
@@ -253,4 +254,4 @@ class Cypher(ABC):
 
             # Check for exceptions from the threads
             if not exception_queue.empty():
-                raise exception_queue.get()
+                raise RuntimeError(exception_queue.get())

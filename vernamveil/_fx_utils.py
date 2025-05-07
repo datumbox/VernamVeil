@@ -37,8 +37,8 @@ def generate_hmac_fx(
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
-        hash_name (str, optional): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
-        vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
+        hash_name (str): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
+        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
@@ -120,8 +120,8 @@ def generate_polynomial_fx(
 
     Args:
         degree (int): Degree of the polynomial. Defaults to 10.
-        max_weight (int, optional): Maximum value for polynomial coefficients. Defaults to `10 ** 5`.
-        vectorise (bool, optional): If True, uses numpy arrays as input for vectorised operations.
+        max_weight (int): Maximum value for polynomial coefficients. Defaults to `10 ** 5`.
+        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
