@@ -19,3 +19,16 @@ html_theme = "sphinx_rtd_theme"
 
 autodoc_inherit_docstrings = True
 autoclass_content = "both"
+
+html_theme_options = {
+    "collapse_navigation": False,
+    "vcs_pageview_mode": "blob",
+}
+
+html_context = {
+    "display_github": True,
+    "github_user": "datumbox",
+    "github_repo": "VernamVeil",
+    "github_version": "main",
+    "conf_py_path": "/docs/",
+}
