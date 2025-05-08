@@ -1,6 +1,6 @@
 # 🔐 VernamVeil: A Function-Based Stream Cypher
 
-[![CI](https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datumbox/VernamVeil/actions) [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://datumbox.github.io/VernamVeil/) [![License](https://img.shields.io/:license-apache-brightgreen.svg)](./LICENSE)
+[![CI](https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datumbox/VernamVeil/actions) [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://datumbox.github.io/VernamVeil/) [![License](https://img.shields.io/:license-apache-brightgreen.svg)](https://github.com/datumbox/VernamVeil/blob/main/LICENSE)
 
 ---
 
@@ -302,7 +302,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 
 ### 💻 Usage
 
-```commandline
+```bash
 # Encrypt a file with auto-generated fx and seed
 vernamveil encode --infile plain.txt --outfile encrypted.dat
 
@@ -326,7 +326,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 >
 > For example, the following will **fail** with a `Authentication failed: MAC tag mismatch.` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
-> ```commandline
+> ```bash
 > vernamveil encode --infile plain.txt --outfile encrypted.dat --chunk-size 2048
 > vernamveil decode --infile encrypted.dat --outfile decrypted.txt --chunk-size 1024 --fx-file fx.py --seed-file seed.bin
 > ```
@@ -390,4 +390,4 @@ Contributions, bug reports, and feature requests are welcome! Please open an iss
 
 Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/).
 
-The code is licensed under the [Apache License, Version 2.0](./LICENSE).
+The code is licensed under the [Apache License, Version 2.0](https://github.com/datumbox/VernamVeil/blob/main/LICENSE).

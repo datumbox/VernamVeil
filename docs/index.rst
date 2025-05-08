@@ -1,12 +1,19 @@
-VernamVeil documentation
+VernamVeil Documentation
 ========================
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+Welcome to the documentation for `VernamVeil <https://github.com/datumbox/VernamVeil>`_. Get started by exploring the sections below.
 
-.. automodule:: vernamveil
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :show-inheritance:
+.. toctree::
+   :maxdepth: 3
+   :caption: API Reference:
+
+   vernamveil_class
+   fx_utilities
+   hash_utilities
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Guides & Implementation Notes:
+
+   Getting Started & Concepts <README>
+   C Extension Build & Usage <nphash/README>
