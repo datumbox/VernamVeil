@@ -75,6 +75,7 @@ class VernamVeil(_Cypher):
             ValueError: If `delimiter_size` is less than 4.
             TypeError: If `padding_range` is not a tuple of two integers.
             ValueError: If `padding_range` values are negative.
+            ValueError: If `padding_range` values are not in ascending order.
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `vectorise` is True but numpy is not installed.
         """
@@ -91,6 +92,8 @@ class VernamVeil(_Cypher):
             raise TypeError("padding_range must be a tuple of two integers.")
         elif padding_range[0] < 0 or padding_range[1] < 0:
             raise ValueError("padding_range values must be non-negative.")
+        elif padding_range[0] > padding_range[1]:
+            raise ValueError("padding_range values must be in ascending order.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and not _HAS_NUMPY:
@@ -316,15 +319,25 @@ class VernamVeil(_Cypher):
                 chunk = secrets.token_bytes(self._chunk_size)
 
             # Pre-pad
-            pre_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
-            noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
+            pre_pad_len = (
+                secrets.randbelow(pad_max - pad_min + 1) + pad_min
+                if pad_max != pad_min
+                else pad_min
+            )
+            if pre_pad_len > 0:
+                noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
             noisy_blocks.extend(delimiter)
             # Actual data
             noisy_blocks.extend(chunk)
             # Post-pad
             noisy_blocks.extend(delimiter)
-            post_pad_len = secrets.randbelow(pad_max - pad_min + 1) + pad_min
-            noisy_blocks.extend(secrets.token_bytes(post_pad_len))
+            post_pad_len = (
+                secrets.randbelow(pad_max - pad_min + 1) + pad_min
+                if pad_max != pad_min
+                else pad_min
+            )
+            if post_pad_len > 0:
+                noisy_blocks.extend(secrets.token_bytes(post_pad_len))
 
         return memoryview(noisy_blocks)
 

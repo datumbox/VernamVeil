@@ -64,6 +64,11 @@ class TestVernamVeil(unittest.TestCase):
         self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
         self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
+        # Test with different padding configurations
+        self.for_all_modes(test, padding_range=(0, 0))
+        self.for_all_modes(test, padding_range=(0, 1))
+        self.for_all_modes(test, padding_range=(5, 5))
+
     def test_variable_length_encryption(self):
         """Test encryption and decryption for messages of varying lengths."""
 
