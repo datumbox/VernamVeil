@@ -71,12 +71,16 @@ class VernamVeil(_Cypher):
                 installed and `fx` must support numpy arrays. Defaults to False.
 
         Raises:
+            ValueError: If `chunk_size` is less than 8.
             ValueError: If `delimiter_size` is less than 4.
             TypeError: If `padding_range` is not a tuple of two integers.
+            ValueError: If `padding_range` values are negative.
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `vectorise` is True but numpy is not installed.
         """
         # Validate input
+        if chunk_size < 8:
+            raise ValueError("chunk_size must be at least 8 bytes.")
         if delimiter_size < 4:
             raise ValueError("delimiter_size must be at least 4 bytes.")
         if not (
@@ -85,6 +89,8 @@ class VernamVeil(_Cypher):
             and all(isinstance(x, int) for x in padding_range)
         ):
             raise TypeError("padding_range must be a tuple of two integers.")
+        elif padding_range[0] < 0 or padding_range[1] < 0:
+            raise ValueError("padding_range values must be non-negative.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
         if vectorise and not _HAS_NUMPY:
