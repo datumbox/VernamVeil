@@ -9,7 +9,7 @@ import math
 import secrets
 import time
 import warnings
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, cast
 
 from vernamveil._cypher import _Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
@@ -467,6 +467,9 @@ class VernamVeil(_Cypher):
 
         Returns:
             tuple[bytearray, bytes]: Encrypted message and final seed.
+
+        Raises:
+            ValueError: If the delimiter appears in the message.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(message, memoryview):
@@ -494,6 +497,13 @@ class VernamVeil(_Cypher):
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
+
+        # Delimiter conflict check
+        msg_bytes = message.obj if isinstance(message.obj, bytes) else message.tobytes()
+        if cast(bytes, delimiter) in msg_bytes:
+            raise ValueError(
+                "The delimiter appears in the message. Consider increasing the delimiter size."
+            )
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during shuffling and to match the order
         # of operations with decode.
