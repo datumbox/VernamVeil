@@ -366,13 +366,13 @@ pip install .[dev,numpy,cffi]
 
 - The `[dev]` extra installs development and testing dependencies.
 - The `[numpy]` extra enables fast vectorised operations.
-- The `[cffi]` extra builds the `nphash` C extension for accelerated BLAKE2b and SHA-256 in NumPy-based `fx` functions.
+- The `[cffi]` extra required for building the `nphash` C extension for accelerated BLAKE2b and SHA-256 in NumPy-based `fx` functions.
 
 ### ⚡ Fast Vectorised `fx` Functions
 
 If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
-For more details on the C module and its usage, see [`nphash/README.md`](nphash/README.md).
+**To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
 ---
 
