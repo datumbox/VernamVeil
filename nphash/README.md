@@ -24,29 +24,29 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 1. **Install system dependencies**
 
    On Ubuntu/Debian:  
-   ```
+   ```bash
    sudo apt-get update
    sudo apt-get install build-essential libssl-dev python3-dev
    ```
 
    On Fedora:  
-   ```
+   ```bash
    sudo dnf install gcc openssl-devel python3-devel
    ```
 
    On Mac (with Homebrew):
-   ```
+   ```bash
    brew install libomp openssl
    ```
    
    On Windows (with Chocolatey):
-   ```
+   ```bash
    choco install openssl
    ```
 
 2. **Install Python dependencies**
 
-   ```
+   ```bash
    pip install cffi numpy
    ```
 
@@ -54,7 +54,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
    Run the following command in the project directory (where `build.py` is located):
 
-   ```
+   ```bash
    python build.py
    ```
 
@@ -64,7 +64,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
    Following successful compilation, the C extension reinstall the `vernamveil` package to ensure the new C extension is used. Execute the following from the root of the project:
 
-   ```
+   ```bash
    pip install .
    ```
 

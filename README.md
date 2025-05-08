@@ -1,4 +1,6 @@
-# 🔐 VernamVeil: A Function-Based Stream Cypher
+![VernamVeil Logo](https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png)
+
+# VernamVeil: A Function-Based Stream Cypher
 
 [![CI](https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/datumbox/VernamVeil/actions) [![Docs](https://img.shields.io/badge/docs-online-brightgreen.svg)](https://datumbox.github.io/VernamVeil/) [![License](https://img.shields.io/:license-apache-brightgreen.svg)](https://github.com/datumbox/VernamVeil/blob/main/LICENSE)
 
