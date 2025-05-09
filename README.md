@@ -1,6 +1,6 @@
 <picture>
-  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo-dark.png" media="(prefers-color-scheme: dark)">
   <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" media="(prefers-color-scheme: light)">
+  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo-dark.png" media="(prefers-color-scheme: dark)">
   <img src="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" alt="VernamVeil Logo">
 </picture>
 
