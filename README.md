@@ -290,7 +290,7 @@ print("Sanity check passed:", passed)
 
 ---
 
-## 🕵️ Plausible Deniability Utility
+## 🕵️ Plausible Deniability Utilities
 
 Plausible deniability in cryptography enables users to convincingly claim that an encrypted message contains different content from its true meaning. This is especially valuable in situations where an adversary may compel a user to reveal keys or decrypt sensitive data. By constructing alternative cryptographic parameters (such as a fake `fx` function and seed) the user can make the cyphertext decrypt to an innocuous decoy message, while the genuine message remains secure and undisclosed.
 
