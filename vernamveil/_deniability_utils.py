@@ -109,7 +109,12 @@ class _PlausibleFX:
         self._uint64s = uint64s
         self._pos = 0
         self._len = len(uint64s)
-        self._source_code = """from vernamveil._deniability_utils import _PlausibleFX"""
+        self._source_code = f"""
+from vernamveil._deniability_utils import _PlausibleFX
+
+fx = _PlausibleFX({uint64s})
+
+"""
 
     def __call__(self, i: _IntOrArray, _: bytes, bound: int | None = None) -> _IntOrArray:
         """Generates the next value in the fake keystream.
