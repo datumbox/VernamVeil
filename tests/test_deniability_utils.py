@@ -68,7 +68,7 @@ def make_test_func(chunk_size, delimiter_size):
     def test_func(self):
         """Test that the deniability function works correctly for a specific combo."""
         vectorise_options = [True, False] if _HAS_NUMPY else [False]
-        for vectorise in [True, False]:
+        for vectorise in vectorise_options:
             with self.subTest(vectorise=vectorise):
                 try:
                     decoy_out, decoy_message = self._run_deniability_test(
