@@ -80,7 +80,11 @@ def make_test_func(chunk_size, delimiter_size):
                     )
                     self.assertEqual(decoy_out, decoy_message)
                 except ValueError as e:
-                    self.assertIn("Cannot plausibly forge decoy message of length", str(e))
+                    msg = str(e)
+                    self.assertTrue(
+                        "Cannot plausibly forge decoy message of length" in msg or
+                        "Could not find obfuscated decoy of length" in msg
+                    )
                     self.skipTest("Could not find a decoy for this configuration.")
 
     return test_func
