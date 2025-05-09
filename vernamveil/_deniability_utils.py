@@ -146,7 +146,14 @@ def forge_plausible_fx(
     decoy_message: bytes,
     max_obfuscate_attempts: int = 1_000,
 ) -> tuple[_PlausibleFX, bytes]:
-    """Constructs a fake keystream and fx function to make the cyphertext decrypt to the decoy message.
+    """Creates a fake keystream function and seed so that a given encrypted message (cyphertext)
+    can be convincingly "unlocked" to reveal an innocent decoy message, instead of the real secret.
+
+    This function enables plausible deniability: it lets you demonstrate that an encrypted file
+    could plausibly contain a harmless message, by generating the necessary cryptographic
+    parameters to make the decryption appear valid. The original encryption remains secure,
+    but you can provide a decoy message and matching decryption parameters to anyone demanding
+    access, without revealing the true content.
 
     Args:
         cypher (VernamVeil): The VernamVeil instance used for encryption.
@@ -160,6 +167,30 @@ def forge_plausible_fx(
 
     Raises:
         ValueError: If the decoy message cannot plausibly fit the cyphertext length given the cypher parameters.
+
+    Example:
+        ```python
+        from vernamveil import VernamVeil, generate_default_fx, forge_plausible_fx
+
+        # Original cypher and encryption
+        fx = generate_default_fx()
+        real_cypher = VernamVeil(fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3)
+        secret_message = b"Top secret!"
+        seed = real_cypher.get_initial_seed()
+        cyphertext, _ = real_cypher.encode(secret_message, seed)
+
+        # Decoy message to plausibly reveal
+        decoy = b"This is a harmless message. Noting to see here. Look away!"
+
+        # Forge plausible fx and seed
+        plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
+
+        # Use the forged fx and seed to decrypt the cyphertext to the decoy
+        decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
+                                  siv_seed_initialisation=False, auth_encrypt=False)
+        revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
+        print(revealed)  # b'This is a harmless message. Noting to see here.'
+        ```
     """
     # 1. Prepare a cypher with MAC/SIV off
     cypher = copy.deepcopy(cypher)
@@ -176,9 +207,9 @@ def forge_plausible_fx(
 
     if not (lower_bound <= cyphertext_len <= upper_bound):
         raise ValueError(
-            f"Decoy message (len={decoy_message_len}) cannot plausibly fit cyphertext length "
-            f"{cyphertext_len} given cypher parameters. "
-            f"Estimated range: [{lower_bound}, {upper_bound}]"
+            f"Cannot plausibly forge decoy message of length {decoy_message_len} for cyphertext of length {cyphertext_len} "
+            f"with the current cypher parameters. The expected cyphertext length for this decoy is between "
+            f"{lower_bound} and {upper_bound} bytes. Please adjust the decoy message length or cypher settings."
         )
 
     # 3. Find an obfuscated decoy message of the right length
