@@ -313,6 +313,7 @@ decoy = b"This is a harmless message. Noting to see here. Look away!"
 plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
 
 # Use the forged fx and seed to decrypt the cyphertext to the decoy
+# Note: The SIV and MAC must be turned off for this to work.
 decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
                           siv_seed_initialisation=False, auth_encrypt=False)
 revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
