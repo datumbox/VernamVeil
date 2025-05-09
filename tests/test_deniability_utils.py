@@ -3,7 +3,7 @@ import unittest
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx
-from vernamveil._vernamveil import VernamVeil
+from vernamveil._vernamveil import VernamVeil, _HAS_NUMPY
 
 
 class TestDeniabilityUtils(unittest.TestCase):
@@ -15,7 +15,7 @@ class TestDeniabilityUtils(unittest.TestCase):
         delimiter_size=9,
         padding_range=(5, 15),
         decoy_ratio=0.2,
-        vectorise=True,
+        vectorise=False,
     ):
         """Utility to run a basic deniability test with configurable parameters."""
         real_fx = generate_default_fx(vectorise=vectorise)
@@ -67,6 +67,7 @@ def make_test_func(chunk_size, delimiter_size):
 
     def test_func(self):
         """Test that the deniability function works correctly for a specific combo."""
+        vectorise_options = [True, False] if _HAS_NUMPY else [False]
         for vectorise in [True, False]:
             with self.subTest(vectorise=vectorise):
                 try:
