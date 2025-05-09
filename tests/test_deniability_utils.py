@@ -1,5 +1,5 @@
-import unittest
 import itertools
+import unittest
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx
@@ -9,12 +9,13 @@ from vernamveil._vernamveil import VernamVeil
 class TestDeniabilityUtils(unittest.TestCase):
     """Unit tests for plausible deniability utilities."""
 
-    def _run_deniability_test(self,
-            chunk_size=31,
-            delimiter_size=9,
-            padding_range=(5, 15),
-            decoy_ratio=0.2,
-            vectorise=True,
+    def _run_deniability_test(
+        self,
+        chunk_size=31,
+        delimiter_size=9,
+        padding_range=(5, 15),
+        decoy_ratio=0.2,
+        vectorise=True,
     ):
         """Utility to run a basic deniability test with configurable parameters."""
         real_fx = generate_default_fx(vectorise=vectorise)
@@ -52,9 +53,7 @@ class TestDeniabilityUtils(unittest.TestCase):
         return decoy_out.decode(errors="replace"), decoy_message.decode(errors="replace")
 
     def _combo_name(self, chunk_size, delimiter_size, padding_range, decoy_ratio):
-        return (
-            f"chunk{chunk_size}_delim{delimiter_size}_pad{padding_range}_decoy{decoy_ratio}"
-        )
+        return f"chunk{chunk_size}_delim{delimiter_size}_pad{padding_range}_decoy{decoy_ratio}"
 
 
 # Generate all combinations
@@ -62,8 +61,10 @@ chunk_sizes = [31, 32, 33]
 delimiter_sizes = [7, 8, 9]
 combos = list(itertools.product(chunk_sizes, delimiter_sizes))
 
+
 def make_test_func(chunk_size, delimiter_size):
     """Create a test function for a specific combination of parameters."""
+
     def test_func(self):
         """Test that the deniability function works correctly for a specific combo."""
         for vectorise in [True, False]:
@@ -83,14 +84,12 @@ def make_test_func(chunk_size, delimiter_size):
 
     return test_func
 
+
 # Dynamically add a test method for each combo except vectorise
 for chunk_size, delimiter_size in combos:
-    test_name = (
-        f"test_deniability_{chunk_size}_{delimiter_size}"
-    )
+    test_name = f"test_deniability_{chunk_size}_{delimiter_size}"
     test_func = make_test_func(chunk_size, delimiter_size)
     setattr(TestDeniabilityUtils, test_name, test_func)
 
 if __name__ == "__main__":
     unittest.main()
-

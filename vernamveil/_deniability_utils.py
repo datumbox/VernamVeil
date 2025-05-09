@@ -146,8 +146,7 @@ def forge_plausible_fx(
     decoy_message: bytes,
     max_obfuscate_attempts: int = 1_000,
 ) -> tuple[_PlausibleFX, bytes]:
-    """Creates a fake keystream function and seed so that a given encrypted message (cyphertext)
-    can be convincingly "unlocked" to reveal an innocent decoy message, instead of the real secret.
+    """Generates a fake keystream and seed to plausibly decrypt a cyphertext to a decoy message.
 
     This function enables plausible deniability: it lets you demonstrate that an encrypted file
     could plausibly contain a harmless message, by generating the necessary cryptographic
