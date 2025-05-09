@@ -1,4 +1,8 @@
-![VernamVeil Logo](https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png)
+<picture>
+  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo-dark.png" media="(prefers-color-scheme: dark)">
+  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" media="(prefers-color-scheme: light)">
+  <img src="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" alt="VernamVeil Logo">
+</picture>
 
 # VernamVeil: A Function-Based Stream Cypher
 
