@@ -8,6 +8,7 @@ Welcome to the documentation for `VernamVeil <https://github.com/datumbox/Vernam
    :caption: API Reference:
 
    vernamveil_class
+   deniability_utilities
    fx_utilities
    hash_utilities
 

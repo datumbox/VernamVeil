@@ -80,7 +80,7 @@ This approach enables novel forms of key generation, especially for those who en
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
 - **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behaviour of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Use Secure Seeds & Avoid Reuse**: Generate initial seeds using the provided `VernamVeil.get_initial_seed()` method which is cryptographically safe. Treat each `initial_seed` as a one-time-use context and use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
-- **Message Ordering & Replay**: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct `initial_seed`. The Synthetic IV mechanism, by incorporating the current timestamp, ensures each ciphertext is unique even for identical messages and seeds, and specifically provides resilience against accidental seed reuse for the first message. However, the cypher itself does not guarantee full replay protection or enforce message ordering; these must be handled by the application. For strict anti-replay or ordering requirements, implement explicit mechanisms (such as sequence numbers or nonces) at a higher layer.
+- **Message Ordering & Replay**: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct `initial_seed`. The Synthetic IV mechanism, by incorporating the current timestamp, ensures each cyphertext is unique even for identical messages and seeds, and specifically provides resilience against accidental seed reuse for the first message. However, the cypher itself does not guarantee full replay protection or enforce message ordering; these must be handled by the application. For strict anti-replay or ordering requirements, implement explicit mechanisms (such as sequence numbers or nonces) at a higher layer.
 
 ---
 
@@ -287,6 +287,40 @@ num_samples = 100
 passed = check_fx_sanity(fx, seed, bound, num_samples)
 print("Sanity check passed:", passed)
 ```
+
+---
+
+## 🕵️ Plausible Deniability Utilities
+
+Plausible deniability in cryptography enables users to convincingly claim that an encrypted message contains different content from its true meaning. This is especially valuable in situations where an adversary may compel a user to reveal keys or decrypt sensitive data. By constructing alternative cryptographic parameters (such as a fake `fx` function and seed) the user can make the cyphertext decrypt to an innocuous decoy message, while the genuine message remains secure and undisclosed.
+
+Here is an example of Forging a Decoy Decryption:
+
+```python
+from vernamveil import VernamVeil, generate_default_fx, forge_plausible_fx
+
+# Original cypher and encryption
+fx = generate_default_fx()
+real_cypher = VernamVeil(fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3)
+secret_message = b"Top secret!"
+seed = real_cypher.get_initial_seed()
+cyphertext, _ = real_cypher.encode(secret_message, seed)
+
+# Decoy message to plausibly reveal
+decoy = b"This is a harmless message. Noting to see here. Look away!"
+
+# Forge plausible fx and seed
+plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
+
+# Use the forged fx and seed to decrypt the cyphertext to the decoy
+# Note: The SIV and MAC must be turned off for this to work.
+decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
+                          siv_seed_initialisation=False, auth_encrypt=False)
+revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
+print(revealed)  # b'This is a harmless message. Noting to see here. Look away!'
+```
+
+This approach allows you to demonstrate that a given cyphertext could plausibly contain a harmless message, providing a credible alternative explanation under duress, while the original secret remains protected.
 
 ---
 
