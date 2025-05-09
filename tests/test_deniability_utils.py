@@ -3,7 +3,7 @@ import unittest
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx
-from vernamveil._vernamveil import VernamVeil, _HAS_NUMPY
+from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 class TestDeniabilityUtils(unittest.TestCase):
@@ -82,8 +82,8 @@ def make_test_func(chunk_size, delimiter_size):
                 except ValueError as e:
                     msg = str(e)
                     self.assertTrue(
-                        "Cannot plausibly forge decoy message of length" in msg or
-                        "Could not find obfuscated decoy of length" in msg
+                        "Cannot plausibly forge decoy message of length" in msg
+                        or "Could not find obfuscated decoy of length" in msg
                     )
                     self.skipTest("Could not find a decoy for this configuration.")
 
