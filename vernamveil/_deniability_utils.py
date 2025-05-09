@@ -31,7 +31,7 @@ def _find_obfuscated_decoy_message(
     decoy_message: bytes,
     target_len: int,
     max_attempts: int,
-) -> tuple[memoryview, bytes, memoryview]:
+) -> tuple[bytes, bytes, memoryview]:
     """Tries to produce an obfuscated version of the decoy message with the exact desired target length.
 
     Args:
@@ -41,7 +41,7 @@ def _find_obfuscated_decoy_message(
         max_attempts (int): The maximum number of attempts to find a valid obfuscated message.
 
     Returns:
-        tuple[memoryview, bytes, memoryview]: A tuple containing the obfuscated message, the fake seed,
+        tuple[bytes, bytes, memoryview]: A tuple containing the obfuscated message, the fake seed,
         and the delimiter.
 
     Raises:
@@ -63,7 +63,11 @@ def _find_obfuscated_decoy_message(
 
         # Check if the obfuscated message has the desired length
         if len(obfuscated) == target_len:
-            return obfuscated, fake_seed, delimiter
+            if isinstance(obfuscated.obj, bytes):
+                obfuscated_bytes = obfuscated.obj
+            else:
+                obfuscated_bytes = obfuscated.tobytes()
+            return obfuscated_bytes, fake_seed, delimiter
 
     raise ValueError(
         f"Could not find obfuscated decoy of length {target_len} in {max_attempts} attempts. "
@@ -194,9 +198,9 @@ def forge_plausible_fx(
     # the chunk_size is not a multiple of 8. This can lead to the fx sampling the wrong bytes.
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
         for block_start in range(start, end, 8):
-            # No .ljust(8, b'\x00') needed because the xor will handle it
-            ct_block = cyphertext[block_start : block_start + 8]
-            obf_block = obfuscated[block_start : block_start + 8]
+            # Pad to 8 bytes if needed
+            ct_block = cyphertext[block_start : block_start + 8].ljust(8, b"\x00")
+            obf_block = obfuscated[block_start : block_start + 8].ljust(8, b"\x00")
 
             ks_uint64 = int.from_bytes((a ^ b for a, b in zip(ct_block, obf_block)), endianness)
             uint64s.append(ks_uint64)

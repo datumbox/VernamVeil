@@ -2,6 +2,7 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
+from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import (
     check_fx_sanity,
     generate_default_fx,
@@ -23,6 +24,7 @@ __all__ = [
     "__version__",
     "VernamVeil",
     "check_fx_sanity",
+    "forge_plausible_fx",
     "generate_default_fx",
     "generate_hmac_fx",
     "generate_polynomial_fx",
