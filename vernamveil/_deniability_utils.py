@@ -45,7 +45,7 @@ def _find_obfuscated_decoy_message(
         and the delimiter.
 
     Raises:
-        ValueError: If a valid obfuscated message of the desired length cannot be found within the maximum attempts.
+        ValueError: If a valid obfuscated decoy of the desired length cannot be found within the maximum attempts.
     """
     decoy_view = memoryview(decoy_message)
     for _ in range(max_attempts):
@@ -167,7 +167,7 @@ def forge_plausible_fx(
     Raises:
         ValueError: If the decoy message cannot plausibly fit the cyphertext length given the cypher parameters.
     """
-    # 1. Prepare a cypher with MAC/SIV off
+    # 1. Prepare a cypher with SIV and MAC off
     cypher = copy.deepcopy(cypher)
     cypher._siv_seed_initialisation = False
     cypher._auth_encrypt = False
