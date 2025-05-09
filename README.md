@@ -290,6 +290,39 @@ print("Sanity check passed:", passed)
 
 ---
 
+## 🕵️ Plausible Deniability Utility
+
+Plausible deniability in cryptography enables users to convincingly claim that an encrypted message contains different content from its true meaning. This is especially valuable in situations where an adversary may compel a user to reveal keys or decrypt sensitive data. By constructing alternative cryptographic parameters (such as a fake `fx` function and seed) the user can make the cyphertext decrypt to an innocuous decoy message, while the genuine message remains secure and undisclosed.
+
+Here is an example of Forging a Decoy Decryption:
+
+```python
+from vernamveil import VernamVeil, generate_default_fx, forge_plausible_fx
+
+# Original cypher and encryption
+fx = generate_default_fx()
+real_cypher = VernamVeil(fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3)
+secret_message = b"Top secret!"
+seed = real_cypher.get_initial_seed()
+cyphertext, _ = real_cypher.encode(secret_message, seed)
+
+# Decoy message to plausibly reveal
+decoy = b"This is a harmless message. Noting to see here. Look away!"
+
+# Forge plausible fx and seed
+plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
+
+# Use the forged fx and seed to decrypt the cyphertext to the decoy
+decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
+                          siv_seed_initialisation=False, auth_encrypt=False)
+revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
+print(revealed)  # b'This is a harmless message. Noting to see here. Look away!'
+```
+
+This approach allows you to demonstrate that a given cyphertext could plausibly contain a harmless message, providing a credible alternative explanation under duress, while the original secret remains protected.
+
+---
+
 ## 🖥️ Command-Line Interface (CLI)
 
 VernamVeil provides a convenient CLI for file encryption and decryption. The CLI supports both encoding (encryption) and decoding (decryption) operations, allowing you to specify custom key stream functions (`fx`) and seeds, or have them generated automatically.

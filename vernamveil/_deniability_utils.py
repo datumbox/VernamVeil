@@ -166,30 +166,6 @@ def forge_plausible_fx(
 
     Raises:
         ValueError: If the decoy message cannot plausibly fit the cyphertext length given the cypher parameters.
-
-    Example:
-        ```python
-        from vernamveil import VernamVeil, generate_default_fx, forge_plausible_fx
-
-        # Original cypher and encryption
-        fx = generate_default_fx()
-        real_cypher = VernamVeil(fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3)
-        secret_message = b"Top secret!"
-        seed = real_cypher.get_initial_seed()
-        cyphertext, _ = real_cypher.encode(secret_message, seed)
-
-        # Decoy message to plausibly reveal
-        decoy = b"This is a harmless message. Noting to see here. Look away!"
-
-        # Forge plausible fx and seed
-        plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
-
-        # Use the forged fx and seed to decrypt the cyphertext to the decoy
-        decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
-                                  siv_seed_initialisation=False, auth_encrypt=False)
-        revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
-        print(revealed)  # b'This is a harmless message. Noting to see here.'
-        ```
     """
     # 1. Prepare a cypher with MAC/SIV off
     cypher = copy.deepcopy(cypher)
