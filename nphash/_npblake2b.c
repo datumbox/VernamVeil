@@ -19,9 +19,9 @@ void numpy_blake2b(const char* restrict arr, const size_t n, const char* restric
     // Treat input as an array of 8-byte (uint64) blocks for hashing/HMAC
     const unsigned char (*arr8)[BLOCK_SIZE] = (const unsigned char (*)[BLOCK_SIZE])arr;
     const int n_int = (int)n;
+    int i;
 
     if (seed != NULL && seedlen > 0) {
-        int i;
         const int seedlen_int = (int)seedlen;
 
         // HMAC mode: Use HMAC with BLAKE2b (cryptographically safer)
@@ -39,8 +39,6 @@ void numpy_blake2b(const char* restrict arr, const size_t n, const char* restric
         }
     } else {
         // No-seed mode: Just hash the block
-        int i;
-
         #ifdef _OPENMP
         // Parallelise the loop with OpenMP to use multiple CPU cores
         #pragma omp parallel for schedule(static)
