@@ -9,7 +9,7 @@ import math
 import secrets
 import time
 import warnings
-from typing import Any, Callable, Iterator, cast
+from typing import Any, Callable, Iterator
 
 from vernamveil._cypher import _Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
@@ -503,8 +503,10 @@ class VernamVeil(_Cypher):
         # Here, we cannot guarantee that the caller has not sliced the bytes, but it is still safe to do so.
         # In the worst-case scenario, we will check for the delimiter in the entire array, which is not a big deal.
         # For most cases, this is still faster than copying the message to bytes.
-        msg_bytes = message.obj if isinstance(message.obj, bytes) else message.tobytes()
-        if cast(bytes, delimiter) in msg_bytes:
+        msg_bytes = (
+            message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
+        )
+        if msg_bytes.find(delimiter) != -1:
             raise ValueError(
                 "The delimiter appears in the message. Consider increasing the delimiter size."
             )
