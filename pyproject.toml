@@ -28,7 +28,7 @@ numpy = [
     "numpy>=2.2"
 ]
 cffi = [
-    "cffi>=1.15"
+    "cffi>=1.17"
 ]
 
 [project.scripts]
