@@ -499,6 +499,10 @@ class VernamVeil(_Cypher):
         delimiter, seed = self._generate_delimiter(seed)
 
         # Delimiter conflict check
+        # Accessing the obj of a memoryview can be risky if the memory is sliced.
+        # Here, we cannot guarantee that the caller has not sliced the bytes, but it is still safe to do so.
+        # In the worst-case scenario, we will check for the delimiter in the entire array, which is not a big deal.
+        # For most cases, this is still faster than copying the message to bytes.
         msg_bytes = message.obj if isinstance(message.obj, bytes) else message.tobytes()
         if cast(bytes, delimiter) in msg_bytes:
             raise ValueError(
@@ -578,6 +582,8 @@ class VernamVeil(_Cypher):
 
         # Convert to bytearray based on the type of the memoryview
         if isinstance(decrypted.obj, bytearray):
+            # Accessing the obj of a memory view can be risky if the memory is sliced.
+            # Here we are safe because _xor_with_key doesn't perform slicing on that variable.
             decrypted_bytearray = decrypted.obj
         else:
             decrypted_bytearray = bytearray(decrypted)

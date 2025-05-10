@@ -63,11 +63,7 @@ def _find_obfuscated_decoy_message(
 
         # Check if the obfuscated message has the desired length
         if len(obfuscated) == target_len:
-            if isinstance(obfuscated.obj, bytes):
-                obfuscated_bytes = obfuscated.obj
-            else:
-                obfuscated_bytes = obfuscated.tobytes()
-            return obfuscated_bytes, fake_seed, delimiter
+            return obfuscated.tobytes(), fake_seed, delimiter
 
     raise ValueError(
         f"Could not find obfuscated decoy of length {target_len} in {max_attempts} attempts. "
