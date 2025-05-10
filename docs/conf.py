@@ -2,9 +2,12 @@ import os
 import sys
 from pathlib import Path
 
+from vernamveil import __version__
+
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "VernamVeil"
+version = __version__
 copyright = "2025, Vasilis Vryniotis"
 
 extensions = [

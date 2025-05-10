@@ -56,4 +56,5 @@ strict = true
 include = ["vernamveil", "nphash"]
 
 [tool.setuptools.package-data]
-"nphash" = ["_npblake2bffi.*.so", "_npsha256ffi.*.so"]
+"vernamveil" = ["py.typed"]
+"nphash" = ["py.typed", "_npblake2bffi.*.so", "_npsha256ffi.*.so"]

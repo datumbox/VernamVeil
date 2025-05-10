@@ -1,5 +1,5 @@
-VernamVeil Documentation
-========================
+VernamVeil v\ |version| Documentation
+=====================================
 
 Welcome to the documentation for `VernamVeil <https://github.com/datumbox/VernamVeil>`_. Get started by exploring the sections below.
 
@@ -16,5 +16,5 @@ Welcome to the documentation for `VernamVeil <https://github.com/datumbox/Vernam
    :maxdepth: 1
    :caption: Guides & Implementation Notes:
 
-   Getting Started & Concepts <README>
-   C Extension Build & Usage <nphash/README>
+   Getting Started and Concepts <README.md>
+   C Extension Build and Usage <nphash/README.md>
