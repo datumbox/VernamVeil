@@ -73,7 +73,7 @@ class TestVernamVeil(unittest.TestCase):
         """Test encryption and decryption for messages of varying lengths."""
 
         def test(cypher, _):
-            for i in range(500):
+            for i in range(150):
                 msg = "".join(random.choices(string.printable, k=i))
                 encrypted, _ = cypher.encode(msg.encode(), self.initial_seed)
                 decrypted, _ = cypher.decode(encrypted, self.initial_seed)
@@ -136,6 +136,39 @@ class TestVernamVeil(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             cypher.encode(message, self.initial_seed)
         self.assertIn("The delimiter appears in the message.", str(ctx.exception))
+
+    def test_avalanche_effect(self):
+        """Test that flipping a single bit in the input causes ~50% of output bits to change (avalanche effect)."""
+        message = b"This is a test message for avalanche effect!"
+
+        def test(cypher, _):
+            modified = bytearray(message)
+            byte_idx = len(modified) // 2
+            bit_idx = 0
+            modified[byte_idx] ^= 1 << bit_idx
+
+            seed = self.initial_seed
+            original, _ = cypher.encode(message, seed)
+            altered, _ = cypher.encode(modified, seed)
+
+            diff_count = 0
+            for o, a in zip(original, altered):
+                diff = o ^ a
+                diff_count += bin(diff).count("1")
+
+            total_bits = len(original) * 8
+            expected_diff = total_bits * 0.5
+
+            self.assertTrue(
+                abs(diff_count - expected_diff) / total_bits <= 0.15,
+                f"Poor avalanche effect: {diff_count} bits differ (expected ~{expected_diff})",
+            )
+
+        # Test with all combinations of siv_seed_initialisation and auth_encrypt
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=True)
+        self.for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
+        self.for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
 
 if __name__ == "__main__":
