@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(".."))
 
 project = "VernamVeil"
+copyright = "2025, Vasilis Vryniotis"
 
 extensions = [
     "myst_parser",
