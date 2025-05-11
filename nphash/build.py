@@ -11,7 +11,12 @@ This will generate the _npblake2bffi and _npsha256ffi extension modules, which c
 """
 
 import platform
+import shlex
+import shutil
+import subprocess
 import sys
+import sysconfig
+import tempfile
 from pathlib import Path
 
 from cffi import FFI
@@ -32,6 +37,50 @@ def _get_c_source(path: Path, name: str) -> str:
         sys.exit(1)
     with path.open() as f:
         return f.read()
+
+
+def _detect_compiler() -> str:
+    """Detect the compiler being used.
+
+    Returns:
+        str: Compiler name.
+    """
+    if sys.platform == "win32":
+        if "gcc" in platform.python_compiler().lower():
+            return "gcc"
+        else:
+            return "cl"  # MSVC
+    cc_var = sysconfig.get_config_vars().get("CC")
+    if cc_var:
+        # Use shlex.split to parse and extract the executable
+        cc_cmd = shlex.split(cc_var)
+        if cc_cmd:
+            return cc_cmd[0]
+    return "cc"
+
+
+def _supports_flto(compiler: str) -> bool:
+    """Check if the compiler supports -flto.
+
+    Args:
+        compiler (str): Compiler to check.
+
+    Returns:
+        bool: True if the compiler supports -flto, False otherwise.
+    """
+    compiler_path = shutil.which(compiler)
+    if not compiler_path:
+        return False  # Compiler not found
+    with tempfile.TemporaryDirectory() as tmpdir:
+        src = Path(tmpdir) / "test.c"
+        exe = Path(tmpdir) / "test.out"
+        src.write_text("int main(void) { return 0; }")
+        result = subprocess.run(
+            shlex.split(compiler) + [str(src), "-flto", "-o", str(exe)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.returncode == 0
 
 
 def _print_build_summary(
@@ -89,6 +138,7 @@ def main() -> None:
     include_dirs: list[Path] = []
     library_dirs: list[Path] = []
 
+    compiler = _detect_compiler()
     if sys.platform.startswith("linux"):
         libraries = ["ssl", "crypto", "gomp"]
         extra_compile_args = ["-std=c99", "-fopenmp", "-O3", "-march=native", "-funroll-loops"]
@@ -109,7 +159,7 @@ def main() -> None:
                 library_dirs.append(prefix / "lib")
     elif sys.platform == "win32":
         # For MSVC: /openmp, for MinGW: -fopenmp
-        if "GCC" in platform.python_compiler():
+        if "gcc" in compiler.lower():
             libraries = ["libssl", "libcrypto", "gomp"]
             extra_compile_args = ["-std=c99", "-fopenmp", "-O3", "-march=native", "-funroll-loops"]
             extra_link_args = ["-fopenmp"]
@@ -129,6 +179,11 @@ def main() -> None:
                 break
     else:
         raise RuntimeError("Unsupported platform")
+
+    # Try to add -flto if supported
+    if _supports_flto(compiler):
+        extra_compile_args.append("-flto")
+        extra_link_args.append("-flto")
 
     # Add C source
     c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
