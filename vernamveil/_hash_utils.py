@@ -47,7 +47,7 @@ def hash_numpy(
     Raises:
         ValueError: If a hash algorithm is not supported.
     """
-    i_bytes = i.astype(">u8").tobytes()
+    i_bytes = i.byteswap().view(np.uint8)
     if _HAS_C_MODULE:
         if hash_name == "blake2b":
             ffi = _npblake2bffi.ffi

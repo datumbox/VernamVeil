@@ -414,7 +414,7 @@ class VernamVeil(_Cypher):
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
         if self._vectorise:
-            arr = np.frombuffer(data, dtype="uint8")
+            arr = np.frombuffer(data, dtype=np.uint8)
             processed = np.empty_like(arr)
         else:
             arr = data

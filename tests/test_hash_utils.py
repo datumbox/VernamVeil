@@ -41,7 +41,7 @@ class TestHashUtils(unittest.TestCase):
 
                         output = hash_numpy(i, seed, hash_name)
 
-                        i_bytes = i.astype(">u8").tobytes()
+                        i_bytes = i.byteswap().tobytes()
                         method = self._get_hash_method_for_test(hash_name)
 
                         expected = np.fromiter(
@@ -73,7 +73,7 @@ class TestHashUtils(unittest.TestCase):
 
                         output = hash_numpy(i, None, hash_name)
 
-                        i_bytes = i.astype(">u8").tobytes()
+                        i_bytes = i.byteswap().tobytes()
                         method = self._get_hash_method_for_test(hash_name)
 
                         expected = np.fromiter(
