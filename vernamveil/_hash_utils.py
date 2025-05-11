@@ -79,9 +79,9 @@ def hash_numpy(
             (
                 int.from_bytes(
                     (
-                        hmac.new(seed, i_bytes[j : j + 8], digestmod=method).digest()
+                        hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()
                         if seed is not None
-                        else method(i_bytes[j : j + 8]).digest()
+                        else method(i_bytes.data[j : j + 8]).digest()
                     ),
                     "big",
                 )

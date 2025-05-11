@@ -400,7 +400,7 @@ class VernamVeil(_Cypher):
 
     def _xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
-    ) -> tuple[memoryview, bytes]:
+    ) -> tuple[bytearray, bytes]:
         """Encrypt or decrypt data using XOR with the generated keystream.
 
         Args:
@@ -409,16 +409,18 @@ class VernamVeil(_Cypher):
             is_encode (bool): True for encryption, False for decryption.
 
         Returns:
-            tuple[memoryview, bytes]: Processed data and the final seed.
+            tuple[bytearray, bytes]: Processed data and the final seed.
         """
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
+        result = bytearray(data_len)
         if self._vectorise:
             arr = np.frombuffer(data, dtype=np.uint8)
-            processed = np.empty_like(arr)
+            # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
+            processed = np.frombuffer(result, dtype=np.uint8)
         else:
             arr = data
-            processed = bytearray(data_len)
+            processed = result
 
         for start, end in self._generate_chunk_ranges(data_len):
             # Generate a key using fx
@@ -437,11 +439,6 @@ class VernamVeil(_Cypher):
 
             # Refresh the seed differently for encoding and decoding
             seed = self._hmac(seed, [seed_data])
-
-        if self._vectorise:
-            result: memoryview = processed.data
-        else:
-            result = memoryview(processed)
 
         return result, seed
 
@@ -479,12 +476,12 @@ class VernamVeil(_Cypher):
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed, the timestamp and the message
-            timestamp = int(time.time_ns()).to_bytes(8, "big")
+            timestamp = time.time_ns().to_bytes(8, "big")
             siv_hash = self._hmac(seed, [message, timestamp])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
-            # Put the encrypted SIV hash at the start of the output
-            output = bytearray(encrypted_siv_hash)
+            # Use the encrypted SIV hash bytearray as the output
+            output = encrypted_siv_hash
 
             # Note: The SIV is not reused for MAC computation, ensuring separation
             # between seed evolution and authentication.
@@ -582,15 +579,7 @@ class VernamVeil(_Cypher):
         # Decrypt the noisy message
         decrypted, last_seed = self._xor_with_key(encrypted_data, seed, False)
 
-        # Convert to bytearray based on the type of the memoryview
-        if isinstance(decrypted.obj, bytearray):
-            # Accessing the obj of a memory view can be risky if the memory is sliced.
-            # Here we are safe because _xor_with_key doesn't perform slicing on that variable.
-            decrypted_bytearray = decrypted.obj
-        else:
-            decrypted_bytearray = bytearray(decrypted)
-
         # Denoise, Unshuffle and extract the real message
-        message = self._deobfuscate(decrypted_bytearray, shuffle_seed, delimiter)
+        message = self._deobfuscate(decrypted, shuffle_seed, delimiter)
 
         return message, last_seed
