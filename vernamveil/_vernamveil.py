@@ -312,7 +312,7 @@ class VernamVeil(_Cypher):
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
         for i in range(total_count):
-            if shuffled_chunk_ranges[i] != (-1, -1):
+            if shuffled_chunk_ranges[i][0] != -1:  # real chunk location
                 start, end = shuffled_chunk_ranges[i]
                 chunk: memoryview | bytes = message[start:end]
             else:
@@ -455,11 +455,13 @@ class VernamVeil(_Cypher):
         seed = self._hmac(seed, [b"delimiter"])
         return delimiter, seed
 
-    def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
+    def encode(
+        self, message: bytes | bytearray | memoryview, seed: bytes
+    ) -> tuple[bytearray, bytes]:
         """Encrypt a message.
 
         Args:
-            message (bytes or memoryview): Message to encode.
+            message (bytes or bytearray or memoryview): Message to encode.
             seed (bytes): Initial seed for encryption.
 
         Returns:
@@ -470,7 +472,17 @@ class VernamVeil(_Cypher):
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(message, memoryview):
+            msg_bytes = message
             message = memoryview(message)
+        else:
+            # Accessing memoryview.obj can be unsafe if the memoryview is a slice, but in this library, inputs are
+            # always bytes. However, callers might still provide a sliced memoryview over bytes. This code is safe
+            # because msg_bytes is only used to check for the delimiter, so at worst, the check is performed on the
+            # entire underlying array. The expensive tobytes() copy is almost always avoided, unless the caller
+            # provides a memoryview is not backed by a bytes or bytearray object.
+            msg_bytes = (
+                message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
+            )
 
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
@@ -480,7 +492,7 @@ class VernamVeil(_Cypher):
             siv_hash = self._hmac(seed, [message, timestamp])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
-            # Use the encrypted SIV hash bytearray as the output
+            # Use the encrypted SIV hash bytearray as the output; this puts it in front
             output = encrypted_siv_hash
 
             # Note: The SIV is not reused for MAC computation, ensuring separation
@@ -496,13 +508,6 @@ class VernamVeil(_Cypher):
         delimiter, seed = self._generate_delimiter(seed)
 
         # Delimiter conflict check
-        # Accessing the obj of a memoryview can be risky if the memory is sliced.
-        # Here, we cannot guarantee that the caller has not sliced the bytes, but it is still safe to do so.
-        # In the worst-case scenario, we will check for the delimiter in the entire array, which is not a big deal.
-        # For most cases, this is still faster than copying the message to bytes.
-        msg_bytes = (
-            message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
-        )
         if msg_bytes.find(delimiter) != -1:
             raise ValueError(
                 "The delimiter appears in the message. Consider increasing the delimiter size."
@@ -527,11 +532,13 @@ class VernamVeil(_Cypher):
 
         return output, last_seed
 
-    def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
+    def decode(
+        self, cyphertext: bytes | bytearray | memoryview, seed: bytes
+    ) -> tuple[bytearray, bytes]:
         """Decrypt an encoded message.
 
         Args:
-            cyphertext (bytes or memoryview): Encrypted and obfuscated message.
+            cyphertext (bytes or bytearray or memoryview): Encrypted and obfuscated message.
             seed (bytes): Initial seed for decryption.
 
         Returns:
