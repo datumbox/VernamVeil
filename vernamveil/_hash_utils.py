@@ -58,11 +58,10 @@ def hash_numpy(
         else:
             raise ValueError(f"Unsupported hash_name '{hash_name}'.")
 
-        n = len(i_bytes) // 8
-        out = np.empty(n, dtype=np.uint64)
+        out = np.empty_like(i)
         method(
             ffi.from_buffer(i_bytes),
-            n,
+            len(i),
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
             ffi.cast("uint64_t*", out.ctypes.data),
