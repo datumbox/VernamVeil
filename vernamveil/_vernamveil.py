@@ -183,7 +183,7 @@ class VernamVeil(_Cypher):
             bytes: The resulting hash digest.
         """
         if msg_list is not None:
-            hm = hmac.new(key, None, digestmod="blake2b")
+            hm = hmac.new(key, msg_list.pop(0), digestmod="blake2b")
             for m in msg_list:
                 hm.update(m)
             return hm.digest()
