@@ -4,8 +4,8 @@ import secrets
 import unittest
 from unittest.mock import patch
 
+from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._hash_utils import _HAS_C_MODULE, _UINT64_BOUND, hash_numpy
-from vernamveil._vernamveil import _HAS_NUMPY
 
 try:
     import numpy as np

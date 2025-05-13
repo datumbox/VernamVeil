@@ -10,7 +10,8 @@ import copy
 import math
 from typing import Any, Literal
 
-from vernamveil._vernamveil import VernamVeil, _IntOrArray
+from vernamveil._cypher import _IntOrArray
+from vernamveil._vernamveil import VernamVeil
 
 np: Any
 try:
@@ -56,7 +57,7 @@ def _find_obfuscated_decoy_message(
         delimiter, seed = cypher._generate_delimiter(fake_seed)
 
         # Generate shuffle seed for obfuscation
-        shuffle_seed = cypher._hmac(seed, [b"shuffle"])
+        shuffle_seed = cypher._backend._hmac(seed, [b"shuffle"])
 
         # Obfuscate the decoy message
         obfuscated = cypher._obfuscate(decoy_view, shuffle_seed, delimiter)
@@ -96,7 +97,7 @@ def _estimate_obfuscated_length(cypher: VernamVeil, message_len: int, pad_val: i
 class _PlausibleFX:
     """A callable class that generates fake keystream values for plausible deniability."""
 
-    def __init__(self, uint64s: list[int]):
+    def __init__(self, uint64s: list[int]) -> None:
         """Initializes the PlausibleFX instance.
 
         Args:
@@ -203,7 +204,8 @@ def forge_plausible_fx(
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where
     # the chunk_size is not a multiple of 8. This can lead to the fx sampling the wrong bytes.
-    for start, end in cypher._generate_chunk_ranges(cyphertext_len):
+    chunk_size = cypher._chunk_size
+    for start, end in cypher._backend._generate_chunk_ranges(cyphertext_len, chunk_size):
         for block_start in range(start, end, 8):
             # Pad to 8 bytes if needed
             ct_block = cyphertext[block_start : block_start + 8].ljust(8, b"\x00")

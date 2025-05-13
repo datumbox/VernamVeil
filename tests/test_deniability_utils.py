@@ -3,9 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._deniability_utils import _PlausibleFX, forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx, load_fx_from_file
-from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
+from vernamveil._vernamveil import VernamVeil
 
 
 class TestDeniabilityUtils(unittest.TestCase):

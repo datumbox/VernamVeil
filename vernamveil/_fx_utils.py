@@ -10,8 +10,8 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
+from vernamveil._cypher import _IntOrArray
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
-from vernamveil._vernamveil import _IntOrArray
 
 np: Any
 try:
