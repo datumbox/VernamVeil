@@ -12,7 +12,7 @@ import warnings
 from typing import Any, Callable, Iterator
 
 from vernamveil._cypher import _Cypher
-from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
 
 np: Any
 _IntOrArray: Any
@@ -214,7 +214,7 @@ class VernamVeil(_Cypher):
         if self._vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes = hash_numpy(i_arr, seed, "blake2b")
+            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, "blake2b"))
         else:
             # Standard: generate hashes one by one
             hashes = [

@@ -120,14 +120,14 @@ def main() -> None:
     ffibuilder_blake2b = FFI()
     ffibuilder_blake2b.cdef(
         """
-        void numpy_blake2b(const char* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint64_t* restrict out);
+        void numpy_blake2b(const char* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
         """
     )
 
     ffibuilder_sha256 = FFI()
     ffibuilder_sha256.cdef(
         """
-        void numpy_sha256(const char* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint64_t* restrict out);
+        void numpy_sha256(const char* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
         """
     )
 

@@ -10,7 +10,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
-from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
 from vernamveil._vernamveil import _IntOrArray
 
 np: Any
@@ -37,7 +37,7 @@ def generate_hmac_fx(
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
-        hash_name (str): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
+        hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
@@ -56,7 +56,7 @@ def generate_hmac_fx(
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
     if vectorise:
         function_code = f"""
-from vernamveil import hash_numpy
+from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
 
 
@@ -66,7 +66,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
+    result = fold_bytes_to_uint64(hash_numpy(i, seed, "{hash_name}"))  # uses C module if available, else NumPy fallback
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -98,7 +98,12 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     local_vars: dict[str, Any] = {}
     exec(
         function_code,
-        {"np": np, "hash_numpy": hash_numpy, "hmac": hmac},
+        {
+            "fold_bytes_to_uint64": fold_bytes_to_uint64,
+            "hash_numpy": hash_numpy,
+            "hmac": hmac,
+            "np": np,
+        },
         local_vars,
     )
 
@@ -151,7 +156,7 @@ def generate_polynomial_fx(
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
-from vernamveil import hash_numpy
+from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
 
 
@@ -169,7 +174,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     result = np.dot(powers, weights)
 
     # Cryptographic HMAC using Blake2b
-    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+    result = fold_bytes_to_uint64(hash_numpy(result, seed, "blake2b"))  # uses C module if available, else NumPy fallback
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -211,7 +216,12 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     local_vars: dict[str, Any] = {}
     exec(
         function_code,
-        {"np": np, "hash_numpy": hash_numpy, "hmac": hmac},
+        {
+            "fold_bytes_to_uint64": fold_bytes_to_uint64,
+            "hash_numpy": hash_numpy,
+            "hmac": hmac,
+            "np": np,
+        },
         local_vars,
     )
     fx = local_vars["fx"]

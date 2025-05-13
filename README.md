@@ -210,7 +210,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 ### 🏎️ A fast version of the above `fx` that uses NumPy vectorisation and the `nphash` C module
 
 ```python
-from vernamveil import hash_numpy
+from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
 
 
@@ -226,10 +226,10 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     powers = np.power.outer(i, np.arange(11, dtype=np.uint64))
     # Weighted sum (polynomial evaluation)
     result = np.dot(powers, weights)
-    
+
     # Cryptographic HMAC using Blake2b
-    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
-    
+    result = fold_bytes_to_uint64(hash_numpy(result, seed, "blake2b"))  # uses C module if available, else NumPy fallback
+
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
         np.remainder(result, bound, out=result)
@@ -240,7 +240,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 ### 🛡️ A cryptographically strong HMAC-SHA256 `fx` (vectorised & C-accelerated)
 
 ```python
-from vernamveil import hash_numpy
+from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
 
 
@@ -250,7 +250,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using sha256
-    result = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
+    result = fold_bytes_to_uint64(hash_numpy(i, seed, "sha256"))  # uses C module if available, else NumPy fallback
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
