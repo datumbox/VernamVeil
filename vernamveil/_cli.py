@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import IO, Callable, cast
 
 from vernamveil import __version__
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
 from vernamveil._hash_utils import _HAS_C_MODULE
-from vernamveil._vernamveil import VernamVeil
+from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:

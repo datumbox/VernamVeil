@@ -7,10 +7,9 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import generate_default_fx
 from vernamveil._hash_utils import _HAS_C_MODULE
-from vernamveil._vernamveil import VernamVeil
+from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
 
 
 def get_test_modes():

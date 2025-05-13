@@ -10,7 +10,7 @@ import time
 import warnings
 from typing import Any, Callable
 
-from vernamveil._cypher import _HAS_NUMPY, _Backend, _Cypher, _IntOrArray
+from vernamveil._cypher import _Backend, _Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 
 np: Any
@@ -18,8 +18,10 @@ try:
     import numpy
 
     np = numpy
+    _HAS_NUMPY = True
 except ImportError:
     np = None
+    _HAS_NUMPY = False
 
 __all__ = ["VernamVeil"]
 
@@ -229,7 +231,7 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+        fx: Callable[..., Any],
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),

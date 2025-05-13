@@ -10,16 +10,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import IO, Any, Callable, Iterator, Literal
 
-_IntOrArray: Any
-try:
-    from numpy.typing import NDArray
-
-    _IntOrArray = int | NDArray
-    _HAS_NUMPY = True
-except ImportError:
-    _IntOrArray = int
-    _HAS_NUMPY = False
-
 __all__: list[str] = []
 
 
@@ -32,7 +22,7 @@ class _Backend(ABC):
 
     def __init__(
         self,
-        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+        fx: Callable[..., Any],
         chunk_size: int,
     ) -> None:
         """Initialise the backend.
