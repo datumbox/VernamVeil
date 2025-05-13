@@ -16,16 +16,19 @@ from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_num
 
 np: Any
 _IntOrArray: Any
+_IntOrBytes: Any
 try:
     import numpy
     from numpy.typing import NDArray
 
     np = numpy
     _IntOrArray = int | NDArray
+    _IntOrBytes = int | NDArray | bytes
     _HAS_NUMPY = True
 except ImportError:
     np = None
     _IntOrArray = int
+    _IntOrBytes = int | bytes
     _HAS_NUMPY = False
 
 
@@ -43,7 +46,7 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrBytes],
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
@@ -56,7 +59,7 @@ class VernamVeil(_Cypher):
 
         Args:
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
-                int or np.ndarray. This function is critical for the encryption process and should be carefully
+                int or np.ndarray or bytes. This function is critical for the encryption process and should be carefully
                 designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
             delimiter_size (int): The delimiter size in bytes used for separating chunks; must be

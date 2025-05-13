@@ -10,7 +10,7 @@ import copy
 import math
 from typing import Any
 
-from vernamveil._vernamveil import VernamVeil, _IntOrArray
+from vernamveil._vernamveil import VernamVeil, _IntOrArray, _IntOrBytes
 
 np: Any
 try:
@@ -112,7 +112,7 @@ fx = _PlausibleFX({keystream})
 
 """
 
-    def __call__(self, i: _IntOrArray, _: bytes, __: int | None = None) -> _IntOrArray:
+    def __call__(self, i: _IntOrArray, _: bytes, __: int | None = None) -> _IntOrBytes:
         """Generates the next value in the fake keystream.
 
         Args:
@@ -121,7 +121,7 @@ fx = _PlausibleFX({keystream})
             __ (int, optional): Unused parameter for compatibility.
 
         Returns:
-            _IntOrArray: The next value in the fake keystream.
+            _IntOrBytes: The next value in the fake keystream.
         """
         use_numpy = np is not None and isinstance(i, np.ndarray)
 

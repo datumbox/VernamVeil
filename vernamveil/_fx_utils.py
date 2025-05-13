@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
 from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
-from vernamveil._vernamveil import _IntOrArray
+from vernamveil._vernamveil import _IntOrArray, _IntOrBytes
 
 np: Any
 try:
@@ -33,7 +33,7 @@ __all__ = [
 def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
-) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
+) -> Callable[[_IntOrArray, bytes, int | None], _IntOrBytes]:
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
@@ -41,7 +41,7 @@ def generate_hmac_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
-        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
+        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray | bytes]: A function that returns pseudo-random
             integers from HMAC-based function.
 
     Raises:
@@ -114,12 +114,12 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     fx = local_vars["fx"]
     fx._source_code = function_code
 
-    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrBytes], fx)
 
 
 def generate_polynomial_fx(
     degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
-) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
+) -> Callable[[_IntOrArray, bytes, int | None], _IntOrBytes]:
     """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
 
     The transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
@@ -132,7 +132,7 @@ def generate_polynomial_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
-        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
+        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray | bytes]: A function that returns pseudo-random
             integers from polynomial evaluation.
 
     Raises:
@@ -236,32 +236,32 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Attach the code string directly to the function object for later reference
     fx._source_code = function_code
 
-    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrBytes], fx)
 
 
 # Default function for key stream generation
 generate_default_fx = generate_polynomial_fx
 
 
-def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
+def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrBytes]:
     """Load the fx function from a Python file.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
 
     Returns:
-        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: The loaded fx function.
+        Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray | bytes]: The loaded fx function.
     """
     global_vars: dict[str, Any] = {}
     path_obj = Path(path)
     code = path_obj.read_text()
     exec(code, global_vars)
     fx = global_vars["fx"]
-    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrBytes], fx)
 
 
 def check_fx_sanity(
-    fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+    fx: Callable[[_IntOrArray, bytes, int | None], _IntOrBytes],
     seed: bytes,
     bound: int = 256,
     num_samples: int = 1000,
