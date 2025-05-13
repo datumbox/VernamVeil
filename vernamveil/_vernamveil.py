@@ -165,9 +165,8 @@ class VernamVeil(_Cypher):
         """
         return 64
 
-    @staticmethod
     def _hmac(
-        key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
+        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
         """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
 

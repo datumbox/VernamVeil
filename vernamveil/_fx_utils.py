@@ -66,7 +66,8 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    result = fold_bytes_to_uint64(hash_numpy(i, seed, "{hash_name}"))  # uses C module if available, else NumPy fallback
+    hash_result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
+    result = fold_bytes_to_uint64(hash_result)
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
