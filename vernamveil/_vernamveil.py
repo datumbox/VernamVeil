@@ -27,7 +27,7 @@ __all__ = ["VernamVeil"]
 class _PythonBackend(_Backend):
     """Pure Python backend for core cryptographic operations."""
 
-    def _determine_shuffled_indices(
+    def determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
     ) -> list[int]:
         """Implement the Fisher–Yates shuffle algorithm.
@@ -50,7 +50,7 @@ class _PythonBackend(_Backend):
         # Shuffle deterministically based on the hashed seed
         for i in range(total_count - 1, 0, -1):
             # Compute the hash for this position
-            hash_bytes = self._hmac(seed, [i.to_bytes(8, "big")])
+            hash_bytes = self.hmac(seed, [i.to_bytes(8, "big")])
             hash_int = int.from_bytes(hash_bytes, "big")
             # Create a random number between 0 and i
             j = hash_int % (i + 1)
@@ -60,7 +60,7 @@ class _PythonBackend(_Backend):
 
         return positions[:real_count]
 
-    def _generate_bytes(self, length: int, seed: bytes) -> memoryview:
+    def generate_bytes(self, length: int, seed: bytes) -> memoryview:
         """Produce a byte stream of the given length using the key generator function.
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
@@ -85,7 +85,7 @@ class _PythonBackend(_Backend):
             i += 1
         return memoryview(result)[:length]
 
-    def _xor_with_key(
+    def xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
     ) -> tuple[bytearray, bytes]:
         """Encrypt or decrypt data using XOR with the generated keystream.
@@ -103,10 +103,10 @@ class _PythonBackend(_Backend):
         result = bytearray(data_len)
         view = memoryview(result)
 
-        for start, end in self._generate_chunk_ranges(data_len, self._chunk_size):
+        for start, end in self.generate_chunk_ranges(data_len):
             # Generate a key using fx
             chunk_len = end - start
-            keystream = self._generate_bytes(chunk_len, seed)
+            keystream = self.generate_bytes(chunk_len, seed)
 
             # XOR the chunk with the key
             for i in range(chunk_len):
@@ -115,7 +115,7 @@ class _PythonBackend(_Backend):
             seed_data = data[start:end] if is_encode else view[start:end]
 
             # Refresh the seed differently for encoding and decoding
-            seed = self._hmac(seed, [seed_data])
+            seed = self.hmac(seed, [seed_data])
 
         return result, seed
 
@@ -123,7 +123,7 @@ class _PythonBackend(_Backend):
 class _NumPyBackend(_Backend):
     """NumPy backend for core cryptographic operations."""
 
-    def _determine_shuffled_indices(
+    def determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
     ) -> list[int]:
         """Implement the Fisher–Yates shuffle algorithm.
@@ -157,7 +157,7 @@ class _NumPyBackend(_Backend):
 
         return positions[:real_count]
 
-    def _generate_bytes(self, length: int, seed: bytes) -> memoryview:
+    def generate_bytes(self, length: int, seed: bytes) -> memoryview:
         """Produce a byte stream of the given length using the key generator function.
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
@@ -183,7 +183,7 @@ class _NumPyBackend(_Backend):
         memview: memoryview = keystream.view(np.uint8)[:length].data
         return memview
 
-    def _xor_with_key(
+    def xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
     ) -> tuple[bytearray, bytes]:
         """Encrypt or decrypt data using XOR with the generated keystream.
@@ -203,17 +203,17 @@ class _NumPyBackend(_Backend):
         # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
         processed = np.frombuffer(result, dtype=np.uint8)
 
-        for start, end in self._generate_chunk_ranges(data_len, self._chunk_size):
+        for start, end in self.generate_chunk_ranges(data_len):
             # Generate a key using fx
             chunk_len = end - start
-            keystream = self._generate_bytes(chunk_len, seed)
+            keystream = self.generate_bytes(chunk_len, seed)
 
             # XOR the chunk with the key
             np.bitwise_xor(data[start:end], keystream, out=processed[start:end])
             seed_data = data[start:end] if is_encode else processed[start:end].data
 
             # Refresh the seed differently for encoding and decoding
-            seed = self._hmac(seed, [seed_data])
+            seed = self.hmac(seed, [seed_data])
 
         return result, seed
 
@@ -360,12 +360,10 @@ class VernamVeil(_Cypher):
         total_count = real_count + decoy_count
 
         # Estimate shuffled positions of real chunks
-        shuffled_positions = self._backend._determine_shuffled_indices(
-            seed, real_count, total_count
-        )
+        shuffled_positions = self._backend.determine_shuffled_indices(seed, real_count, total_count)
 
         # Use the randomness of the positions to shuffle the chunks
-        chunk_ranges_iter = self._backend._generate_chunk_ranges(message_len, self._chunk_size)
+        chunk_ranges_iter = self._backend.generate_chunk_ranges(message_len)
         shuffled_chunk_ranges = [(-1, -1) for _ in range(total_count)]
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
@@ -449,9 +447,7 @@ class VernamVeil(_Cypher):
             real_count = total_count
 
         # Estimate the shuffled real positions
-        shuffled_positions = self._backend._determine_shuffled_indices(
-            seed, real_count, total_count
-        )
+        shuffled_positions = self._backend.determine_shuffled_indices(seed, real_count, total_count)
 
         # Reconstruct and unshuffle the message
         message = bytearray()
@@ -471,8 +467,8 @@ class VernamVeil(_Cypher):
         Returns:
             tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
-        delimiter = self._backend._generate_bytes(self._delimiter_size, seed)
-        seed = self._backend._hmac(seed, [b"delimiter"])
+        delimiter = self._backend.generate_bytes(self._delimiter_size, seed)
+        seed = self._backend.hmac(seed, [b"delimiter"])
         return delimiter, seed
 
     def encode(
@@ -509,9 +505,9 @@ class VernamVeil(_Cypher):
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed, the timestamp and the message
             timestamp = time.time_ns().to_bytes(8, "big")
-            siv_hash = self._backend._hmac(seed, [message, timestamp])
+            siv_hash = self._backend.hmac(seed, [message, timestamp])
             # Encrypt the synthetic IV and evolve the seed with it
-            encrypted_siv_hash, seed = self._backend._xor_with_key(memoryview(siv_hash), seed, True)
+            encrypted_siv_hash, seed = self._backend.xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
             output = encrypted_siv_hash
 
@@ -522,7 +518,7 @@ class VernamVeil(_Cypher):
 
         # Produce a unique seed for Authenticated Encryption
         # This ensures integrity by generating a MAC tag for the cyphertext
-        auth_seed = self._backend._hmac(seed, [b"auth"]) if self._auth_encrypt else b""
+        auth_seed = self._backend.hmac(seed, [b"auth"]) if self._auth_encrypt else b""
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
@@ -535,19 +531,19 @@ class VernamVeil(_Cypher):
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during shuffling and to match the order
         # of operations with decode.
-        shuffle_seed = self._backend._hmac(seed, [b"shuffle"])
+        shuffle_seed = self._backend.hmac(seed, [b"shuffle"])
 
         # Add noise and shuffle the message
         noisy = self._obfuscate(message, shuffle_seed, delimiter)
 
         # Encrypt the noisy message
-        cyphertext, last_seed = self._backend._xor_with_key(noisy, seed, True)
+        cyphertext, last_seed = self._backend.xor_with_key(noisy, seed, True)
         output.extend(cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             # The tag is computed over the cyphertext and the configuration of the cypher
-            tag = self._backend._hmac(auth_seed, [cyphertext, str(self).encode()])
+            tag = self._backend.hmac(auth_seed, [cyphertext, str(self).encode()])
             output.extend(tag)
 
         return output, last_seed
@@ -571,7 +567,7 @@ class VernamVeil(_Cypher):
         if not isinstance(cyphertext, memoryview):
             cyphertext = memoryview(cyphertext)
 
-        HMAC_LENGTH = self._backend._hmac_length
+        HMAC_LENGTH = self._backend.hmac_length
 
         # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
@@ -579,7 +575,7 @@ class VernamVeil(_Cypher):
             # Split the data by taking the first HMAC_LENGTH bytes
             encrypted_siv_hash, cyphertext = cyphertext[:HMAC_LENGTH], cyphertext[HMAC_LENGTH:]
             # Decrypt the SIV hash (throw away) and evolve the seed with it
-            _, seed = self._backend._xor_with_key(encrypted_siv_hash, seed, False)
+            _, seed = self._backend.xor_with_key(encrypted_siv_hash, seed, False)
 
         # Authenticated Encryption
         if self._auth_encrypt:
@@ -587,10 +583,10 @@ class VernamVeil(_Cypher):
             encrypted_data, expected_tag = cyphertext[:-HMAC_LENGTH], cyphertext[-HMAC_LENGTH:]
 
             # Produce a unique seed for Authenticated Encryption
-            auth_seed = self._backend._hmac(seed, [b"auth"])
+            auth_seed = self._backend.hmac(seed, [b"auth"])
 
             # Estimate the tag and compare it with the expected
-            tag = self._backend._hmac(auth_seed, [encrypted_data, str(self).encode()])
+            tag = self._backend.hmac(auth_seed, [encrypted_data, str(self).encode()])
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
@@ -601,10 +597,10 @@ class VernamVeil(_Cypher):
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during unshuffling and to match the order
         # of operations with encode.
-        shuffle_seed = self._backend._hmac(seed, [b"shuffle"])
+        shuffle_seed = self._backend.hmac(seed, [b"shuffle"])
 
         # Decrypt the noisy message
-        decrypted, last_seed = self._backend._xor_with_key(encrypted_data, seed, False)
+        decrypted, last_seed = self._backend.xor_with_key(encrypted_data, seed, False)
 
         # Denoise, Unshuffle and extract the real message
         message = self._deobfuscate(decrypted, shuffle_seed, delimiter)

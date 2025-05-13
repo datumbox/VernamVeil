@@ -47,7 +47,7 @@ class _Backend(ABC):
         self._chunk_size = chunk_size
 
     @property
-    def _hmac_length(self) -> int:
+    def hmac_length(self) -> int:
         """Return the length of the HMAC digest used in the VernamVeil class.
 
         This is a constant value representing the size of the hash output from the BLAKE2b algorithm.
@@ -57,9 +57,8 @@ class _Backend(ABC):
         """
         return 64
 
-    @classmethod
-    def _hmac(
-        cls, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
+    def hmac(
+        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
         """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
 
@@ -82,21 +81,22 @@ class _Backend(ABC):
         else:
             return hashlib.blake2b(key).digest()
 
-    @classmethod
-    def _generate_chunk_ranges(cls, message_len: int, chunk_size: int) -> Iterator[tuple[int, int]]:
+    def generate_chunk_ranges(self, message_len: int) -> Iterator[tuple[int, int]]:
         """Split a message into chunk index ranges based on the configured chunk size.
 
         Args:
             message_len (int): Length of the message in bytes.
-            chunk_size (int): Size of each chunk in bytes.
 
         Returns:
             Iterator[tuple[int, int]]: An iterator with (start, end) indices for each chunk.
         """
-        return ((i, min(i + chunk_size, message_len)) for i in range(0, message_len, chunk_size))
+        return (
+            (i, min(i + self._chunk_size, message_len))
+            for i in range(0, message_len, self._chunk_size)
+        )
 
     @abstractmethod
-    def _determine_shuffled_indices(
+    def determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
     ) -> list[int]:
         """Implement the Fisher–Yates shuffle algorithm.
@@ -116,7 +116,7 @@ class _Backend(ABC):
         pass
 
     @abstractmethod
-    def _generate_bytes(self, length: int, seed: bytes) -> memoryview:
+    def generate_bytes(self, length: int, seed: bytes) -> memoryview:
         """Produce a byte stream of the given length using the key generator function.
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
@@ -134,7 +134,7 @@ class _Backend(ABC):
         pass
 
     @abstractmethod
-    def _xor_with_key(
+    def xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
     ) -> tuple[bytearray, bytes]:
         """Encrypt or decrypt data using XOR with the generated keystream.
