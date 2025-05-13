@@ -137,8 +137,8 @@ def fx(i, seed, bound):
             args += extra_args
 
         args = [str(arg) for arg in args]
-        if not any(arg.endswith("vectorise") for arg in args):
-            args += ["--no-vectorise"]
+        if "--backend" not in args:
+            args += ["--backend", "python"]
         with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
             main(args)
         return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
@@ -160,8 +160,8 @@ def fx(i, seed, bound):
             args += extra_args
 
         args = [str(arg) for arg in args]
-        if not any(arg.endswith("vectorise") for arg in args):
-            args += ["--no-vectorise"]
+        if "--backend" not in args:
+            args += ["--backend", "python"]
         with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
             main(args)
         return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
@@ -373,7 +373,7 @@ def fx(i, seed, bound):
                     self.outfile,
                     fx_file=None,
                     seed_file=seed_file,
-                    extra_args=["--no-vectorise"],
+                    extra_args=["--backend", "python"],
                 )
             self.assertIn("Error: --fx-file must be specified when decoding.", stderr.getvalue())
 
@@ -390,7 +390,7 @@ def fx(i, seed, bound):
                     self.outfile,
                     fx_file=fx_file,
                     seed_file=None,
-                    extra_args=["--no-vectorise"],
+                    extra_args=["--backend", "python"],
                 )
             self.assertIn("Error: --seed-file must be specified when decoding.", stderr.getvalue())
 

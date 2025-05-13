@@ -18,10 +18,10 @@ class TestDeniabilityUtils(unittest.TestCase):
         delimiter_size=9,
         padding_range=(5, 15),
         decoy_ratio=0.2,
-        vectorise=False,
+        backend="python",
     ):
         """Utility to run a basic deniability test with configurable parameters."""
-        real_fx = generate_default_fx(vectorise=vectorise)
+        real_fx = generate_default_fx(backend=backend)
         cypher = VernamVeil(
             real_fx,
             chunk_size=chunk_size,
@@ -30,7 +30,7 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=decoy_ratio,
             siv_seed_initialisation=True,
             auth_encrypt=True,
-            vectorise=vectorise,
+            backend=backend,
         )
         real_seed = VernamVeil.get_initial_seed()
         secret_message = b"Sensitive data: the launch code is 12345!"
@@ -52,7 +52,7 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=cypher._decoy_ratio,
             siv_seed_initialisation=False,
             auth_encrypt=False,
-            vectorise=cypher._vectorise,
+            backend=cypher._backend,
         )
         decoy_out, _ = fake_cypher.decode(cyphertext, fake_seed)
         return decoy_out.decode(errors="replace"), decoy_message.decode(errors="replace")
@@ -76,7 +76,7 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_end_to_end_deniability_disk_io(self):
         """End-to-end test: store/load all artifacts and verify deniability."""
-        real_fx = generate_default_fx(vectorise=False)
+        real_fx = generate_default_fx(backend="python")
         real_seed = VernamVeil.get_initial_seed()
         secret_message = b"Sensitive data: the launch code is 12345!"
         cypher = VernamVeil(
@@ -87,7 +87,7 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=0.2,
             siv_seed_initialisation=True,
             auth_encrypt=True,
-            vectorise=False,
+            backend="python",
         )
         cyphertext, _ = cypher.encode(secret_message, real_seed)
 
@@ -147,7 +147,7 @@ class TestDeniabilityUtils(unittest.TestCase):
                 decoy_ratio=0.2,
                 siv_seed_initialisation=True,
                 auth_encrypt=True,
-                vectorise=False,
+                backend="python",
             )
             real_out, _ = real_cypher.decode(loaded_cyphertext, loaded_real_seed)
 
@@ -160,7 +160,7 @@ class TestDeniabilityUtils(unittest.TestCase):
                 decoy_ratio=0.2,
                 siv_seed_initialisation=False,
                 auth_encrypt=False,
-                vectorise=False,
+                backend="python",
             )
             decoy_out, _ = fake_cypher.decode(loaded_cyphertext, loaded_fake_seed)
 
@@ -179,16 +179,16 @@ def make_test_func(chunk_size, delimiter_size):
 
     def test_func(self):
         """Test that the deniability function works correctly for a specific combo."""
-        vectorise_options = [True, False] if _HAS_NUMPY else [False]
-        for vectorise in vectorise_options:
-            with self.subTest(vectorise=vectorise):
+        backend_options = ["numpy", "python"] if _HAS_NUMPY else ["python"]
+        for backend in backend_options:
+            with self.subTest(backend=backend):
                 try:
                     decoy_out, decoy_message = self._run_deniability_test(
                         chunk_size=chunk_size,
                         delimiter_size=delimiter_size,
                         padding_range=(5, 15),
                         decoy_ratio=0.3,
-                        vectorise=vectorise,
+                        backend=backend,
                     )
                     self.assertEqual(decoy_out, decoy_message)
                 except ValueError as e:
@@ -202,7 +202,7 @@ def make_test_func(chunk_size, delimiter_size):
     return test_func
 
 
-# Dynamically add a test method for each combo except vectorise
+# Dynamically add a test method for each combo except for backend
 for chunk_size, delimiter_size in combos:
     test_name = f"test_deniability_{chunk_size}_{delimiter_size}"
     test_func = make_test_func(chunk_size, delimiter_size)

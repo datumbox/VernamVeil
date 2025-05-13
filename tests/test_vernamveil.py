@@ -14,14 +14,14 @@ from vernamveil._vernamveil import VernamVeil
 
 
 def get_test_modes():
-    """Return available test modes based on numpy and C backend availability."""
-    modes = [("scalar", False, None)]
+    """Return available test modes based on numpy and C extension availability."""
+    modes = [("scalar", "python", None)]
     if _HAS_NUMPY:
-        # Always test vectorised (force fallback)
-        modes.append(("vectorised", True, False))
+        # Always test numpy (force fallback)
+        modes.append(("vectorised", "numpy", False))
         # Only test with C if available
         if _HAS_C_MODULE:
-            modes.append(("vectorised_with_extension", True, True))
+            modes.append(("vectorised_with_extension", "numpy", True))
     return modes
 
 
@@ -35,18 +35,18 @@ class TestVernamVeil(unittest.TestCase):
 
     def for_all_modes(self, test_func, **cypher_kwargs):
         """Run the given test function for all supported cypher modes."""
-        for mode, vectorise, use_c_backend in get_test_modes():
+        for mode, backend, use_c_extension in get_test_modes():
             with self.subTest(mode=mode, **cypher_kwargs):
                 print(f"mode={mode}, {cypher_kwargs}")
                 context = (
-                    patch("vernamveil._hash_utils._HAS_C_MODULE", use_c_backend)
-                    if use_c_backend is not None
+                    patch("vernamveil._hash_utils._HAS_C_MODULE", use_c_extension)
+                    if use_c_extension is not None
                     else nullcontext()
                 )
                 with context:
-                    fx = generate_default_fx(vectorise=vectorise)
-                    cypher = VernamVeil(fx, vectorise=vectorise, **cypher_kwargs)
-                    test_func(cypher, vectorise)
+                    fx = generate_default_fx(backend=backend)
+                    cypher = VernamVeil(fx, backend=backend, **cypher_kwargs)
+                    test_func(cypher, backend)
 
     def test_single_message_encryption(self):
         """Test that a single message can be encrypted and decrypted correctly."""

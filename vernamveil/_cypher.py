@@ -23,7 +23,7 @@ except ImportError:
 __all__: list[str] = []
 
 
-class _Backend(ABC):
+class _OpsBackend(ABC):
     """Abstract base class for backend implementations.
 
     This class defines the required interface for backend classes that implement
@@ -103,8 +103,6 @@ class _Backend(ABC):
 
         Determines the shuffled positions for real chunks based on a deterministic seed.
 
-        Uses `hash_numpy` for vectorised hashing if available.
-
         Args:
             seed (bytes): Seed for deterministic shuffling.
             real_count (int): Number of real chunks.
@@ -118,8 +116,6 @@ class _Backend(ABC):
     @abstractmethod
     def generate_bytes(self, length: int, seed: bytes) -> memoryview:
         """Produce a byte stream of the given length using the key generator function.
-
-        In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
 
         It samples 8 bytes at a time from the generator function, which is expected to return a Python int
         or an uint64 NumPy array.

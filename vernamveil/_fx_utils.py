@@ -32,29 +32,31 @@ __all__ = [
 
 def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
-    vectorise: bool = False,
+    backend: Literal["python", "numpy"] = "python",
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
-        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
+        backend (Literal["python", "numpy"]): Backend to use for the hash function ("python" or "numpy").
+            Defaults to "python".
 
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
             integers from HMAC-based function.
 
     Raises:
-        ValueError: If `vectorise` is True but numpy is not installed.
+        ValueError: If `backend` is "numpy" but NumPy is not installed.
+        ValueError: If `backend` is not "python" or "numpy".
         ValueError: If `hash_name` is not "blake2b" or "sha256".
     """
-    if vectorise and np is None:
-        raise ValueError("NumPy is required for vectorised mode but is not installed.")
+    if backend == "numpy" and np is None:
+        raise ValueError("backend 'numpy' requires NumPy to be installed.")
     if hash_name not in ("blake2b", "sha256"):
         raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
 
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
-    if vectorise:
+    if backend == "numpy":
         function_code = f"""
 from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
@@ -74,7 +76,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
     return result
 """
-    else:
+    elif backend == "python":
         function_code = f"""
 import hmac
 
@@ -93,6 +95,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 
     return result
 """
+    else:
+        raise ValueError("backend must be either 'python' or 'numpy'.")
 
     # Execute the string to define fx in a local namespace
     local_vars: dict[str, Any] = {}
@@ -115,7 +119,7 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 
 
 def generate_polynomial_fx(
-    degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
+    degree: int = 10, max_weight: int = 10**5, backend: Literal["python", "numpy"] = "python"
 ) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
 
@@ -126,21 +130,23 @@ def generate_polynomial_fx(
     Args:
         degree (int): Degree of the polynomial. Defaults to 10.
         max_weight (int): Maximum value for polynomial coefficients. Defaults to `10 ** 5`.
-        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
+        backend (Literal["python", "numpy"]): Backend to use for the hash function ("python" or "numpy").
+            Defaults to "python".
 
     Returns:
         Callable[[int | np.ndarray, bytes, int | None], int | np.ndarray]: A function that returns pseudo-random
             integers from polynomial evaluation.
 
     Raises:
-        ValueError: If `vectorise` is True but numpy is not installed.
+        ValueError: If `backend` is "numpy" but NumPy is not installed.
+        ValueError: If `backend` is not "python" or "numpy".
         TypeError: If `degree` is not an integer.
         ValueError: If `degree` is not positive.
         TypeError: If `max_weight` is not an integer.
         ValueError: If `max_weight` is not positive.
     """
-    if vectorise and np is None:
-        raise ValueError("NumPy is required for vectorised mode but is not installed.")
+    if backend == "numpy" and np is None:
+        raise ValueError("backend 'numpy' requires NumPy to be installed.")
     if not isinstance(degree, int):
         raise TypeError("degree must be an integer.")
     elif degree <= 0:
@@ -154,7 +160,7 @@ def generate_polynomial_fx(
     weights = [secrets.randbelow(max_weight + 1) for _ in range(degree + 1)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
-    if vectorise:
+    if backend == "numpy":
         function_code = f"""
 from vernamveil import fold_bytes_to_uint64, hash_numpy
 import numpy as np
@@ -183,7 +189,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
     return result
 """
-    else:
+    elif backend == "python":
         function_code = f"""
 import hmac
 
@@ -213,6 +219,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
 
     return result
 """
+    else:
+        raise ValueError("backend must be either 'python' or 'numpy'.")
 
     # Execute the string to define fx in a local namespace
     local_vars: dict[str, Any] = {}
@@ -263,8 +271,6 @@ def check_fx_sanity(
 ) -> bool:
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
-    Automatically detects if fx is vectorised (NumPy) or scalar (int) and tests accordingly.
-
     Checks performed:
         1. Non-constant output: fx should return diverse values for varying i.
         2. Seed sensitivity: fx output should change if the seed changes.
@@ -287,11 +293,12 @@ def check_fx_sanity(
     try:
         test_input = np.arange(1, num_samples + 1, dtype=np.uint64)
         test_output = fx(test_input, seed, bound)
-        is_vectorised = isinstance(test_output, np.ndarray)
+        assert isinstance(test_output, np.ndarray)
+        backend = "numpy"
     except Exception:
-        is_vectorised = False
+        backend = "python"
 
-    if is_vectorised:
+    if backend == "numpy":
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed, bound)
         if isinstance(outputs, np.ndarray):
@@ -303,8 +310,11 @@ def check_fx_sanity(
             warnings.warn("fx output is not a NumPy array.")
             passed = False
             outputs_list = list(outputs)
-    else:
+    elif backend == "python":
         outputs_list = [fx(i, seed, bound) for i in range(1, num_samples + 1)]
+    else:
+        warnings.warn("Unknown fx output type.")
+        passed = False
 
     # 1. Non-constant output for varying i
     if len(set(outputs_list)) < num_samples // 10:
@@ -313,15 +323,17 @@ def check_fx_sanity(
 
     # 2. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
-    if is_vectorised:
+    if backend == "numpy":
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed, bound)
         if isinstance(outputs_alt, np.ndarray):
             outputs_alt_list = outputs_alt.tolist()
         else:
             outputs_alt_list = list(outputs_alt)
-    else:
+    elif backend == "python":
         outputs_alt_list = [fx(i, alt_seed, bound) for i in range(1, num_samples + 1)]
+    else:
+        outputs_alt_list = []
     if outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False

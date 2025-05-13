@@ -44,10 +44,10 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         help="Buffer size in bytes for reading blocks (default: 1048576, i.e., 1MB).",
     )
     p.add_argument(
-        "--vectorise",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Use vectorised fx (default: True).",
+        "--backend",
+        choices=["python", "numpy"],
+        default="numpy",
+        help="Backend to use for VernamVeil: python or numpy (default: numpy).",
     )
     p.add_argument(
         "--chunk-size", type=int, default=512, help="Chunk size for VernamVeil (default: 512)."
@@ -194,7 +194,7 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
-        fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
+        fx_obj = generate_default_fx(backend=parsed_args.backend)
         fx_py.write_text(getattr(fx_obj, "_source_code"))
         _vprint(
             f"Warning: Generated a fx-file in {fx_py.resolve()}. "
@@ -275,7 +275,7 @@ def main(args: list[str] | None = None) -> None:
         "decoy_ratio": parsed_args.decoy_ratio,
         "siv_seed_initialisation": parsed_args.siv_seed_initialisation,
         "auth_encrypt": parsed_args.auth_encrypt,
-        "vectorise": parsed_args.vectorise,
+        "backend": parsed_args.backend,
     }
 
     # Initialise the VernamVeil object

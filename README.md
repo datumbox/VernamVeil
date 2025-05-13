@@ -75,7 +75,7 @@ This approach enables novel forms of key generation, especially for those who en
 2. **Synthetic IV Seed Initialisation, Stateful Seed Evolution & Avalanche Effects**: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as an HMAC of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by HMACing the previous seed with the chunk's plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).
 3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. All delimiters are randomly generated, encrypted, and not exposed; file delimiters are refreshed for every block. The cyphertext contains no embedded metadata, minimizing the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
 4. **Modular & Configurable Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs. 
-5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `vectorise=True`, with a slower pure Python fallback available. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be installed (with `cffi` and system dependencies), enabling high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
+5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `backend="numpy"`, with a slower pure Python fallback available when `backend="python"`. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be installed (with `cffi` and system dependencies), enabling high-performance BLAKE2b and SHA-256 hashing for NumPy-based key stream generation. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
 
 ---
 
@@ -164,7 +164,7 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 - **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
 - **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
 - **Respect the Bound**: Always ensure that the output of `fx` is within the range `[0, bound)`, where `bound` is provided as an argument.
-- **Type Correctness**: The function must return an `int` (or a NumPy `uint64` array in vectorised mode).
+- **Type Correctness**: The function must return an `int` or a NumPy `uint64` array depending on the `fx` backend.
 - **Determinism**: `fx` must be deterministic for the same inputs. Do not use external state or randomness inside your function.
 - **Avoid Data-Dependent Branching or Timing**: Do not introduce data-dependent branching or timing in your `fx`, as this can lead to side-channel attacks.
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
@@ -269,8 +269,8 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 VernamVeil includes helper tools to make working with key stream functions easier:
 
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse, seed-sensitive, and well-bounded outputs.
-- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies HMAC (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
-- `generate_hmac_fx`: Generates a deterministic `fx` function that applies HMAC (using a specified hash algorithm, e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but HMAC is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.
+- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies HMAC (Blake2b) for cryptographic output. Supports both `python` and `numpy` backends.
+- `generate_hmac_fx`: Generates a deterministic `fx` function that applies HMAC (using a specified hash algorithm, e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but HMAC is a cryptographically strong and proven `fx`. Supports both `python` and `numpy` backends.
 - `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. This uses `exec` internally to execute the file's code. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
@@ -281,8 +281,8 @@ Example:
 from vernamveil import generate_default_fx, check_fx_sanity
 
 
-# Generate a vectorised fx function
-fx = generate_default_fx(vectorise=True)
+# Generate a fx function
+fx = generate_default_fx(backend="python")
 
 # Show the generated function's source code
 print("Generated fx source code:\n", fx._source_code)
@@ -365,7 +365,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 
 > ⚠️ **Warning: CLI Parameter Consistency**
 >
-> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt`, and `--backend`) as you did during encoding.
 >
 > For example, the following will **fail** with a `Authentication failed: MAC tag mismatch.` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
@@ -411,7 +411,7 @@ pip install .[dev,numpy,cffi]
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(backend="numpy")` when available. If not present, a slower pure NumPy fallback is used.
 
 **To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
