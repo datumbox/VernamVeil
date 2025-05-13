@@ -174,7 +174,8 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     result = np.dot(powers, weights)
 
     # Cryptographic HMAC using Blake2b
-    result = fold_bytes_to_uint64(hash_numpy(result, seed, "blake2b"))  # uses C module if available, else NumPy fallback
+    hash_result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+    result = fold_bytes_to_uint64(hash_result)
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
@@ -203,7 +204,8 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
 
     # Cryptographic HMAC using Blake2b
-    result = int.from_bytes(hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
+    hash_result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+    result = int.from_bytes(hash_result, "big")
 
     # Modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
