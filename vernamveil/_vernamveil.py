@@ -145,7 +145,7 @@ class _NumPyBackend(_Backend):
 
         # Vectorised: generate all hashes at once
         i_arr = np.arange(1, total_count, dtype=np.uint64)
-        hashes = hash_numpy(i_arr, seed, "blake2b")
+        hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, "blake2b"))
 
         # Shuffle deterministically based on the hashed seed
         for i in range(total_count - 1, 0, -1):
