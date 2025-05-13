@@ -11,7 +11,7 @@ import warnings
 from typing import Any, Callable
 
 from vernamveil._cypher import _HAS_NUMPY, _Backend, _Cypher, _IntOrArray
-from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
 
 np: Any
 try:

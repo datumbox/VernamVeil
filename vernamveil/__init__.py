@@ -10,7 +10,7 @@ from vernamveil._fx_utils import (
     generate_polynomial_fx,
     load_fx_from_file,
 )
-from vernamveil._hash_utils import hash_numpy
+from vernamveil._hash_utils import fold_bytes_to_uint64, hash_numpy
 from vernamveil._vernamveil import VernamVeil
 
 __version__: str
@@ -24,6 +24,7 @@ __all__ = [
     "__version__",
     "VernamVeil",
     "check_fx_sanity",
+    "fold_bytes_to_uint64",
     "forge_plausible_fx",
     "generate_default_fx",
     "generate_hmac_fx",

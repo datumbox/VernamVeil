@@ -40,7 +40,9 @@ class TestDeniabilityUtils(unittest.TestCase):
             b"This message is totally real and not at all a decoy... "
             b"There is nothing worth seeing here, move along!!! "
         )
-        plausible_fx, fake_seed = forge_plausible_fx(cypher, cyphertext, decoy_message)
+        plausible_fx, fake_seed = forge_plausible_fx(
+            cypher, cyphertext, decoy_message, max_obfuscate_attempts=10000
+        )
 
         fake_cypher = VernamVeil(
             plausible_fx,

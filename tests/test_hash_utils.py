@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._hash_utils import _HAS_C_MODULE, _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE, _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
 
 try:
     import numpy as np
@@ -27,65 +27,84 @@ class TestHashUtils(unittest.TestCase):
 
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_correctness(self):
-        """Check that hash_numpy output matches expected hash values for a range of inputs."""
+        """Check that hash_numpy output matches expected hash values for a range of inputs, for both fold types."""
         checks = [False]
         if _HAS_C_MODULE:
             checks.append(True)
         for has_c in checks:
             for hash_name in ("sha256", "blake2b"):
-                with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
-                    print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
-                    with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
-                        seed = secrets.token_bytes(64)
-                        i = np.arange(1, 1000, dtype=np.uint64)
-
-                        output = hash_numpy(i, seed, hash_name)
-
-                        i_bytes = i.byteswap().tobytes()
-                        method = self._get_hash_method_for_test(hash_name)
-
-                        expected = np.fromiter(
-                            (
-                                int.from_bytes(
-                                    hmac.new(seed, i_bytes[j : j + 8], digestmod=method).digest(),
-                                    "big",
-                                )
-                                % _UINT64_BOUND
-                                for j in range(0, len(i_bytes), 8)
-                            ),
-                            dtype=np.uint64,
+                for fold_type in ("full", "view"):
+                    with self.subTest(
+                        _HAS_C_MODULE=has_c, hash_name=hash_name, fold_type=fold_type
+                    ):
+                        print(
+                            f"_HAS_C_MODULE={has_c}, hash_name={hash_name}, fold_type={fold_type}"
                         )
+                        with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
+                            seed = secrets.token_bytes(64)
+                            i = np.arange(1, 1000, dtype=np.uint64)
 
-                        np.testing.assert_array_equal(expected, output)
+                            output = fold_bytes_to_uint64(
+                                hash_numpy(i, seed, hash_name), fold_type=fold_type
+                            )
+
+                            i_bytes = i.byteswap().tobytes()
+                            method = self._get_hash_method_for_test(hash_name)
+
+                            def get_digest(j):
+                                digest = hmac.new(
+                                    seed, i_bytes[j : j + 8], digestmod=method
+                                ).digest()
+                                if fold_type == "full":
+                                    return int.from_bytes(digest, "big") % _UINT64_BOUND
+                                else:  # "view"
+                                    return int.from_bytes(digest[:8], "big")
+
+                            expected = np.fromiter(
+                                (get_digest(j) for j in range(0, len(i_bytes), 8)),
+                                dtype=np.uint64,
+                            )
+
+                            np.testing.assert_array_equal(expected, output)
 
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_no_seed(self):
-        """Check that hash_numpy works with no seed (seed=None)."""
+        """Check that hash_numpy works with no seed (seed=None), for both fold types."""
         checks = [False]
         if _HAS_C_MODULE:
             checks.append(True)
         for has_c in checks:
             for hash_name in ("sha256", "blake2b"):
-                with self.subTest(_HAS_C_MODULE=has_c, hash_name=hash_name):
-                    print(f"_HAS_C_MODULE={has_c}, hash_name={hash_name}")
-                    with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
-                        i = np.arange(1, 1000, dtype=np.uint64)
-
-                        output = hash_numpy(i, None, hash_name)
-
-                        i_bytes = i.byteswap().tobytes()
-                        method = self._get_hash_method_for_test(hash_name)
-
-                        expected = np.fromiter(
-                            (
-                                int.from_bytes(method(i_bytes[j : j + 8]).digest(), "big")
-                                % _UINT64_BOUND
-                                for j in range(0, len(i_bytes), 8)
-                            ),
-                            dtype=np.uint64,
+                for fold_type in ("full", "view"):
+                    with self.subTest(
+                        _HAS_C_MODULE=has_c, hash_name=hash_name, fold_type=fold_type
+                    ):
+                        print(
+                            f"_HAS_C_MODULE={has_c}, hash_name={hash_name}, fold_type={fold_type}"
                         )
+                        with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
+                            i = np.arange(1, 1000, dtype=np.uint64)
 
-                        np.testing.assert_array_equal(expected, output)
+                            output = fold_bytes_to_uint64(
+                                hash_numpy(i, None, hash_name), fold_type=fold_type
+                            )
+
+                            i_bytes = i.byteswap().tobytes()
+                            method = self._get_hash_method_for_test(hash_name)
+
+                            def get_digest(j):
+                                digest = method(i_bytes[j : j + 8]).digest()
+                                if fold_type == "full":
+                                    return int.from_bytes(digest, "big") % _UINT64_BOUND
+                                else:  # "view"
+                                    return int.from_bytes(digest[:8], "big")
+
+                            expected = np.fromiter(
+                                (get_digest(j) for j in range(0, len(i_bytes), 8)),
+                                dtype=np.uint64,
+                            )
+
+                            np.testing.assert_array_equal(expected, output)
 
 
 if __name__ == "__main__":

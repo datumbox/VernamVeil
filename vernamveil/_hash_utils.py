@@ -20,15 +20,53 @@ except ImportError:
 
 _UINT64_BOUND = 2**64
 
-__all__ = ["hash_numpy"]
+__all__ = ["fold_bytes_to_uint64", "hash_numpy"]
+
+
+def fold_bytes_to_uint64(
+    hashes: "NDArray[np.uint8]", fold_type: Literal["full", "view"] = "view"
+) -> "NDArray[np.uint64]":
+    """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
+
+    Args:
+        hashes (NDArray[np.uint8]): 2D array of shape (n, H) where H >= 8.
+        fold_type (Literal["full", "view"] = "view"): Folding strategy.
+            "view": Fastest; reinterprets the first 8 bytes as uint64.
+            "full": Slower; folds all bytes in the row using bitwise operations.
+            Default is "view".
+
+    Returns:
+        NDArray[np.uint64]: 1D array of length n, each element is the folded uint64 value of the corresponding row.
+
+    Raises:
+        ValueError: If the input array is not 2D or has less than 8 columns.
+        ValueError: If fold_type is not 'full' or 'view'.
+    """
+    if hashes.ndim != 2 or hashes.shape[1] < 8:
+        raise ValueError("Input must be a 2D array with at least 8 columns per row.")
+    if fold_type == "view":
+        # Create a view of the first 8 bytes as uint64 (big-endian)
+        return hashes[:, :8].view(np.uint64).reshape(-1).byteswap()
+    elif fold_type == "full":
+        # Compute the shifts for each byte position (big-endian)
+        shifts = np.arange((hashes.shape[1] - 1) * 8, -1, -8, dtype=np.uint64)
+
+        # Cast to uint64
+        hashes_u64 = hashes.astype(np.uint64, copy=False)
+
+        # Compute folded values in a fully vectorized way
+        result: NDArray[np.uint64] = np.bitwise_or.reduce(hashes_u64 << shifts, axis=1)
+        return result
+    else:
+        raise ValueError(f"Unsupported fold_type '{fold_type}'. Use 'full' or 'view'.")
 
 
 def hash_numpy(
     i: "NDArray[np.uint64]",
     seed: bytes | None = None,
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
-) -> "NDArray[np.uint64]":
-    """Compute a 64-bit integer NumPy array by HMAC-ing each index with a seed using a hashing algorithm.
+) -> "NDArray[np.uint8]":
+    """Compute a 2D uint8 NumPy array by HMAC-ing or hashing each index with a seed using a hashing algorithm.
 
     If no seed is provided, the index is hashed directly.
 
@@ -42,11 +80,21 @@ def hash_numpy(
         hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        NDArray[np.uint64]: An array of 64-bit integers derived from the HMAC of each index.
+        NDArray[np.uint8]: A 2D array of shape (n, H) where H is the hash output size in bytes (32 for sha256, 64 for blake2b).
+            Each row contains the full hash output for the corresponding input.
 
     Raises:
         ValueError: If a hash algorithm is not supported.
     """
+    if hash_name == "blake2b":
+        hash_size = 64
+    elif hash_name == "sha256":
+        hash_size = 32
+    else:
+        raise ValueError(f"Unsupported hash_name '{hash_name}'.")
+    n = len(i)
+    out = np.empty((n, hash_size), dtype=np.uint8)
+
     i_bytes = i.byteswap().view(np.uint8)
     if _HAS_C_MODULE:
         if hash_name == "blake2b":
@@ -55,16 +103,12 @@ def hash_numpy(
         elif hash_name == "sha256":
             ffi = _npsha256ffi.ffi
             method = _npsha256ffi.lib.numpy_sha256
-        else:
-            raise ValueError(f"Unsupported hash_name '{hash_name}'.")
-
-        out = np.empty_like(i)
         method(
             ffi.from_buffer(i_bytes),
-            len(i),
+            n,
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
-            ffi.cast("uint64_t*", out.ctypes.data),
+            ffi.from_buffer(out.data),
         )
         return out
     else:
@@ -72,21 +116,10 @@ def hash_numpy(
             method = hashlib.blake2b
         elif hash_name == "sha256":
             method = hashlib.sha256
-        else:
-            raise ValueError(f"Unsupported hash_name '{hash_name}'.")
-
-        return np.fromiter(
-            (
-                int.from_bytes(
-                    (
-                        hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()
-                        if seed is not None
-                        else method(i_bytes.data[j : j + 8]).digest()
-                    ),
-                    "big",
-                )
-                % _UINT64_BOUND
-                for j in range(0, len(i_bytes), 8)
-            ),
-            dtype=np.uint64,
-        )
+        for idx, j in enumerate(range(0, len(i_bytes), 8)):
+            if seed is not None:
+                digest = hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()
+            else:
+                digest = method(i_bytes.data[j : j + 8]).digest()
+            out[idx, :] = np.frombuffer(digest, dtype=np.uint8)
+        return out
