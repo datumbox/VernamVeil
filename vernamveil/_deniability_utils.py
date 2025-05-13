@@ -10,6 +10,7 @@ import copy
 import math
 from typing import Any, Literal
 
+from vernamveil._cypher import _IntOrArray
 from vernamveil._vernamveil import VernamVeil
 
 np: Any
@@ -112,16 +113,16 @@ fx = _PlausibleFX({uint64s})
 
 """
 
-    def __call__(self, i: Any, _: bytes, bound: int | None = None) -> Any:
+    def __call__(self, i: _IntOrArray, _: bytes, bound: int | None = None) -> _IntOrArray:
         """Generates the next value in the fake keystream.
 
         Args:
-            i (int or np.array): the index of the bytes in the message.
+            i (_IntOrArray): the index of the bytes in the message.
             _ (bytes): Unused parameter for compatibility.
             bound (int, optional): An optional bound to limit the generated value.
 
         Returns:
-            int or np.array: The next value in the fake keystream.
+            _IntOrArray: The next value in the fake keystream.
         """
         use_numpy = np is not None and isinstance(i, np.ndarray)
 

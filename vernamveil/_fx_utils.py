@@ -10,6 +10,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
+from vernamveil._cypher import _IntOrArray
 from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 
 np: Any
@@ -32,7 +33,7 @@ __all__ = [
 def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
-) -> Callable[..., Any]:
+) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
@@ -105,12 +106,12 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     fx = local_vars["fx"]
     fx._source_code = function_code
 
-    return cast(Callable[..., Any], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 def generate_polynomial_fx(
     degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
-) -> Callable[..., Any]:
+) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
 
     The transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
@@ -218,14 +219,14 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Attach the code string directly to the function object for later reference
     fx._source_code = function_code
 
-    return cast(Callable[..., Any], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 # Default function for key stream generation
 generate_default_fx = generate_polynomial_fx
 
 
-def load_fx_from_file(path: str | Path) -> Callable[..., Any]:
+def load_fx_from_file(path: str | Path) -> Callable[[_IntOrArray, bytes, int | None], _IntOrArray]:
     """Load the fx function from a Python file.
 
     Args:
@@ -239,11 +240,11 @@ def load_fx_from_file(path: str | Path) -> Callable[..., Any]:
     code = path_obj.read_text()
     exec(code, global_vars)
     fx = global_vars["fx"]
-    return cast(Callable[..., Any], fx)
+    return cast(Callable[[_IntOrArray, bytes, int | None], _IntOrArray], fx)
 
 
 def check_fx_sanity(
-    fx: Callable[..., Any],
+    fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
     seed: bytes,
     bound: int = 256,
     num_samples: int = 1000,
