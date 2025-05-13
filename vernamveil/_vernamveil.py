@@ -120,7 +120,7 @@ class _PythonBackend(_Backend):
         return result, seed
 
 
-class _NumpyBackend(_Backend):
+class _NumPyBackend(_Backend):
     """NumPy backend for core cryptographic operations."""
 
     def _determine_shuffled_indices(
@@ -291,7 +291,7 @@ class VernamVeil(_Cypher):
 
         # Initialise instance variables
         self._backend = (
-            _NumpyBackend(fx, chunk_size) if vectorise else _PythonBackend(fx, chunk_size)
+            _NumPyBackend(fx, chunk_size) if vectorise else _PythonBackend(fx, chunk_size)
         )
         self._chunk_size = chunk_size
         self._delimiter_size = delimiter_size
