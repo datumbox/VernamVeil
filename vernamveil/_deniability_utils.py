@@ -195,7 +195,9 @@ def forge_plausible_fx(
     delimiter_bytes = delimiter.tobytes().ljust(delimiter_len, b"\x00")
 
     # 4. Prepend the delimiter bytes to the keystream_values
-    keystream_values = [delimiter_bytes]
+    keystream_values = [
+        delimiter_bytes[i : i + block_size] for i in range(0, delimiter_len, block_size)
+    ]
 
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where

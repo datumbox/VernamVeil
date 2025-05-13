@@ -15,9 +15,9 @@ class TestDeniabilityUtils(unittest.TestCase):
         self,
         chunk_size,
         delimiter_size,
-        padding_range=(5, 15),
-        decoy_ratio=0.2,
-        vectorise=False,
+        padding_range,
+        decoy_ratio,
+        vectorise,
     ):
         """Utility to run a basic deniability test with configurable parameters."""
         real_fx = generate_default_fx(vectorise=vectorise)
@@ -185,7 +185,7 @@ def make_test_func(chunk_size, delimiter_size):
                     decoy_out, decoy_message = self._run_deniability_test(
                         chunk_size=chunk_size,
                         delimiter_size=delimiter_size,
-                        padding_range=(5, 15),
+                        padding_range=(5, 150),
                         decoy_ratio=0.3,
                         vectorise=vectorise,
                     )
