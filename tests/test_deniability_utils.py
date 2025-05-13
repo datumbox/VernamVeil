@@ -13,8 +13,8 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def _run_deniability_test(
         self,
-        chunk_size=31,
-        delimiter_size=9,
+        chunk_size,
+        delimiter_size,
         padding_range=(5, 15),
         decoy_ratio=0.2,
         vectorise=False,
@@ -168,8 +168,8 @@ class TestDeniabilityUtils(unittest.TestCase):
 
 
 # Generate all combinations
-chunk_sizes = [31, 32, 33]
-delimiter_sizes = [7, 8, 9]
+chunk_sizes = [127, 128, 129]
+delimiter_sizes = [7, 8, 9, 63, 64, 65]
 combos = list(itertools.product(chunk_sizes, delimiter_sizes))
 
 
