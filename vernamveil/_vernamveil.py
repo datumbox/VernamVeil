@@ -165,6 +165,17 @@ class VernamVeil(_Cypher):
         """
         return 64
 
+    @property
+    def _block_size(self) -> int:
+        """Return the block size of the VernamVeil class.
+
+        Given a fixed configuration, it is a constant value representing the size of the blocks used in the encryption.
+
+        Returns:
+            int: The block size in bytes.
+        """
+        return self._hmac_length if self._vectorise else 8
+
     def _hmac(
         self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
@@ -236,8 +247,8 @@ class VernamVeil(_Cypher):
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
 
-        It samples 8 bytes at a time from the generator function, which is expected to return a Python int
-        or an uint64 NumPy array.
+        It samples _block_size bytes at a time from the generator function, which is expected to return a Python int
+        or an uint8 NumPy array.
 
         Args:
             length (int): Number of bytes to generate.
@@ -249,12 +260,17 @@ class VernamVeil(_Cypher):
         if self._vectorise:
             # Vectorised generation using numpy
             # Generate enough uint64s to cover the length
-            n_uint64 = math.ceil(length / 8)
+            n_uint64 = math.ceil(length / self._block_size)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
-            # Unbounded, get the full uint64 range
+            # Unbounded to generate uint8 for bytes
             keystream = self._fx(indices, seed, None)
-            # Ensure output is a numpy array of integers in [0, 255]
-            memview: memoryview = keystream.view(np.uint8)[:length].data
+            if keystream.dtype == np.uint64:
+                # For Backwards compatibility, convert to uint8
+                keystream = keystream.view(np.uint8)
+            else:
+                # Flatten the array to 1D and slice to the required length
+                keystream = keystream.ravel()
+            memview: memoryview = keystream[:length].data
             return memview
         else:
             # Standard generation using python
@@ -262,8 +278,11 @@ class VernamVeil(_Cypher):
             i = 1
             while len(result) < length:
                 # Still bound it to 8 bytes
-                val: int = self._fx(i, seed, _UINT64_BOUND)
-                result.extend(val.to_bytes(8, "big"))
+                val: int | bytes = self._fx(i, seed, _UINT64_BOUND)
+                if isinstance(val, bytes):
+                    result.extend(val)
+                else:
+                    result.extend(val.to_bytes(8, "big"))
                 i += 1
             return memoryview(result)[:length]
 

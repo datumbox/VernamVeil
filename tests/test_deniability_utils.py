@@ -61,8 +61,8 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_plausible_fx_source_code_roundtrip(self):
         """Test that _PlausibleFX source code can be saved and loaded, preserving integers."""
-        test_ints = [42, 99, 123456, 7, 0]
-        fx = _PlausibleFX(test_ints)
+        test_keystream = [b"42", b"99", b"123456", b"7", b"0"]
+        fx = _PlausibleFX(test_keystream)
         source_code = fx._source_code
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -70,8 +70,8 @@ class TestDeniabilityUtils(unittest.TestCase):
             with open(path, "w") as f:
                 f.write(source_code)
             loaded_fx = load_fx_from_file(str(path))
-            self.assertTrue(hasattr(loaded_fx, "_uint64s"))
-            self.assertEqual(list(loaded_fx._uint64s), test_ints)
+            self.assertTrue(hasattr(loaded_fx, "_keystream"))
+            self.assertEqual(list(loaded_fx._keystream), test_keystream)
 
     def test_end_to_end_deniability_disk_io(self):
         """End-to-end test: store/load all artifacts and verify deniability."""
@@ -80,8 +80,8 @@ class TestDeniabilityUtils(unittest.TestCase):
         secret_message = b"Sensitive data: the launch code is 12345!"
         cypher = VernamVeil(
             real_fx,
-            chunk_size=32,
-            delimiter_size=8,
+            chunk_size=33,
+            delimiter_size=9,
             padding_range=(5, 15),
             decoy_ratio=0.2,
             siv_seed_initialisation=True,
@@ -140,8 +140,8 @@ class TestDeniabilityUtils(unittest.TestCase):
             # Decrypt with real fx/seed
             real_cypher = VernamVeil(
                 loaded_real_fx,
-                chunk_size=32,
-                delimiter_size=8,
+                chunk_size=33,
+                delimiter_size=9,
                 padding_range=(5, 15),
                 decoy_ratio=0.2,
                 siv_seed_initialisation=True,
@@ -153,8 +153,8 @@ class TestDeniabilityUtils(unittest.TestCase):
             # Decrypt with plausible fx/fake seed
             fake_cypher = VernamVeil(
                 loaded_plausible_fx,
-                chunk_size=32,
-                delimiter_size=8,
+                chunk_size=33,
+                delimiter_size=9,
                 padding_range=(5, 15),
                 decoy_ratio=0.2,
                 siv_seed_initialisation=False,

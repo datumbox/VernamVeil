@@ -67,11 +67,13 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
     # Cryptographic HMAC using {hash_name}
     hash_result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
-    result = fold_bytes_to_uint64(hash_result)
 
-    # Modulo the result with the bound to ensure it's always within the requested range
+    # Convert to uint64 and modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
+        result = fold_bytes_to_uint64(hash_result)
         np.remainder(result, bound, out=result)
+    else:
+        result = hash_result
 
     return result
 """
@@ -176,11 +178,13 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 
     # Cryptographic HMAC using Blake2b
     hash_result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
-    result = fold_bytes_to_uint64(hash_result)
 
-    # Modulo the result with the bound to ensure it's always within the requested range
+    # Convert to uint64 and modulo the result with the bound to ensure it's always within the requested range
     if bound is not None:
+        result = fold_bytes_to_uint64(hash_result)
         np.remainder(result, bound, out=result)
+    else:
+        result = hash_result
 
     return result
 """
