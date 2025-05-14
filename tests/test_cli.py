@@ -57,15 +57,14 @@ class TestVernamVeilCLI(unittest.TestCase):
         self.outfile = self.temp_dir_path / "output.txt"
         self.fx_code = """
 def fx(i, seed):
-    h = i + 1
-    return h
+    v = i + 1
+    return v.to_bytes((v.bit_length() + 7) // 8, "big")
 """
         self.fx_strong_code = """
 import hmac
 
 def fx(i, seed):
-    h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
-    return h
+    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
 """
 
     def tearDown(self):

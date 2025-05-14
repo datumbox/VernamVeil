@@ -16,9 +16,6 @@ try:
 except ImportError:
     _HAS_C_MODULE = False
 
-
-_UINT64_BOUND = 2**64
-
 __all__ = ["fold_bytes_to_uint64", "hash_numpy"]
 
 

@@ -10,7 +10,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
-from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
+from vernamveil._hash_utils import hash_numpy
 from vernamveil._vernamveil import _Bytes, _Integer
 
 np: Any
@@ -81,7 +81,7 @@ def fx(i: int, seed: bytes) -> int:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest(), "big")
+    result = hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest()
 
     return result
 """
@@ -170,6 +170,7 @@ def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
     return result
 """
     else:
+        interim_modulus = 2**64
         function_code = f"""
 import hmac
 
@@ -180,7 +181,7 @@ def fx(i: int, seed: bytes) -> int:
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [{", ".join(str(w) for w in weights)}]
-    interim_modulus = {_UINT64_BOUND}
+    interim_modulus = {interim_modulus}
 
     # Transform index i using a polynomial function to introduce uniqueness on fx
     current_pow = 1
@@ -190,8 +191,7 @@ def fx(i: int, seed: bytes) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
 
     # Cryptographic HMAC using Blake2b
-    hash_result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
-    result = int.from_bytes(hash_result, "big")
+    result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
 
     return result
 """
@@ -243,13 +243,13 @@ def check_fx_sanity(
 ) -> bool:
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
-    Automatically detects if fx is vectorised (NumPy) or scalar (int) and tests accordingly.
+    Automatically detects if fx supports numpy arrays (vectorised) or scalar (int) and tests accordingly.
 
     Checks performed:
         1. Non-constant output: fx should return diverse values for varying i.
         2. Seed sensitivity: fx output should change if the seed changes.
         3. Basic uniformity: No single output value should dominate.
-        4. Type check: All outputs should be int.
+        4. Type check: All outputs should be bytes (for scalar) or np.uint8 (for vectorised).
 
     Args:
         fx: The function to test.
@@ -272,15 +272,13 @@ def check_fx_sanity(
     if is_vectorised:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed)
-        if isinstance(outputs, np.ndarray):
-            if outputs.dtype != np.uint8:
-                warnings.warn("fx output is not an uint64 NumPy array.")
-                passed = False
-            outputs_list = outputs.ravel().tolist()
-        else:
-            warnings.warn("fx output is not a NumPy array.")
+        if not (
+            isinstance(outputs, np.ndarray) and outputs.dtype == np.uint8 and outputs.ndim == 2
+        ):
+            warnings.warn("fx output is not a 2D NumPy array of uint8.")
             passed = False
-            outputs_list = list(outputs)
+        # Flatten each row to bytes for comparison
+        outputs_list = [bytes(row) for row in outputs]
     else:
         outputs_list = [fx(i, seed) for i in range(1, num_samples + 1)]
 
@@ -289,35 +287,34 @@ def check_fx_sanity(
         warnings.warn("fx may be constant or low-entropy for varying i.")
         passed = False
 
-    # 2. Seed sensitivity
+    # 2. Seed sensitivity: output should change if the seed changes
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if is_vectorised:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed)
-        if isinstance(outputs_alt, np.ndarray):
-            outputs_alt_list = outputs_alt.ravel().tolist()
-        else:
-            outputs_alt_list = list(outputs_alt)
+        outputs_alt_list = [bytes(row) for row in outputs_alt]
     else:
         outputs_alt_list = [fx(i, alt_seed) for i in range(1, num_samples + 1)]
     if outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
-    # 3. Basic uniformity
-    counts = {}
+    # 3. Basic uniformity: no single output value should dominate
+    counts: dict[bytes, int] = {}
     for o in outputs_list:
-        if o not in counts:
-            counts[o] = 1
-        else:
-            counts[o] += 1
+        counts[o] = counts.get(o, 0) + 1
     if max(counts.values()) > 4 * min(counts.values()):
         warnings.warn("fx output is heavily biased.")
         passed = False
 
-    # 4. Type check
-    if not all(isinstance(o, int) for o in outputs_list):
-        warnings.warn("fx output is not int.")
-        passed = False
+    # 4. Type check: all outputs should be bytes (scalar) or np.uint8 (vectorised)
+    if is_vectorised:
+        if not all(isinstance(row, (bytes, bytearray)) for row in outputs_list):
+            warnings.warn("fx output rows are not bytes-like objects.")
+            passed = False
+    else:
+        if not all(isinstance(o, (bytes, bytearray)) for o in outputs_list):
+            warnings.warn("fx output is not bytes.")
+            passed = False
 
     return passed

@@ -12,9 +12,6 @@ except ImportError:
     pass
 
 
-# TODO: rewrite all check_fx_sanity tests to use bytes
-
-
 class TestFxUtils(unittest.TestCase):
     """Unit tests for the fx_utils.py utilities."""
 
@@ -28,8 +25,7 @@ class TestFxUtils(unittest.TestCase):
         fx = generate_default_fx(vectorise=False)
         for i in range(10):
             out = fx(i, self.seed)
-            self.assertIsInstance(out, int)
-            self.assertGreaterEqual(out, 0)
+            self.assertIsInstance(out, bytes)
 
     @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_generate_default_fx_vectorised(self):
@@ -45,7 +41,8 @@ class TestFxUtils(unittest.TestCase):
         """Test check_fx_sanity fails and warns for a constant fx."""
 
         def fx(i, seed):
-            return 42
+            v = 42
+            return v.to_bytes((v.bit_length() + 7) // 8, "big")
 
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
@@ -58,7 +55,7 @@ class TestFxUtils(unittest.TestCase):
         """Test check_fx_sanity fails and warns for a seed-insensitive fx."""
 
         def fx(i, seed):
-            return i
+            return i.to_bytes((i.bit_length() + 7) // 8, "big")
 
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
@@ -104,7 +101,7 @@ class TestFxUtils(unittest.TestCase):
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
-            self.assertTrue(isinstance(fx_loaded(1, bytes()), int))
+            self.assertTrue(isinstance(fx_loaded(1, bytes()), bytes))
         finally:
             tmp_path.unlink()
 

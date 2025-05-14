@@ -12,7 +12,7 @@ import warnings
 from typing import Any, Callable, Iterator
 
 from vernamveil._cypher import _Cypher
-from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import fold_bytes_to_uint64, hash_numpy
 
 np: Any
 _Integer: Any
@@ -266,25 +266,20 @@ class VernamVeil(_Cypher):
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
             # Generate uint8 for bytes
             keystream = self._fx(indices, seed)
-            if keystream.dtype == np.uint64:
-                # For Backwards compatibility, convert to uint8
-                keystream = keystream.view(np.uint8)
-            else:
-                # Flatten the array to 1D and slice to the required length
-                keystream = keystream.ravel()
+            # Flatten the array to 1D and slice to the required length
+            keystream = keystream.ravel()
             memview: memoryview = keystream[:length].data
             return memview
         else:
             # Standard generation using python
             result = bytearray()
             i = 1
-            while len(result) < length:
+            total = 0
+            while total < length:
                 # Generate bytes
-                val: int | bytes = self._fx(i, seed)
-                if isinstance(val, bytes):
-                    result.extend(val)
-                else:
-                    result.extend((val % _UINT64_BOUND).to_bytes(8, "big"))
+                val = self._fx(i, seed)
+                result.extend(val)
+                total += len(val)
                 i += 1
             return memoryview(result)[:length]
 

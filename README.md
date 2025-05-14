@@ -194,8 +194,7 @@ def fx(i: int, seed: bytes) -> int:
         current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
     
     # Cryptographic HMAC using Blake2b
-    hash_result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
-    result = int.from_bytes(hash_result, "big")
+    result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
 
     return result
 ```
