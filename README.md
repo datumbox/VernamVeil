@@ -29,7 +29,7 @@ def fx(i: int, seed: bytes) -> int:
     # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
-    return result
+    return result.to_bytes((result.bit_length() + 7) // 8, "big")
 
 
 # Step 2: Generate a random initial seed for encryption
