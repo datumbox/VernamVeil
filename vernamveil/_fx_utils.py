@@ -10,7 +10,7 @@ import warnings
 from pathlib import Path
 from typing import Any, Callable, Literal, cast
 
-from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import _UINT64_BOUND, hash_numpy
 from vernamveil._vernamveil import _Bytes, _Integer
 
 np: Any
@@ -33,7 +33,7 @@ __all__ = [
 def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
-) -> Callable[[_Integer, bytes, int | None], _Bytes]:
+) -> Callable[[_Integer, bytes], _Bytes]:
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
@@ -41,7 +41,7 @@ def generate_hmac_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes, int | None], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
+        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
             integers from HMAC-based function.
 
     Raises:
@@ -56,24 +56,17 @@ def generate_hmac_fx(
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
     if vectorise:
         function_code = f"""
-from vernamveil import fold_bytes_to_uint64, hash_numpy
+from vernamveil import hash_numpy
 import numpy as np
 
 
-def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
+def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    hash_result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
-
-    # Convert to uint64 and modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        result = fold_bytes_to_uint64(hash_result)
-        np.remainder(result, bound, out=result)
-    else:
-        result = hash_result
+    result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
 
     return result
 """
@@ -82,17 +75,13 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 import hmac
 
 
-def fx(i: int, seed: bytes, bound: int | None) -> int:
+def fx(i: int, seed: bytes) -> int:
     # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
     result = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest(), "big")
-
-    # Modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        result %= bound
 
     return result
 """
@@ -102,7 +91,6 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     exec(
         function_code,
         {
-            "fold_bytes_to_uint64": fold_bytes_to_uint64,
             "hash_numpy": hash_numpy,
             "hmac": hmac,
             "np": np,
@@ -114,15 +102,15 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     fx = local_vars["fx"]
     fx._source_code = function_code
 
-    return cast(Callable[[_Integer, bytes, int | None], _Bytes], fx)
+    return cast(Callable[[_Integer, bytes], _Bytes], fx)
 
 
 def generate_polynomial_fx(
     degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
-) -> Callable[[_Integer, bytes, int | None], _Bytes]:
+) -> Callable[[_Integer, bytes], _Bytes]:
     """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
 
-    The transformed input index is passed to a cryptographic hash function (HMAC) and bounded to the requested range.
+    The transformed input index is passed to a cryptographic hash function (HMAC).
     Though any mathematical function with domain the positive integers can be used, this utility only supports
     polynomials and is used for testing.
 
@@ -132,7 +120,7 @@ def generate_polynomial_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes, int | None], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
+        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
             integers from polynomial evaluation.
 
     Raises:
@@ -159,11 +147,11 @@ def generate_polynomial_fx(
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
-from vernamveil import fold_bytes_to_uint64, hash_numpy
+from vernamveil import hash_numpy
 import numpy as np
 
 
-def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
+def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
@@ -177,14 +165,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
     result = np.dot(powers, weights)
 
     # Cryptographic HMAC using Blake2b
-    hash_result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
-
-    # Convert to uint64 and modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        result = fold_bytes_to_uint64(hash_result)
-        np.remainder(result, bound, out=result)
-    else:
-        result = hash_result
+    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return result
 """
@@ -193,7 +174,7 @@ def fx(i: np.ndarray, seed: bytes, bound: int | None) -> np.ndarray:
 import hmac
 
 
-def fx(i: int, seed: bytes, bound: int | None) -> int:
+def fx(i: int, seed: bytes) -> int:
     # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
@@ -212,10 +193,6 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     hash_result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
     result = int.from_bytes(hash_result, "big")
 
-    # Modulo the result with the bound to ensure it's always within the requested range
-    if bound is not None:
-        result %= bound
-
     return result
 """
 
@@ -224,7 +201,6 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     exec(
         function_code,
         {
-            "fold_bytes_to_uint64": fold_bytes_to_uint64,
             "hash_numpy": hash_numpy,
             "hmac": hmac,
             "np": np,
@@ -236,34 +212,33 @@ def fx(i: int, seed: bytes, bound: int | None) -> int:
     # Attach the code string directly to the function object for later reference
     fx._source_code = function_code
 
-    return cast(Callable[[_Integer, bytes, int | None], _Bytes], fx)
+    return cast(Callable[[_Integer, bytes], _Bytes], fx)
 
 
 # Default function for key stream generation
 generate_default_fx = generate_polynomial_fx
 
 
-def load_fx_from_file(path: str | Path) -> Callable[[_Integer, bytes, int | None], _Bytes]:
+def load_fx_from_file(path: str | Path) -> Callable[[_Integer, bytes], _Bytes]:
     """Load the fx function from a Python file.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes, int | None], bytes | np.ndarray[np.uint8]]: The loaded fx function.
+        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: The loaded fx function.
     """
     global_vars: dict[str, Any] = {}
     path_obj = Path(path)
     code = path_obj.read_text()
     exec(code, global_vars)
     fx = global_vars["fx"]
-    return cast(Callable[[_Integer, bytes, int | None], _Bytes], fx)
+    return cast(Callable[[_Integer, bytes], _Bytes], fx)
 
 
 def check_fx_sanity(
-    fx: Callable[[_Integer, bytes, int | None], _Bytes],
+    fx: Callable[[_Integer, bytes], _Bytes],
     seed: bytes,
-    bound: int = 256,
     num_samples: int = 1000,
 ) -> bool:
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
@@ -273,14 +248,12 @@ def check_fx_sanity(
     Checks performed:
         1. Non-constant output: fx should return diverse values for varying i.
         2. Seed sensitivity: fx output should change if the seed changes.
-        3. Bound respect: All outputs should be in [0, bound).
-        4. Basic uniformity: No single output value should dominate.
-        5. Type check: All outputs should be int.
+        3. Basic uniformity: No single output value should dominate.
+        4. Type check: All outputs should be int.
 
     Args:
         fx: The function to test.
         seed: The seed to use for testing.
-        bound: The upper bound for output values.
         num_samples: Number of samples to test.
 
     Returns:
@@ -291,25 +264,25 @@ def check_fx_sanity(
     # Try to detect if fx supports numpy arrays
     try:
         test_input = np.arange(1, num_samples + 1, dtype=np.uint64)
-        test_output = fx(test_input, seed, bound)
+        test_output = fx(test_input, seed)
         is_vectorised = isinstance(test_output, np.ndarray)
     except Exception:
         is_vectorised = False
 
     if is_vectorised:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
-        outputs = fx(arr, seed, bound)
+        outputs = fx(arr, seed)
         if isinstance(outputs, np.ndarray):
-            if outputs.dtype != np.uint64:
+            if outputs.dtype != np.uint8:
                 warnings.warn("fx output is not an uint64 NumPy array.")
                 passed = False
-            outputs_list = outputs.tolist()
+            outputs_list = outputs.ravel().tolist()
         else:
             warnings.warn("fx output is not a NumPy array.")
             passed = False
             outputs_list = list(outputs)
     else:
-        outputs_list = [fx(i, seed, bound) for i in range(1, num_samples + 1)]
+        outputs_list = [fx(i, seed) for i in range(1, num_samples + 1)]
 
     # 1. Non-constant output for varying i
     if len(set(outputs_list)) < num_samples // 10:
@@ -320,32 +293,29 @@ def check_fx_sanity(
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if is_vectorised:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
-        outputs_alt = fx(arr, alt_seed, bound)
+        outputs_alt = fx(arr, alt_seed)
         if isinstance(outputs_alt, np.ndarray):
-            outputs_alt_list = outputs_alt.tolist()
+            outputs_alt_list = outputs_alt.ravel().tolist()
         else:
             outputs_alt_list = list(outputs_alt)
     else:
-        outputs_alt_list = [fx(i, alt_seed, bound) for i in range(1, num_samples + 1)]
+        outputs_alt_list = [fx(i, alt_seed) for i in range(1, num_samples + 1)]
     if outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
-    # 3. Bound respect
-    if not all(0 <= o < bound for o in outputs_list):
-        warnings.warn("fx output does not respect the bound.")
-        passed = False
-
-    # 4. Basic uniformity
-    counts = [0 for _ in range(bound)]
+    # 3. Basic uniformity
+    counts = {}
     for o in outputs_list:
-        if 0 <= o < bound:
+        if o not in counts:
+            counts[o] = 1
+        else:
             counts[o] += 1
-    if max(counts) > num_samples * 0.2:
+    if max(counts.values()) > 4 * min(counts.values()):
         warnings.warn("fx output is heavily biased.")
         passed = False
 
-    # 5. Type check
+    # 4. Type check
     if not all(isinstance(o, int) for o in outputs_list):
         warnings.warn("fx output is not int.")
         passed = False

@@ -19,11 +19,10 @@ _Integer: Any
 _Bytes: Any
 try:
     import numpy
-    from numpy.typing import NDArray
 
     np = numpy
-    _Integer = int | NDArray[np.uint64]
-    _Bytes = bytes | NDArray[np.uint8]
+    _Integer = int | np.ndarray[np.uint64]
+    _Bytes = bytes | np.ndarray[np.uint8]
     _HAS_NUMPY = True
 except ImportError:
     np = None
@@ -46,7 +45,7 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_Integer, bytes, int | None], _Bytes],
+        fx: Callable[[_Integer, bytes], _Bytes],
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
@@ -58,7 +57,7 @@ class VernamVeil(_Cypher):
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
-            fx (Callable): Key stream generator accepting (int | np.ndarray[np.uint64], bytes, int | None) and returning an
+            fx (Callable): Key stream generator accepting (int | np.ndarray[np.uint64], bytes) and returning an
                 bytes or np.ndarray[np.uint8]. This function is critical for the encryption process and should be carefully
                 designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
@@ -265,8 +264,8 @@ class VernamVeil(_Cypher):
             # Generate enough uint64s to cover the length
             n_uint64 = math.ceil(length / self._block_size)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
-            # Unbounded to generate uint8 for bytes
-            keystream = self._fx(indices, seed, None)
+            # Generate uint8 for bytes
+            keystream = self._fx(indices, seed)
             if keystream.dtype == np.uint64:
                 # For Backwards compatibility, convert to uint8
                 keystream = keystream.view(np.uint8)
@@ -280,12 +279,12 @@ class VernamVeil(_Cypher):
             result = bytearray()
             i = 1
             while len(result) < length:
-                # Still bound it to 8 bytes
-                val: int | bytes = self._fx(i, seed, _UINT64_BOUND)
+                # Generate bytes
+                val: int | bytes = self._fx(i, seed)
                 if isinstance(val, bytes):
                     result.extend(val)
                 else:
-                    result.extend(val.to_bytes(8, "big"))
+                    result.extend((val % _UINT64_BOUND).to_bytes(8, "big"))
                 i += 1
             return memoryview(result)[:length]
 

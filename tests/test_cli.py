@@ -56,16 +56,16 @@ class TestVernamVeilCLI(unittest.TestCase):
         self.encfile = self.temp_dir_path / "output.enc"
         self.outfile = self.temp_dir_path / "output.txt"
         self.fx_code = """
-def fx(i, seed, bound):
+def fx(i, seed):
     h = i + 1
-    return h % bound if bound is not None else h
+    return h
 """
         self.fx_strong_code = """
 import hmac
 
-def fx(i, seed, bound):
+def fx(i, seed):
     h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
-    return h % bound if bound is not None else h
+    return h
 """
 
     def tearDown(self):
