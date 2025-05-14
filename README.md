@@ -53,7 +53,7 @@ Instead of using a static key, VernamVeil allows the key to be represented by a 
 - `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations.
 - `seed`: a byte string that provides context and state; should be kept secret.
 - `bound`: an optional integer used to modulo the function output into the desired range (usually `2**64` because we sample 8 bytes at a time).
-- **Output**: an integer or an uint64 NumPy array representing the key stream values.
+- **Output**: an integer or bytes or an uint64/uint8 NumPy array representing the key stream values.
 
 _Note: `numpy` is an optional but highly recommended dependency, used to accelerate vectorised operations when available._
 

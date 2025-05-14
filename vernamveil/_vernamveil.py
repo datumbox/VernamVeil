@@ -16,16 +16,19 @@ from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_num
 
 np: Any
 _IntOrArray: Any
+_IntOrBytes: Any
 try:
     import numpy
     from numpy.typing import NDArray
 
     np = numpy
     _IntOrArray = int | NDArray
+    _IntOrBytes = int | NDArray | bytes
     _HAS_NUMPY = True
 except ImportError:
     np = None
     _IntOrArray = int
+    _IntOrBytes = int | bytes
     _HAS_NUMPY = False
 
 
@@ -43,7 +46,7 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrArray],
+        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrBytes],
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
@@ -56,7 +59,7 @@ class VernamVeil(_Cypher):
 
         Args:
             fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
-                int or np.ndarray. This function is critical for the encryption process and should be carefully
+                int or np.ndarray or bytes. This function is critical for the encryption process and should be carefully
                 designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
             delimiter_size (int): The delimiter size in bytes used for separating chunks; must be
@@ -165,6 +168,17 @@ class VernamVeil(_Cypher):
         """
         return 64
 
+    @property
+    def _block_size(self) -> int:
+        """Return the block size of the VernamVeil class.
+
+        Given a fixed configuration, it is a constant value representing the size of the blocks used in the encryption.
+
+        Returns:
+            int: The block size in bytes.
+        """
+        return self._hmac_length if self._vectorise else 8
+
     def _hmac(
         self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
@@ -236,8 +250,8 @@ class VernamVeil(_Cypher):
 
         In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
 
-        It samples 8 bytes at a time from the generator function, which is expected to return a Python int
-        or an uint64 NumPy array.
+        It samples _block_size bytes at a time from the generator function, which is expected to return a Python int
+        or an uint8 NumPy array.
 
         Args:
             length (int): Number of bytes to generate.
@@ -249,12 +263,17 @@ class VernamVeil(_Cypher):
         if self._vectorise:
             # Vectorised generation using numpy
             # Generate enough uint64s to cover the length
-            n_uint64 = math.ceil(length / 8)
+            n_uint64 = math.ceil(length / self._block_size)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
-            # Unbounded, get the full uint64 range
+            # Unbounded to generate uint8 for bytes
             keystream = self._fx(indices, seed, None)
-            # Ensure output is a numpy array of integers in [0, 255]
-            memview: memoryview = keystream.view(np.uint8)[:length].data
+            if keystream.dtype == np.uint64:
+                # For Backwards compatibility, convert to uint8
+                keystream = keystream.view(np.uint8)
+            else:
+                # Flatten the array to 1D and slice to the required length
+                keystream = keystream.ravel()
+            memview: memoryview = keystream[:length].data
             return memview
         else:
             # Standard generation using python
@@ -262,8 +281,11 @@ class VernamVeil(_Cypher):
             i = 1
             while len(result) < length:
                 # Still bound it to 8 bytes
-                val: int = self._fx(i, seed, _UINT64_BOUND)
-                result.extend(val.to_bytes(8, "big"))
+                val: int | bytes = self._fx(i, seed, _UINT64_BOUND)
+                if isinstance(val, bytes):
+                    result.extend(val)
+                else:
+                    result.extend(val.to_bytes(8, "big"))
                 i += 1
             return memoryview(result)[:length]
 

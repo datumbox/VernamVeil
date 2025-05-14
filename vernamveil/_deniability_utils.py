@@ -8,9 +8,9 @@ The utility reuses as many private methods of VernamVeil as possible to ensure c
 
 import copy
 import math
-from typing import Any, Literal
+from typing import Any
 
-from vernamveil._vernamveil import VernamVeil, _IntOrArray
+from vernamveil._vernamveil import VernamVeil, _IntOrArray, _IntOrBytes
 
 np: Any
 try:
@@ -96,49 +96,46 @@ def _estimate_obfuscated_length(cypher: VernamVeil, message_len: int, pad_val: i
 class _PlausibleFX:
     """A callable class that generates fake keystream values for plausible deniability."""
 
-    def __init__(self, uint64s: list[int]):
+    def __init__(self, keystream: list[bytes]):
         """Initializes the PlausibleFX instance.
 
         Args:
-            uint64s (list[int]): A list of 64-bit unsigned integers representing the fake keystream.
+            keystream (list[bytes]): A list of bytes representing the fake keystream.
         """
-        self._uint64s = uint64s
+        self._keystream = keystream
         self._pos = 0
-        self._len = len(uint64s)
+        self._len = len(keystream)
         self._source_code = f"""
 from vernamveil._deniability_utils import _PlausibleFX
 
-fx = _PlausibleFX({uint64s})
+fx = _PlausibleFX({keystream})
 
 """
 
-    def __call__(self, i: _IntOrArray, _: bytes, bound: int | None = None) -> _IntOrArray:
+    def __call__(self, i: _IntOrArray, _: bytes, __: int | None = None) -> _IntOrBytes:
         """Generates the next value in the fake keystream.
 
         Args:
             i (_IntOrArray): the index of the bytes in the message.
             _ (bytes): Unused parameter for compatibility.
-            bound (int, optional): An optional bound to limit the generated value.
+            __ (int, optional): Unused parameter for compatibility.
 
         Returns:
-            _IntOrArray: The next value in the fake keystream.
+            _IntOrBytes: The next value in the fake keystream.
         """
         use_numpy = np is not None and isinstance(i, np.ndarray)
 
         n = len(i) if use_numpy else 1
         vals = []
-        for __ in range(n):
+        for ___ in range(n):
             if self._pos >= self._len:
                 self._pos = 0
-            val = self._uint64s[self._pos]
-            if bound is not None:
-                val %= bound
-            vals.append(val)
+            vals.append(self._keystream[self._pos])
             self._pos += 1
 
         if not use_numpy:
             return vals[0]
-        return np.array(vals, dtype=np.uint64)
+        return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
 
 def forge_plausible_fx(
@@ -172,7 +169,6 @@ def forge_plausible_fx(
     cypher = copy.deepcopy(cypher)
     cypher._siv_seed_initialisation = False
     cypher._auth_encrypt = False
-    endianness: Literal["little", "big"] = "little" if cypher._vectorise else "big"
 
     # 2. Estimate the plausible boundaries for the cyphertext length
     cyphertext_len = len(cyphertext)
@@ -193,26 +189,31 @@ def forge_plausible_fx(
         cypher, decoy_message, cyphertext_len, max_attempts=max_obfuscate_attempts
     )
 
-    # 3. Generate the delimiter bytes and make sure they are a multiple of 8
-    delimiter_len = math.ceil(len(delimiter) / 8) * 8
-    delimiter = memoryview(delimiter.tobytes().ljust(delimiter_len, b"\x00"))
+    # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
+    block_size = cypher._block_size
+    delimiter_len = math.ceil(len(delimiter) / block_size) * block_size
+    delimiter_bytes = delimiter.tobytes().ljust(delimiter_len, b"\x00")
 
-    # 4. Prepend the delimiter bytes to the uint64s
-    uint64s = [int.from_bytes(delimiter[i : i + 8], endianness) for i in range(0, delimiter_len, 8)]
+    # 4. Prepend the delimiter bytes to the keystream_values
+    keystream_values = [
+        delimiter_bytes[i : i + block_size] for i in range(0, delimiter_len, block_size)
+    ]
 
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where
-    # the chunk_size is not a multiple of 8. This can lead to the fx sampling the wrong bytes.
+    # the chunk_size is not a multiple of block_size. This can lead to the fx sampling the wrong bytes.
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
-        for block_start in range(start, end, 8):
-            # Pad to 8 bytes if needed
-            ct_block = cyphertext[block_start : block_start + 8].ljust(8, b"\x00")
-            obf_block = obfuscated[block_start : block_start + 8].ljust(8, b"\x00")
+        for block_start in range(start, end, block_size):
+            # Pad to block_size bytes if needed
+            ct_block = cyphertext[block_start : block_start + block_size].ljust(block_size, b"\x00")
+            obf_block = obfuscated[block_start : block_start + block_size].ljust(
+                block_size, b"\x00"
+            )
 
-            ks_uint64 = int.from_bytes((a ^ b for a, b in zip(ct_block, obf_block)), endianness)
-            uint64s.append(ks_uint64)
+            ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
+            keystream_values.append(ks)
 
     # 6. Generate the fx function
-    plausible_fx = _PlausibleFX(uint64s)
+    plausible_fx = _PlausibleFX(keystream_values)
 
     return plausible_fx, fake_seed
