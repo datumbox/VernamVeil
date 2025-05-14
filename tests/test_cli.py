@@ -2,7 +2,7 @@ import os
 import random
 import re
 import shutil
-import sys  # noqa: F401
+import sys
 import tempfile
 import unittest
 from contextlib import contextmanager

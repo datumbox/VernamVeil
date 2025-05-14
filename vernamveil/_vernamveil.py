@@ -15,20 +15,20 @@ from vernamveil._cypher import _Cypher
 from vernamveil._hash_utils import _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
 
 np: Any
-_IntOrArray: Any
-_IntOrBytes: Any
+_Integer: Any
+_Bytes: Any
 try:
     import numpy
     from numpy.typing import NDArray
 
     np = numpy
-    _IntOrArray = int | NDArray
-    _IntOrBytes = int | NDArray | bytes
+    _Integer = int | NDArray[np.uint64]
+    _Bytes = bytes | NDArray[np.uint8]
     _HAS_NUMPY = True
 except ImportError:
     np = None
-    _IntOrArray = int
-    _IntOrBytes = int | bytes
+    _Integer = int
+    _Bytes = bytes
     _HAS_NUMPY = False
 
 
@@ -46,7 +46,7 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_IntOrArray, bytes, int | None], _IntOrBytes],
+        fx: Callable[[_Integer, bytes, int | None], _Bytes],
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
@@ -58,8 +58,8 @@ class VernamVeil(_Cypher):
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
-            fx (Callable): Key stream generator accepting (int | np.ndarray, bytes, int | None) and returning an
-                int or np.ndarray or bytes. This function is critical for the encryption process and should be carefully
+            fx (Callable): Key stream generator accepting (int | np.ndarray[np.uint64], bytes, int | None) and returning an
+                bytes or np.ndarray[np.uint8]. This function is critical for the encryption process and should be carefully
                 designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
             delimiter_size (int): The delimiter size in bytes used for separating chunks; must be
