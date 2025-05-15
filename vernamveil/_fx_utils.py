@@ -7,6 +7,7 @@ used by the VernamVeil cypher.
 import hmac
 import secrets
 import warnings
+from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -187,7 +188,7 @@ def generate_polynomial_fx(
         raise ValueError("max_weight must be a positive integer.")
 
     # Generate random weights for each term in the polynomial including the constant term
-    weights = [secrets.randbelow(max_weight + 1) for _ in range(degree + 1)]
+    weights = [max(1, secrets.randbelow(max_weight + 1)) for _ in range(degree + 1)]
 
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
@@ -290,10 +291,13 @@ def check_fx_sanity(
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
     Checks performed:
-        1. Type check: All outputs should be bytes (for scalar) or np.ndarray[np.uint8] (for vectorised).
-        2. Non-constant output: fx should return diverse values for varying i.
-        3. Seed sensitivity: fx output should change if the seed changes.
-        4. Basic uniformity: No single output value should dominate.
+        1. Type check: All outputs should be bytes of length fx.block_size (scalar) or np.ndarray[np.uint8]
+            of shape (num_samples, fx.block_size) (vectorised).
+        2. Output size consistency: Each output must have length fx.block_size.
+        3. Non-constant output: fx should return diverse values for varying i.
+        4. Seed sensitivity: fx output should change if the seed changes.
+        5. Basic uniformity: No single byte value should dominate.
+        6. Avalanche effect: Flipping a bit in the input should significantly change the output.
 
     Args:
         fx (FX): The function to test.
@@ -305,29 +309,46 @@ def check_fx_sanity(
     """
     passed = True
 
-    # 1. Type check
+    # 1 & 2. Type check and output size consistency
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed)
         if not (
-            isinstance(outputs, np.ndarray) and outputs.dtype == np.uint8 and outputs.ndim == 2
+            isinstance(outputs, np.ndarray)
+            and outputs.dtype == np.uint8
+            and outputs.ndim == 2
+            and outputs.shape == (num_samples, fx.block_size)
         ):
-            warnings.warn("fx output is not a 2D NumPy array of uint8.")
+            warnings.warn(
+                f"fx output is not a 2D NumPy array of uint8 with shape (num_samples, fx.block_size): got {type(outputs)}, dtype={getattr(outputs, 'dtype', None)}, shape={getattr(outputs, 'shape', None)}"
+            )
             passed = False
-        # Flatten each row to bytes for comparison
+        # Each row must have fx.block_size columns
+        if outputs.shape[1] != fx.block_size:
+            warnings.warn("Each row of fx output must have fx.block_size columns.")
+            passed = False
         outputs_list = [bytes(row) for row in outputs]
     else:
         outputs_list = [fx(i, seed) for i in range(1, num_samples + 1)]
         if not all(isinstance(o, (bytes, bytearray)) for o in outputs_list):
-            warnings.warn("fx output is not bytes.")
+            warnings.warn("fx output is not bytes or bytearray.")
             passed = False
+        else:
+            # Each output must have fx.block_size length
+            for idx, o in enumerate(outputs_list):
+                if len(o) != fx.block_size:
+                    warnings.warn(
+                        f"fx output at index {idx} has length {len(o)} (expected {fx.block_size})."
+                    )
+                    passed = False
 
-    # 2. Non-constant output for varying i
+    # 3. Non-constant output for varying i
+    # Check that not all outputs are identical
     if len(set(outputs_list)) < num_samples // 10:
         warnings.warn("fx may be constant or low-entropy for varying i.")
         passed = False
 
-    # 3. Seed sensitivity
+    # 4. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
@@ -339,12 +360,52 @@ def check_fx_sanity(
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
-    # 4. Basic uniformity
-    counts: dict[bytes, int] = {}
-    for o in outputs_list:
-        counts[o] = counts.get(o, 0) + 1
-    if max(counts.values()) > 4 * min(counts.values()):
-        warnings.warn("fx output is heavily biased.")
+    # 5. Basic uniformity
+    # Concatenate all output bytes and count the frequency of each byte value (0-255)
+    all_bytes = b"".join([bytes(o) for o in outputs_list])
+    if len(all_bytes) == 0:
+        warnings.warn("fx produced no output bytes for uniformity check.")
+        passed = False
+    else:
+        byte_counts = Counter(all_bytes)
+        # Ensure all 256 possible byte values are checked, not just those present
+        min_count = min(byte_counts.get(i, 0) for i in range(256))
+        max_count = max(byte_counts.get(i, 0) for i in range(256))
+        if max_count > 4 * min_count:
+            warnings.warn(
+                "fx output is heavily biased: some byte values appear much more frequently than others."
+            )
+            passed = False
+        if min_count == 0:
+            warnings.warn("At least one byte value never appears in fx output.")
+            passed = False
+
+    # 6. Avalanche effect
+    # Flip a bit in the input and check that the output changes significantly (Hamming distance)
+    try:
+        test_idx = 42
+        if fx.vectorise:
+            arr = np.array([test_idx], dtype=np.uint64)
+            orig = fx(arr, seed)[0]
+            # Flip the least significant bit of the index
+            arr_flipped = np.array([test_idx ^ 1], dtype=np.uint64)
+            flipped = fx(arr_flipped, seed)[0]
+        else:
+            orig = fx(test_idx, seed)
+            flipped = fx(test_idx ^ 1, seed)
+        # Compute Hamming distance
+        if len(orig) == len(flipped):
+            hamming = sum(bin(a ^ b).count("1") for a, b in zip(orig, flipped))
+            if hamming < len(orig) * 2:  # expect at least 2 bits per byte to flip
+                warnings.warn(
+                    f"Avalanche effect weak: flipping a bit in input changed only {hamming} bits out of {len(orig)*8}."
+                )
+                passed = False
+        else:
+            warnings.warn("Avalanche effect check failed: output lengths differ.")
+            passed = False
+    except Exception as e:
+        warnings.warn(f"Avalanche effect check could not be performed: {e}")
         passed = False
 
     return passed
