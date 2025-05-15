@@ -4,8 +4,8 @@ import secrets
 import unittest
 from unittest.mock import patch
 
-from vernamveil._hash_utils import _HAS_C_MODULE, _UINT64_BOUND, fold_bytes_to_uint64, hash_numpy
-from vernamveil._vernamveil import _HAS_NUMPY
+from vernamveil._cypher import _HAS_NUMPY
+from vernamveil._hash_utils import _HAS_C_MODULE, fold_bytes_to_uint64, hash_numpy
 
 try:
     import numpy as np
@@ -56,7 +56,7 @@ class TestHashUtils(unittest.TestCase):
                                     seed, i_bytes[j : j + 8], digestmod=method
                                 ).digest()
                                 if fold_type == "full":
-                                    return int.from_bytes(digest, "big") % _UINT64_BOUND
+                                    return int.from_bytes(digest, "big") % 2**64
                                 else:  # "view"
                                     return int.from_bytes(digest[:8], "big")
 
@@ -95,7 +95,7 @@ class TestHashUtils(unittest.TestCase):
                             def get_digest(j):
                                 digest = method(i_bytes[j : j + 8]).digest()
                                 if fold_type == "full":
-                                    return int.from_bytes(digest, "big") % _UINT64_BOUND
+                                    return int.from_bytes(digest, "big") % 2**64
                                 else:  # "view"
                                     return int.from_bytes(digest[:8], "big")
 

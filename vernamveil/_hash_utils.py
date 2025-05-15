@@ -9,7 +9,6 @@ from typing import Literal
 
 try:
     import numpy as np
-    from numpy.typing import NDArray
 
     from nphash import _npblake2bffi, _npsha256ffi
 
@@ -17,26 +16,24 @@ try:
 except ImportError:
     _HAS_C_MODULE = False
 
-
-_UINT64_BOUND = 2**64
-
 __all__ = ["fold_bytes_to_uint64", "hash_numpy"]
 
 
 def fold_bytes_to_uint64(
-    hashes: "NDArray[np.uint8]", fold_type: Literal["full", "view"] = "view"
-) -> "NDArray[np.uint64]":
+    hashes: "np.ndarray[tuple[int, int], np.dtype[np.uint8]]",
+    fold_type: Literal["full", "view"] = "view",
+) -> "np.ndarray[tuple[int], np.dtype[np.uint64]]":
     """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
 
     Args:
-        hashes (NDArray[np.uint8]): 2D array of shape (n, H) where H >= 8.
+        hashes (np.ndarray[tuple[int, int], np.dtype[np.uint8]]): 2D array of shape (n, H) where H >= 8.
         fold_type (Literal["full", "view"] = "view"): Folding strategy.
             "view": Fastest; reinterprets the first 8 bytes as uint64.
             "full": Slower; folds all bytes in the row using bitwise operations.
             Default is "view".
 
     Returns:
-        NDArray[np.uint64]: 1D array of length n, each element is the folded uint64 value of the corresponding row.
+        np.ndarray[tuple[int], np.dtype[np.uint64]]: 1D array of length n, each element is the folded uint64 value of the corresponding row.
 
     Raises:
         ValueError: If the input array is not 2D or has less than 8 columns.
@@ -55,17 +52,19 @@ def fold_bytes_to_uint64(
         hashes_u64 = hashes.astype(np.uint64, copy=False)
 
         # Compute folded values in a fully vectorized way
-        result: NDArray[np.uint64] = np.bitwise_or.reduce(hashes_u64 << shifts, axis=1)
+        result: np.ndarray[tuple[int], np.dtype[np.uint64]] = np.bitwise_or.reduce(
+            hashes_u64 << shifts, axis=1
+        )
         return result
     else:
         raise ValueError(f"Unsupported fold_type '{fold_type}'. Use 'full' or 'view'.")
 
 
 def hash_numpy(
-    i: "NDArray[np.uint64]",
+    i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
     seed: bytes | None = None,
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
-) -> "NDArray[np.uint8]":
+) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
     """Compute a 2D uint8 NumPy array by HMAC-ing or hashing each index with a seed using a hashing algorithm.
 
     If no seed is provided, the index is hashed directly.
@@ -75,13 +74,13 @@ def hash_numpy(
     a NumPy fallback is used.
 
     Args:
-        i (NDArray[np.uint64]): NumPy array of indices (dtype should be unsigned 64-bit integer).
+        i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index.
         hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        NDArray[np.uint8]: A 2D array of shape (n, H) where H is the hash output size in bytes (32 for sha256, 64 for blake2b).
-            Each row contains the full hash output for the corresponding input.
+        np.ndarray[tuple[int, int], np.dtype[np.uint8]]: A 2D array of shape (n, H) where H is the hash output size in
+            bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
 
     Raises:
         ValueError: If a hash algorithm is not supported.

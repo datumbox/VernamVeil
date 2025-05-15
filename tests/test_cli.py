@@ -2,7 +2,7 @@ import os
 import random
 import re
 import shutil
-import sys  # noqa: F401
+import sys
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -56,16 +56,23 @@ class TestVernamVeilCLI(unittest.TestCase):
         self.encfile = self.temp_dir_path / "output.enc"
         self.outfile = self.temp_dir_path / "output.txt"
         self.fx_code = """
-def fx(i, seed, bound):
-    h = i + 1
-    return h % bound if bound is not None else h
+from vernamveil import FX
+
+def keystream_fn(i, seed):
+    v = i + 1
+    v &= 0xFFFFFFFFFFFFFFFF
+    return v.to_bytes(8, "big")
+
+fx = FX(keystream_fn, block_size=8, vectorise=False)
 """
         self.fx_strong_code = """
 import hmac
+from vernamveil import FX
 
-def fx(i, seed, bound):
-    h = int.from_bytes(hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest(), "big")
-    return h % bound if bound is not None else h
+def keystream_fn(i, seed):
+    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
+
+fx = FX(keystream_fn, block_size=64, vectorise=False)
 """
 
     def tearDown(self):
@@ -160,8 +167,6 @@ def fx(i, seed, bound):
             args += extra_args
 
         args = [str(arg) for arg in args]
-        if not any(arg.endswith("vectorise") for arg in args):
-            args += ["--no-vectorise"]
         with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
             main(args)
         return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
@@ -373,7 +378,6 @@ def fx(i, seed, bound):
                     self.outfile,
                     fx_file=None,
                     seed_file=seed_file,
-                    extra_args=["--no-vectorise"],
                 )
             self.assertIn("Error: --fx-file must be specified when decoding.", stderr.getvalue())
 
@@ -390,7 +394,6 @@ def fx(i, seed, bound):
                     self.outfile,
                     fx_file=fx_file,
                     seed_file=None,
-                    extra_args=["--no-vectorise"],
                 )
             self.assertIn("Error: --seed-file must be specified when decoding.", stderr.getvalue())
 
