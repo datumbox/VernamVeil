@@ -32,7 +32,7 @@ def keystream_fn(i: int, seed: bytes) -> int:
     result &= 0xFFFFFFFFFFFFFFFF
     return result.to_bytes(8, "big")
 
-fx = FX(keystream_fn, 8, vectorise=False)
+fx = FX(keystream_fn, block_size=8, vectorise=False)
 
 
 # Step 2: Generate a random initial seed for encryption

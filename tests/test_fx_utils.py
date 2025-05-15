@@ -43,7 +43,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return 42
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -57,7 +57,7 @@ class TestFxUtils(unittest.TestCase):
             # Wrong shape: should be (num_samples, block_size)
             return np.zeros((self.num_samples, 1), dtype=np.uint8)
 
-        fx = FX(keystream_fn, 8, vectorise=True)
+        fx = FX(keystream_fn, block_size=8, vectorise=True)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -69,7 +69,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return b"x" * (8 if i % 2 == 0 else 7)  # Odd indices have wrong length
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -81,7 +81,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return b"x" * 8
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -95,7 +95,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return (i.to_bytes(8, "big") * 1)[:8]
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -107,7 +107,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return b"\x00" * 8 if i < self.num_samples - 1 else b"\x01" * 8
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -119,7 +119,7 @@ class TestFxUtils(unittest.TestCase):
         def keystream_fn(i, seed):
             return b"\x00" * 8
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -132,7 +132,7 @@ class TestFxUtils(unittest.TestCase):
             # Only the LSB changes, rest is constant
             return (b"\x00" * 7) + bytes([i & 1])
 
-        fx = FX(keystream_fn, 8, vectorise=False)
+        fx = FX(keystream_fn, block_size=8, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
@@ -234,7 +234,7 @@ class TestFxUtils(unittest.TestCase):
 
         with patch("vernamveil._fx_utils._HAS_NUMPY", False):
             with self.assertRaises(ValueError):
-                FX(keystream_fn, 8, vectorise=True)
+                FX(keystream_fn, block_size=8, vectorise=True)
 
     def test_warns_if_numpy_present_but_vectorise_false(self):
         """Test that FX warns if numpy is present but vectorise is False."""
@@ -244,7 +244,7 @@ class TestFxUtils(unittest.TestCase):
 
         with patch("vernamveil._fx_utils._HAS_NUMPY", True):
             with warnings.catch_warnings(record=True) as w:
-                FX(keystream_fn, 8, vectorise=False)
+                FX(keystream_fn, block_size=8, vectorise=False)
             self.assertTrue(any("NumPy will not be used" in str(warn.message) for warn in w))
 
 
