@@ -4,6 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import (
+    FX,
     check_fx_sanity,
     generate_default_fx,
     generate_hmac_fx,
@@ -22,6 +23,7 @@ except PackageNotFoundError:
 
 __all__ = [
     "__version__",
+    "FX",
     "VernamVeil",
     "check_fx_sanity",
     "fold_bytes_to_uint64",

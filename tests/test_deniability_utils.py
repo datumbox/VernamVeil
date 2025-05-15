@@ -3,9 +3,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._deniability_utils import _PlausibleFX, forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx, load_fx_from_file
-from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
+from vernamveil._vernamveil import VernamVeil
 
 
 class TestDeniabilityUtils(unittest.TestCase):
@@ -29,7 +30,6 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=decoy_ratio,
             siv_seed_initialisation=True,
             auth_encrypt=True,
-            vectorise=vectorise,
         )
         real_seed = VernamVeil.get_initial_seed()
         secret_message = b"Sensitive data: the launch code is 12345!"
@@ -51,7 +51,6 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=cypher._decoy_ratio,
             siv_seed_initialisation=False,
             auth_encrypt=False,
-            vectorise=cypher._vectorise,
         )
         decoy_out, _ = fake_cypher.decode(cyphertext, fake_seed)
         return decoy_out.decode(errors="replace"), decoy_message.decode(errors="replace")
@@ -61,9 +60,9 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_plausible_fx_source_code_roundtrip(self):
         """Test that _PlausibleFX source code can be saved and loaded, preserving integers."""
-        test_keystream = [b"42", b"99", b"123456", b"7", b"0"]
-        fx = _PlausibleFX(test_keystream)
-        source_code = fx._source_code
+        test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
+        fx = _PlausibleFX(test_keystream, 2, False)
+        source_code = fx.source_code
 
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "fx_source.py"
@@ -86,7 +85,6 @@ class TestDeniabilityUtils(unittest.TestCase):
             decoy_ratio=0.2,
             siv_seed_initialisation=True,
             auth_encrypt=True,
-            vectorise=False,
         )
         cyphertext, _ = cypher.encode(secret_message, real_seed)
 
@@ -117,9 +115,9 @@ class TestDeniabilityUtils(unittest.TestCase):
 
             # Save everything to disk
             with open(real_fx_path, "w") as f:
-                f.write(real_fx._source_code)
+                f.write(real_fx.source_code)
             with open(plausible_fx_path, "w") as f:
-                f.write(plausible_fx._source_code)
+                f.write(plausible_fx.source_code)
             with open(real_seed_path, "wb") as f:
                 f.write(real_seed)
             with open(fake_seed_path, "wb") as f:
@@ -146,7 +144,6 @@ class TestDeniabilityUtils(unittest.TestCase):
                 decoy_ratio=0.2,
                 siv_seed_initialisation=True,
                 auth_encrypt=True,
-                vectorise=False,
             )
             real_out, _ = real_cypher.decode(loaded_cyphertext, loaded_real_seed)
 
@@ -159,7 +156,6 @@ class TestDeniabilityUtils(unittest.TestCase):
                 decoy_ratio=0.2,
                 siv_seed_initialisation=False,
                 auth_encrypt=False,
-                vectorise=False,
             )
             decoy_out, _ = fake_cypher.decode(loaded_cyphertext, loaded_fake_seed)
 

@@ -7,9 +7,10 @@ from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 
+from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import generate_default_fx
 from vernamveil._hash_utils import _HAS_C_MODULE
-from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
+from vernamveil._vernamveil import VernamVeil
 
 
 def get_test_modes():
@@ -44,7 +45,7 @@ class TestVernamVeil(unittest.TestCase):
                 )
                 with context:
                     fx = generate_default_fx(vectorise=vectorise)
-                    cypher = VernamVeil(fx, vectorise=vectorise, **cypher_kwargs)
+                    cypher = VernamVeil(fx, **cypher_kwargs)
                     test_func(cypher, vectorise)
 
     def test_single_message_encryption(self):

@@ -8,18 +8,10 @@ import hmac
 import secrets
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Literal, cast
+from typing import Any, Callable, Literal
 
+from vernamveil._cypher import _HAS_NUMPY, _Bytes, _Integer, np
 from vernamveil._hash_utils import hash_numpy
-from vernamveil._vernamveil import _Bytes, _Integer
-
-np: Any
-try:
-    import numpy
-
-    np = numpy
-except ImportError:
-    np = None
 
 __all__ = [
     "check_fx_sanity",
@@ -30,19 +22,72 @@ __all__ = [
 ]
 
 
+class FX:
+    """A generic callable wrapper for key stream generator functions used in VernamVeil.
+
+    This class wraps any user-supplied or generated keystream function, providing a consistent interface
+    for use in the VernamVeil cipher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
+
+    Attributes:
+        keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
+            bytes or np.ndarray[np.uint8].
+        block_size (int): The number of bytes returned per call.
+        vectorise (bool): Whether the keystream function supports vectorised operation.
+        source_code (str): The source code of the keystream function.
+
+    Example::
+        fx = FX(keystream_fn, block_size=64, vectorise=False)
+        keystream_bytes = fx(42, b"mysecretseed")
+    """
+
+    def __init__(
+        self,
+        keystream_fn: Callable[[_Integer, bytes], _Bytes],
+        block_size: int,
+        vectorise: bool,
+        source_code: str = "",
+    ) -> None:
+        """Initialise the FX wrapper.
+
+        Args:
+            keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
+                bytes or np.ndarray[np.uint8].
+            block_size (int): The number of bytes returned per call.
+            vectorise (bool): Whether the keystream function supports vectorised operation.
+            source_code (str): The source code of the keystream function.
+
+        Raises:
+            ValueError: If `vectorise` is True but numpy is not installed.
+        """
+        super().__init__()
+        if vectorise and not _HAS_NUMPY:
+            raise ValueError("NumPy is required for vectorised mode but is not installed.")
+        elif not vectorise and _HAS_NUMPY:
+            warnings.warn(
+                "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
+            )
+
+        self.keystream_fn = keystream_fn
+        self.block_size = block_size
+        self.vectorise = vectorise
+        self.source_code = source_code
+
+    def __call__(self, i: _Integer, seed: bytes) -> _Bytes:
+        return self.keystream_fn(i, seed)
+
+
 def generate_hmac_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
-) -> Callable[[_Integer, bytes], _Bytes]:
+) -> FX:
     """Generate a standard HMAC-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
-        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
+        vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
-            integers from HMAC-based function.
+        FX: An callable that returns pseudo-random bytes from HMAC-based function.
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
@@ -56,34 +101,37 @@ def generate_hmac_fx(
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
     if vectorise:
         function_code = f"""
-from vernamveil import hash_numpy
 import numpy as np
+from vernamveil import FX, hash_numpy
 
 
-def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    result = hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
-
-    return result
+    return hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
 """
     else:
         function_code = f"""
 import hmac
+from vernamveil import FX
 
 
-def fx(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> int:
     # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
 
     # Cryptographic HMAC using {hash_name}
-    result = hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest()
+    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="{hash_name}").digest()
+"""
 
-    return result
+    function_code += f"""
+
+
+fx = FX(keystream_fn, block_size={64 if hash_name == "blake2b" else 32}, vectorise={vectorise})
 """
 
     # Execute the string to define fx in a local namespace
@@ -99,29 +147,26 @@ def fx(i: int, seed: bytes) -> int:
     )
 
     # Attach the code string directly to the function object for later reference
-    fx = local_vars["fx"]
-    fx._source_code = function_code
+    fx: FX = local_vars["fx"]
+    fx.source_code = function_code
 
-    return cast(Callable[[_Integer, bytes], _Bytes], fx)
+    return fx
 
 
 def generate_polynomial_fx(
     degree: int = 10, max_weight: int = 10**5, vectorise: bool = False
-) -> Callable[[_Integer, bytes], _Bytes]:
+) -> FX:
     """Generate a random polynomial-based secret function to act as a deterministic key stream generator.
 
     The transformed input index is passed to a cryptographic hash function (HMAC).
-    Though any mathematical function with domain the positive integers can be used, this utility only supports
-    polynomials and is used for testing.
 
     Args:
         degree (int): Degree of the polynomial. Defaults to 10.
         max_weight (int): Maximum value for polynomial coefficients. Defaults to `10 ** 5`.
-        vectorise (bool): If True, uses numpy arrays as input for vectorised operations.
+        vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: A function that returns pseudo-random
-            integers from polynomial evaluation.
+        FX: An callable that returns pseudo-random bytes from the polynomial-based function.
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
@@ -147,11 +192,11 @@ def generate_polynomial_fx(
     # Dynamically generate the function code to allow flexibility in testing different polynomial configurations
     if vectorise:
         function_code = f"""
-from vernamveil import hash_numpy
 import numpy as np
+from vernamveil import FX, hash_numpy
 
 
-def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
@@ -165,35 +210,36 @@ def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
     result = np.dot(powers, weights)
 
     # Cryptographic HMAC using Blake2b
-    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
-
-    return result
+    return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 """
     else:
-        interim_modulus = 2**64
         function_code = f"""
 import hmac
+from vernamveil import FX
 
 
-def fx(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> int:
     # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
     # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [{", ".join(str(w) for w in weights)}]
-    interim_modulus = {interim_modulus}
 
     # Transform index i using a polynomial function to introduce uniqueness on fx
     current_pow = 1
     result = 0
     for weight in weights:
-        result = (result + weight * current_pow) % interim_modulus
-        current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
+        result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
+        current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
     # Cryptographic HMAC using Blake2b
-    result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+    return hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+"""
 
-    return result
+    function_code += f"""
+
+
+fx = FX(keystream_fn, block_size=64, vectorise={vectorise})
 """
 
     # Execute the string to define fx in a local namespace
@@ -207,69 +253,59 @@ def fx(i: int, seed: bytes) -> int:
         },
         local_vars,
     )
-    fx = local_vars["fx"]
 
     # Attach the code string directly to the function object for later reference
-    fx._source_code = function_code
+    fx: FX = local_vars["fx"]
+    fx.source_code = function_code
 
-    return cast(Callable[[_Integer, bytes], _Bytes], fx)
+    return fx
 
 
 # Default function for key stream generation
 generate_default_fx = generate_polynomial_fx
 
 
-def load_fx_from_file(path: str | Path) -> Callable[[_Integer, bytes], _Bytes]:
+def load_fx_from_file(path: str | Path) -> FX:
     """Load the fx function from a Python file.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
 
     Returns:
-        Callable[[int | np.ndarray[np.uint64], bytes], bytes | np.ndarray[np.uint8]]: The loaded fx function.
+        FX: The loaded fx function.
     """
     global_vars: dict[str, Any] = {}
     path_obj = Path(path)
     code = path_obj.read_text()
     exec(code, global_vars)
-    fx = global_vars["fx"]
-    return cast(Callable[[_Integer, bytes], _Bytes], fx)
+    fx: FX = global_vars["fx"]
+    return fx
 
 
 def check_fx_sanity(
-    fx: Callable[[_Integer, bytes], _Bytes],
+    fx: FX,
     seed: bytes,
     num_samples: int = 1000,
 ) -> bool:
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
-    Automatically detects if fx supports numpy arrays (vectorised) or scalar (int) and tests accordingly.
-
     Checks performed:
         1. Non-constant output: fx should return diverse values for varying i.
         2. Seed sensitivity: fx output should change if the seed changes.
         3. Basic uniformity: No single output value should dominate.
-        4. Type check: All outputs should be bytes (for scalar) or np.uint8 (for vectorised).
+        4. Type check: All outputs should be bytes (for scalar) or np.ndarray[np.uint8] (for vectorised).
 
     Args:
-        fx: The function to test.
-        seed: The seed to use for testing.
-        num_samples: Number of samples to test.
+        fx (FX): The function to test.
+        seed (bytes): The seed to use for testing.
+        num_samples (int): Number of samples to test.
 
     Returns:
         bool: True if all checks pass, False otherwise. Issues are reported as warnings.
     """
     passed = True
 
-    # Try to detect if fx supports numpy arrays
-    try:
-        test_input = np.arange(1, num_samples + 1, dtype=np.uint64)
-        test_output = fx(test_input, seed)
-        is_vectorised = isinstance(test_output, np.ndarray)
-    except Exception:
-        is_vectorised = False
-
-    if is_vectorised:
+    if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed)
         if not (
@@ -289,7 +325,7 @@ def check_fx_sanity(
 
     # 2. Seed sensitivity: output should change if the seed changes
     alt_seed = bytes((b ^ 0xAA) for b in seed)
-    if is_vectorised:
+    if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed)
         outputs_alt_list = [bytes(row) for row in outputs_alt]
@@ -308,7 +344,7 @@ def check_fx_sanity(
         passed = False
 
     # 4. Type check: all outputs should be bytes (scalar) or np.uint8 (vectorised)
-    if is_vectorised:
+    if fx.vectorise:
         if not all(isinstance(row, (bytes, bytearray)) for row in outputs_list):
             warnings.warn("fx output rows are not bytes-like objects.")
             passed = False

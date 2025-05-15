@@ -6,7 +6,23 @@ import stat
 import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import IO, Callable, Literal
+from typing import IO, Any, Callable, Literal
+
+np: Any
+_Integer: Any
+_Bytes: Any
+try:
+    import numpy
+
+    np = numpy
+    _Integer = int | np.ndarray[np.uint64]
+    _Bytes = bytes | np.ndarray[np.uint8]
+    _HAS_NUMPY = True
+except ImportError:
+    np = None
+    _Integer = int
+    _Bytes = bytes
+    _HAS_NUMPY = False
 
 __all__: list[str] = []
 

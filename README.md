@@ -21,15 +21,18 @@ pip install .
 
 Minimal Example:
 ```python
-from vernamveil import VernamVeil
+from vernamveil import FX, VernamVeil
 
 
 # Step 1: Define a custom key stream function; remember to store this securely
-def fx(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> int:
     # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
     result = ((i ** 2 + i * b + b ** 2) * (i + 7))
-    return result.to_bytes((result.bit_length() + 7) // 8, "big")
+    result &= 0xFFFFFFFFFFFFFFFF
+    return result.to_bytes(8, "big")
+
+fx = FX(keystream_fn, 8, vectorise=False)
 
 
 # Step 2: Generate a random initial seed for encryption
@@ -94,7 +97,7 @@ from vernamveil import VernamVeil, generate_default_fx
 
 
 # Step 1: Generate a random custom fx using the helper
-fx = generate_default_fx()  # remember to store fx._source_code securely
+fx = generate_default_fx()  # remember to store fx.source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -130,7 +133,7 @@ from vernamveil import VernamVeil, generate_default_fx
 
 
 # Step 1: Generate a random custom fx using the helper
-fx = generate_default_fx()  # remember to store fx._source_code securely
+fx = generate_default_fx()  # remember to store fx.source_code securely
 
 # Step 2: Generate a random initial seed for encryption
 initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
@@ -176,71 +179,74 @@ Below we provide some example `fx` methods to illustrate these principles in pra
 
 ```python
 import hmac
+from vernamveil import FX
 
 
-def fx(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> int:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output. 
+    # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
-    interim_modulus = 18446744073709551616
-    
+
     # Transform index i using a polynomial function to introduce uniqueness on fx
     current_pow = 1
     result = 0
     for weight in weights:
-        result = (result + weight * current_pow) % interim_modulus
-        current_pow = (current_pow * i) % interim_modulus  # Avoid large power growth
-    
-    # Cryptographic HMAC using Blake2b
-    result = hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+        result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
+        current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-    return result
+    # Cryptographic HMAC using Blake2b
+    return hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+
+
+fx = FX(keystream_fn, block_size=64, vectorise=False)
 ```
 
 ### 🏎️ A fast version of the above `fx` that uses NumPy vectorisation and the `nphash` C module
 
 ```python
-from vernamveil import hash_numpy
+from vernamveil import FX, hash_numpy
 import numpy as np
 
 
-def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output. 
+    # followed by a cryptographically secure HMAC-Blake2b output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = np.array([24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
-    
+
     # Transform index i using a polynomial function to introduce uniqueness on fx
     # Compute all powers: shape (i.size, degree)
     powers = np.power.outer(i, np.arange(11, dtype=np.uint64))
+
     # Weighted sum (polynomial evaluation)
     result = np.dot(powers, weights)
 
     # Cryptographic HMAC using Blake2b
-    result = hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
-    
-    return result
+    return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+
+
+fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
 ### 🛡️ A cryptographically strong HMAC-SHA256 `fx` (vectorised & C-accelerated)
 
 ```python
-from vernamveil import hash_numpy
 import numpy as np
+from vernamveil import FX, hash_numpy
 
 
-def fx(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a standard HMAC-based pseudorandom function (PRF) using sha256.
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    # Implements a standard HMAC-based pseudorandom function (PRF) using blake2b.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+    # Cryptographic HMAC using blake2b
+    return hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
-    # Cryptographic HMAC using sha256
-    result = hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
 
-    return result
+fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
 ---
@@ -261,12 +267,11 @@ Example:
 ```python
 from vernamveil import generate_default_fx, check_fx_sanity
 
-
 # Generate a vectorised fx function
 fx = generate_default_fx(vectorise=True)
 
 # Show the generated function's source code
-print("Generated fx source code:\n", fx._source_code)
+print("Generated fx source code:\n", fx.source_code)
 
 # Check if the generated fx passes basic sanity checks
 seed = b"mysecretseed"

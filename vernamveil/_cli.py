@@ -11,9 +11,10 @@ from pathlib import Path
 from typing import IO, Callable, cast
 
 from vernamveil import __version__
+from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
 from vernamveil._hash_utils import _HAS_C_MODULE
-from vernamveil._vernamveil import _HAS_NUMPY, VernamVeil
+from vernamveil._vernamveil import VernamVeil
 
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
@@ -41,12 +42,6 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         type=int,
         default=1024 * 1024,
         help="Buffer size in bytes for reading blocks (default: 1048576, i.e., 1MB).",
-    )
-    p.add_argument(
-        "--vectorise",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Use vectorised fx (default: True).",
     )
     p.add_argument(
         "--chunk-size", type=int, default=512, help="Chunk size for VernamVeil (default: 512)."
@@ -144,6 +139,12 @@ def main(args: list[str] | None = None) -> None:
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
     _add_common_args(enc)
     enc.add_argument(
+        "--vectorise",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Vectorise fx when generating a new one (ignored if --fx-file is used).",
+    )
+    enc.add_argument(
         "--check-sanity",
         action="store_true",
         help="Check the loaded/generated fx and seed for appropriateness.",
@@ -194,7 +195,7 @@ def main(args: list[str] | None = None) -> None:
             )
             sys.exit(1)
         fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
-        fx_py.write_text(getattr(fx_obj, "_source_code"))
+        fx_py.write_text(fx_obj.source_code)
         _vprint(
             f"Warning: Generated a fx-file in {fx_py.resolve()}. "
             "Store securely, this file contains your key stream function.",
@@ -274,7 +275,6 @@ def main(args: list[str] | None = None) -> None:
         "decoy_ratio": parsed_args.decoy_ratio,
         "siv_seed_initialisation": parsed_args.siv_seed_initialisation,
         "auth_encrypt": parsed_args.auth_encrypt,
-        "vectorise": parsed_args.vectorise,
     }
 
     # Initialise the VernamVeil object

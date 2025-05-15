@@ -8,18 +8,10 @@ The utility reuses as many private methods of VernamVeil as possible to ensure c
 
 import copy
 import math
-from typing import Any
 
-from vernamveil._vernamveil import VernamVeil, _Bytes, _Integer
-
-np: Any
-try:
-    import numpy
-
-    np = numpy
-except ImportError:
-    np = None
-
+from vernamveil._cypher import _Bytes, _Integer, np
+from vernamveil._fx_utils import FX
+from vernamveil._vernamveil import VernamVeil
 
 __all__ = [
     "forge_plausible_fx",
@@ -93,47 +85,42 @@ def _estimate_obfuscated_length(cypher: VernamVeil, message_len: int, pad_val: i
     return 2 * total_count * (delimiter_size + pad_val) + message_len + decoy_count * chunk_size
 
 
-class _PlausibleFX:
+class _PlausibleFX(FX):
     """A callable class that generates fake keystream values for plausible deniability."""
 
-    def __init__(self, keystream: list[bytes]):
+    def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool):
         """Initializes the PlausibleFX instance.
 
         Args:
             keystream (list[bytes]): A list of bytes representing the fake keystream.
+            block_size (int): The block size for the keystream.
+            vectorise (bool): Whether to use vectorised operations.
         """
         self._keystream = keystream
         self._pos = 0
         self._len = len(keystream)
-        self._source_code = f"""
-from vernamveil._deniability_utils import _PlausibleFX
+        source_code = f"from vernamveil._deniability_utils import _PlausibleFX\nfx = _PlausibleFX({keystream}, {block_size}, {vectorise})"
+        super().__init__(self.__call__, block_size, vectorise, source_code=source_code)
 
-fx = _PlausibleFX({keystream})
-
-"""
-
-    def __call__(self, i: _Integer, _: bytes, __: int | None = None) -> _Bytes:
+    def __call__(self, i: _Integer, _: bytes) -> _Bytes:
         """Generates the next value in the fake keystream.
 
         Args:
             i (_Integer): the index of the bytes in the message.
             _ (bytes): Unused parameter for compatibility.
-            __ (int, optional): Unused parameter for compatibility.
 
         Returns:
             _Bytes: The next value in the fake keystream.
         """
-        use_numpy = np is not None and isinstance(i, np.ndarray)
-
-        n = len(i) if use_numpy else 1
+        n = len(i) if self.vectorise else 1
         vals = []
-        for ___ in range(n):
+        for __ in range(n):
             if self._pos >= self._len:
                 self._pos = 0
             vals.append(self._keystream[self._pos])
             self._pos += 1
 
-        if not use_numpy:
+        if not self.vectorise:
             return vals[0]
         return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
@@ -143,7 +130,7 @@ def forge_plausible_fx(
     cyphertext: bytes,
     decoy_message: bytes,
     max_obfuscate_attempts: int = 1_000,
-) -> tuple[_PlausibleFX, bytes]:
+) -> tuple[FX, bytes]:
     """Generates a fake keystream and seed to plausibly decrypt a cyphertext to a decoy message.
 
     This function enables plausible deniability: it lets you demonstrate that an encrypted file
@@ -160,7 +147,7 @@ def forge_plausible_fx(
             Defaults to 1,000.
 
     Returns:
-        tuple[_PlausibleFX, bytes]: A tuple containing the plausible fx function and the fake seed.
+        tuple[FX, bytes]: A tuple containing the plausible fx function and the fake seed.
 
     Raises:
         ValueError: If the decoy message cannot plausibly fit the cyphertext length given the cypher parameters.
@@ -190,7 +177,7 @@ def forge_plausible_fx(
     )
 
     # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
-    block_size = cypher._block_size
+    block_size = cypher._fx.block_size
     delimiter_len = math.ceil(len(delimiter) / block_size) * block_size
     delimiter_bytes = delimiter.tobytes().ljust(delimiter_len, b"\x00")
 
@@ -214,6 +201,6 @@ def forge_plausible_fx(
             keystream_values.append(ks)
 
     # 6. Generate the fx function
-    plausible_fx = _PlausibleFX(keystream_values)
+    plausible_fx = _PlausibleFX(keystream_values, block_size, cypher._fx.vectorise)
 
     return plausible_fx, fake_seed

@@ -8,28 +8,11 @@ import hmac
 import math
 import secrets
 import time
-import warnings
-from typing import Any, Callable, Iterator
+from typing import Any, Iterator
 
-from vernamveil._cypher import _Cypher
+from vernamveil._cypher import _Cypher, np
+from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import fold_bytes_to_uint64, hash_numpy
-
-np: Any
-_Integer: Any
-_Bytes: Any
-try:
-    import numpy
-
-    np = numpy
-    _Integer = int | np.ndarray[np.uint64]
-    _Bytes = bytes | np.ndarray[np.uint8]
-    _HAS_NUMPY = True
-except ImportError:
-    np = None
-    _Integer = int
-    _Bytes = bytes
-    _HAS_NUMPY = False
-
 
 __all__ = ["VernamVeil"]
 
@@ -45,21 +28,19 @@ class VernamVeil(_Cypher):
 
     def __init__(
         self,
-        fx: Callable[[_Integer, bytes], _Bytes],
+        fx: FX,
         chunk_size: int = 32,
         delimiter_size: int = 8,
         padding_range: tuple[int, int] = (5, 15),
         decoy_ratio: float = 0.1,
         siv_seed_initialisation: bool = True,
         auth_encrypt: bool = True,
-        vectorise: bool = False,
     ):
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
-            fx (Callable): Key stream generator accepting (int | np.ndarray[np.uint64], bytes) and returning an
-                bytes or np.ndarray[np.uint8]. This function is critical for the encryption process and should be carefully
-                designed to ensure cryptographic security.
+            fx (FX): A callable objects that generates keystream bytes. This function is critical for the
+                encryption process and should be carefully designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
             delimiter_size (int): The delimiter size in bytes used for separating chunks; must be
                 at least 4. Defaults to 8.
@@ -69,8 +50,6 @@ class VernamVeil(_Cypher):
             siv_seed_initialisation (bool): Enables synthetic IV seed initialisation based on the message to
                 resist seed reuse. Defaults to True.
             auth_encrypt (bool): Enables authenticated encryption with integrity check. Defaults to True.
-            vectorise (bool): Whether to use numpy for vectorised operations. If True, numpy must be
-                installed and `fx` must support numpy arrays. Defaults to False.
 
         Raises:
             ValueError: If `chunk_size` is less than 8.
@@ -79,7 +58,6 @@ class VernamVeil(_Cypher):
             ValueError: If `padding_range` values are negative.
             ValueError: If `padding_range` values are not in ascending order.
             ValueError: If `decoy_ratio` is negative.
-            ValueError: If `vectorise` is True but numpy is not installed.
         """
         # Validate input
         if chunk_size < 8:
@@ -98,12 +76,6 @@ class VernamVeil(_Cypher):
             raise ValueError("padding_range values must be in ascending order.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
-        if vectorise and not _HAS_NUMPY:
-            raise ValueError("NumPy is required for vectorised mode but is not installed.")
-        elif not vectorise and _HAS_NUMPY:
-            warnings.warn(
-                "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
-            )
 
         # Initialise instance variables
         self._fx = fx
@@ -113,7 +85,6 @@ class VernamVeil(_Cypher):
         self._decoy_ratio = decoy_ratio
         self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
-        self._vectorise = vectorise
 
     def __str__(self) -> str:
         """Return a string representation of the VernamVeil instance.
@@ -127,8 +98,7 @@ class VernamVeil(_Cypher):
             f"padding_range={self._padding_range}, "
             f"decoy_ratio={self._decoy_ratio}, "
             f"siv_seed_initialisation={self._siv_seed_initialisation}, "
-            f"auth_encrypt={self._auth_encrypt}, "
-            f"vectorise={self._vectorise})"
+            f"auth_encrypt={self._auth_encrypt}"
         )
 
     @classmethod
@@ -167,17 +137,6 @@ class VernamVeil(_Cypher):
         """
         return 64
 
-    @property
-    def _block_size(self) -> int:
-        """Return the block size of the VernamVeil class.
-
-        Given a fixed configuration, it is a constant value representing the size of the blocks used in the encryption.
-
-        Returns:
-            int: The block size in bytes.
-        """
-        return self._hmac_length if self._vectorise else 8
-
     def _hmac(
         self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
@@ -209,8 +168,6 @@ class VernamVeil(_Cypher):
 
         Determines the shuffled positions for real chunks based on a deterministic seed.
 
-        Uses `hash_numpy` for vectorised hashing if available.
-
         Args:
             seed (bytes): Seed for deterministic shuffling.
             real_count (int): Number of real chunks.
@@ -223,7 +180,7 @@ class VernamVeil(_Cypher):
         positions = list(range(total_count))
 
         hashes: Any
-        if self._vectorise:
+        if self._fx.vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
             hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, "blake2b"))
@@ -247,10 +204,7 @@ class VernamVeil(_Cypher):
     def _generate_bytes(self, length: int, seed: bytes) -> memoryview:
         """Produce a byte stream of the given length using the key generator function.
 
-        In vectorised mode, uses numpy for efficient batch generation if available and supported by `fx`.
-
-        It samples _block_size bytes at a time from the generator function, which is expected to return a Python int
-        or an uint8 NumPy array.
+        It samples `fx.block_size` bytes at a time.
 
         Args:
             length (int): Number of bytes to generate.
@@ -259,10 +213,10 @@ class VernamVeil(_Cypher):
         Returns:
             memoryview: Generated byte stream.
         """
-        if self._vectorise:
+        if self._fx.vectorise:
             # Vectorised generation using numpy
             # Generate enough uint64s to cover the length
-            n_uint64 = math.ceil(length / self._block_size)
+            n_uint64 = math.ceil(length / self._fx.block_size)
             indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
             # Generate uint8 for bytes
             keystream = self._fx(indices, seed)
@@ -429,7 +383,7 @@ class VernamVeil(_Cypher):
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
         result = bytearray(data_len)
-        if self._vectorise:
+        if self._fx.vectorise:
             arr = np.frombuffer(data, dtype=np.uint8)
             # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
             processed = np.frombuffer(result, dtype=np.uint8)
@@ -443,7 +397,7 @@ class VernamVeil(_Cypher):
             keystream = self._generate_bytes(chunk_len, seed)
 
             # XOR the chunk with the key
-            if self._vectorise:
+            if self._fx.vectorise:
                 np.bitwise_xor(arr[start:end], keystream, out=processed[start:end])
                 seed_data = (arr[start:end] if is_encode else processed[start:end]).data
             else:

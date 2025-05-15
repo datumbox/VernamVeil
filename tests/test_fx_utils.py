@@ -3,8 +3,8 @@ import unittest
 import warnings
 from pathlib import Path
 
-from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
-from vernamveil._vernamveil import _HAS_NUMPY
+from vernamveil._cypher import _HAS_NUMPY
+from vernamveil._fx_utils import FX, check_fx_sanity, generate_default_fx, load_fx_from_file
 
 try:
     import numpy as np
@@ -40,9 +40,12 @@ class TestFxUtils(unittest.TestCase):
     def test_check_fx_sanity_constant_function(self):
         """Test check_fx_sanity fails and warns for a constant fx."""
 
-        def fx(i, seed):
+        def keystream_fn(i, seed):
             v = 42
-            return v.to_bytes((v.bit_length() + 7) // 8, "big")
+            v &= 0xFFFFFFFFFFFFFFFF
+            return v.to_bytes(8, "big")
+
+        fx = FX(keystream_fn, 8, vectorise=False)
 
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
@@ -54,8 +57,12 @@ class TestFxUtils(unittest.TestCase):
     def test_check_fx_sanity_seed_insensitive(self):
         """Test check_fx_sanity fails and warns for a seed-insensitive fx."""
 
-        def fx(i, seed):
-            return i.to_bytes((i.bit_length() + 7) // 8, "big")
+        def keystream_fn(i, seed):
+            v = 42
+            v &= 0xFFFFFFFFFFFFFFFF
+            return v.to_bytes(8, "big")
+
+        fx = FX(keystream_fn, 8, vectorise=False)
 
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
@@ -65,8 +72,10 @@ class TestFxUtils(unittest.TestCase):
     def test_check_fx_sanity_uniformity_violation(self):
         """Test check_fx_sanity fails and warns for fx that is heavily biased."""
 
-        def fx(i, seed):
+        def keystream_fn(i, seed):
             return b"x00" if i < self.num_samples - 1 else b"x01"  # Almost always 0
+
+        fx = FX(keystream_fn, 2, vectorise=False)
 
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
@@ -95,7 +104,7 @@ class TestFxUtils(unittest.TestCase):
         fx_obj = generate_default_fx(vectorise=False)
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
-            tmp.write(fx_obj._source_code)
+            tmp.write(fx_obj.source_code)
             tmp_path = Path(tmp.name)
 
         try:
@@ -111,7 +120,7 @@ class TestFxUtils(unittest.TestCase):
         fx_obj = generate_default_fx(vectorise=True)
 
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
-            tmp.write(fx_obj._source_code)
+            tmp.write(fx_obj.source_code)
             tmp_path = Path(tmp.name)
 
         try:
