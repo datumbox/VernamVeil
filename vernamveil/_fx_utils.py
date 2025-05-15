@@ -36,7 +36,10 @@ class FX:
         vectorise (bool): Whether the keystream function performs vectorised operations.
         source_code (str): The source code of the keystream function.
 
-    Example::
+    Example:
+
+    .. code-block:: python
+
         fx = FX(keystream_fn, block_size=64, vectorise=False)
         keystream_bytes = fx(42, b"mysecretseed")
     """

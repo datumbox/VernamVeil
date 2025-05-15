@@ -183,6 +183,13 @@ def main(args: list[str] | None = None) -> None:
 
     # Handle fx function
     if fx_file:
+        if not fx_file.exists():
+            _vprint(
+                f"Error: fx file '{fx_file}' does not exist.",
+                "error",
+                verbosity,
+            )
+            sys.exit(1)
         fx = load_fx_from_file(fx_file)
     elif parsed_args.command == "encode":
         fx_py = Path("fx.py")
@@ -214,6 +221,13 @@ def main(args: list[str] | None = None) -> None:
 
     # Handle seed
     if seed_file:
+        if not seed_file.exists():
+            _vprint(
+                f"Error: seed file '{seed_file}' does not exist.",
+                "error",
+                verbosity,
+            )
+            sys.exit(1)
         seed = seed_file.read_bytes()
     elif parsed_args.command == "encode":
         seed_bin = Path("seed.bin")
@@ -241,6 +255,16 @@ def main(args: list[str] | None = None) -> None:
             verbosity,
         )
         sys.exit(1)
+
+    # Check input file existence unless stdin or stream
+    if infile not in (None, "-"):
+        if not Path(infile).exists():
+            _vprint(
+                f"Error: input file '{infile}' does not exist.",
+                "error",
+                verbosity,
+            )
+            sys.exit(1)
 
     # Optionally check fx and seed sanity
     if parsed_args.command == "encode" and parsed_args.check_sanity:

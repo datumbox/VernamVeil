@@ -742,6 +742,33 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         """Progress callback for large file: percentage increases monotonically, ends at 100%, and has multiple updates."""
         self._assert_progress_monotonic_and_complete(128 * 1024, ["--chunk-size", "4096"])
 
+    def test_missing_fx_file(self):
+        """Test that providing a missing fx file prints an error and exits."""
+        with self._in_tempdir():
+            missing_fx = self.temp_dir_path / "doesnotexist_fx.py"
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                self._encode(self.infile, self.encfile, fx_file=missing_fx)
+            self.assertIn(f"Error: fx file '{missing_fx}' does not exist.", stderr.getvalue())
+
+    def test_missing_seed_file(self):
+        """Test that providing a missing seed file prints an error and exits."""
+        with self._in_tempdir():
+            missing_seed = self.temp_dir_path / "doesnotexist_seed.bin"
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                self._encode(self.infile, self.encfile, seed_file=missing_seed)
+            self.assertIn(f"Error: seed file '{missing_seed}' does not exist.", stderr.getvalue())
+
+    def test_missing_input_file(self):
+        """Test that providing a missing input file prints an error and exits."""
+        with self._in_tempdir():
+            missing_input = self.temp_dir_path / "doesnotexist_input.txt"
+            stderr = StringIO()
+            with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
+                self._encode(missing_input, self.encfile)
+            self.assertIn(f"Error: input file '{missing_input}' does not exist.", stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
