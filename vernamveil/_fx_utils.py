@@ -26,13 +26,13 @@ class FX:
     """A generic callable wrapper for key stream generator functions used in VernamVeil.
 
     This class wraps any user-supplied or generated keystream function, providing a consistent interface
-    for use in the VernamVeil cipher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
+    for use in the VernamVeil cypher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
 
     Attributes:
         keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
             bytes or np.ndarray[np.uint8].
         block_size (int): The number of bytes returned per call.
-        vectorise (bool): Whether the keystream function supports vectorised operation.
+        vectorise (bool): Whether the keystream function performs vectorised operations.
         source_code (str): The source code of the keystream function.
 
     Example::
@@ -53,7 +53,7 @@ class FX:
             keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
                 bytes or np.ndarray[np.uint8].
             block_size (int): The number of bytes returned per call.
-            vectorise (bool): Whether the keystream function supports vectorised operation.
+            vectorise (bool): Whether the keystream function performs vectorised operations.
             source_code (str): The source code of the keystream function.
 
         Raises:
@@ -87,7 +87,7 @@ def generate_hmac_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        FX: An callable that returns pseudo-random bytes from HMAC-based function.
+        FX: A callable that returns pseudo-random bytes from HMAC-based function.
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
@@ -166,7 +166,7 @@ def generate_polynomial_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        FX: An callable that returns pseudo-random bytes from the polynomial-based function.
+        FX: A callable that returns pseudo-random bytes from the polynomial-based function.
 
     Raises:
         ValueError: If `vectorise` is True but numpy is not installed.
@@ -290,10 +290,10 @@ def check_fx_sanity(
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
     Checks performed:
-        1. Non-constant output: fx should return diverse values for varying i.
-        2. Seed sensitivity: fx output should change if the seed changes.
-        3. Basic uniformity: No single output value should dominate.
-        4. Type check: All outputs should be bytes (for scalar) or np.ndarray[np.uint8] (for vectorised).
+        1. Type check: All outputs should be bytes (for scalar) or np.ndarray[np.uint8] (for vectorised).
+        2. Non-constant output: fx should return diverse values for varying i.
+        3. Seed sensitivity: fx output should change if the seed changes.
+        4. Basic uniformity: No single output value should dominate.
 
     Args:
         fx (FX): The function to test.
@@ -305,6 +305,7 @@ def check_fx_sanity(
     """
     passed = True
 
+    # 1. Type check
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed)
@@ -317,13 +318,16 @@ def check_fx_sanity(
         outputs_list = [bytes(row) for row in outputs]
     else:
         outputs_list = [fx(i, seed) for i in range(1, num_samples + 1)]
+        if not all(isinstance(o, (bytes, bytearray)) for o in outputs_list):
+            warnings.warn("fx output is not bytes.")
+            passed = False
 
-    # 1. Non-constant output for varying i
+    # 2. Non-constant output for varying i
     if len(set(outputs_list)) < num_samples // 10:
         warnings.warn("fx may be constant or low-entropy for varying i.")
         passed = False
 
-    # 2. Seed sensitivity: output should change if the seed changes
+    # 3. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
@@ -335,22 +339,12 @@ def check_fx_sanity(
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
-    # 3. Basic uniformity: no single output value should dominate
+    # 4. Basic uniformity
     counts: dict[bytes, int] = {}
     for o in outputs_list:
         counts[o] = counts.get(o, 0) + 1
     if max(counts.values()) > 4 * min(counts.values()):
         warnings.warn("fx output is heavily biased.")
         passed = False
-
-    # 4. Type check: all outputs should be bytes (scalar) or np.uint8 (vectorised)
-    if fx.vectorise:
-        if not all(isinstance(row, (bytes, bytearray)) for row in outputs_list):
-            warnings.warn("fx output rows are not bytes-like objects.")
-            passed = False
-    else:
-        if not all(isinstance(o, (bytes, bytearray)) for o in outputs_list):
-            warnings.warn("fx output is not bytes.")
-            passed = False
 
     return passed

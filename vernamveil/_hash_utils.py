@@ -26,7 +26,7 @@ def fold_bytes_to_uint64(
     """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
 
     Args:
-        hashes (np.ndarray[np.uint8]): 2D array of shape (n, H) where H >= 8.
+        hashes (np.ndarray[tuple[int, int], np.dtype[np.uint8]]): 2D array of shape (n, H) where H >= 8.
         fold_type (Literal["full", "view"] = "view"): Folding strategy.
             "view": Fastest; reinterprets the first 8 bytes as uint64.
             "full": Slower; folds all bytes in the row using bitwise operations.
@@ -79,8 +79,8 @@ def hash_numpy(
         hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
-        np.ndarray[np.uint8]: A 2D array of shape (n, H) where H is the hash output size in bytes (32 for sha256, 64 for blake2b).
-            Each row contains the full hash output for the corresponding input.
+        np.ndarray[tuple[int, int], np.dtype[np.uint8]]: A 2D array of shape (n, H) where H is the hash output size in
+            bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
 
     Raises:
         ValueError: If a hash algorithm is not supported.

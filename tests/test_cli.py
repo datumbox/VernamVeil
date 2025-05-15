@@ -72,7 +72,7 @@ from vernamveil import FX
 def keystream_fn(i, seed):
     return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
 
-fx = FX(keystream_fn, 8, vectorise=False)
+fx = FX(keystream_fn, 64, vectorise=False)
 """
 
     def tearDown(self):

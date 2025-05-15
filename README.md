@@ -163,7 +163,7 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 
 - **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
 - **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
-- **Type Correctness**: The function must return an `int` (or a NumPy `uint64` array in vectorised mode).
+- **Type Correctness**: The function must return a `bytes` or a NumPy `uint8` array in vectorised mode.
 - **Determinism**: `fx` must be deterministic for the same inputs. Do not use external state or randomness inside your function.
 - **Avoid Data-Dependent Branching or Timing**: Do not introduce data-dependent branching or timing in your `fx`, as this can lead to side-channel attacks.
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
@@ -242,6 +242,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a standard HMAC-based pseudorandom function (PRF) using sha256.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+
     # Cryptographic HMAC using sha256
     return hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
 

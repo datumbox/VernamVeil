@@ -34,8 +34,7 @@ class TestFxUtils(unittest.TestCase):
         arr = np.arange(10, dtype=np.uint64)
         out = fx(arr, self.seed)
         self.assertIsInstance(out, np.ndarray)
-        self.assertEqual(out.shape[0], arr.shape[0])
-        self.assertTrue((out >= 0).all())
+        self.assertEqual(out.shape, (arr.shape[0], fx.block_size))
 
     def test_check_fx_sanity_constant_function(self):
         """Test check_fx_sanity fails and warns for a constant fx."""
@@ -50,9 +49,7 @@ class TestFxUtils(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
-        self.assertTrue(
-            any("constant" in str(warn.message) or "low-entropy" in str(warn.message) for warn in w)
-        )
+        self.assertTrue(any("constant" in str(warn.message) for warn in w))
 
     def test_check_fx_sanity_seed_insensitive(self):
         """Test check_fx_sanity fails and warns for a seed-insensitive fx."""
@@ -67,7 +64,7 @@ class TestFxUtils(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
-        self.assertTrue(any("seed" in str(warn.message) for warn in w))
+        self.assertTrue(any("does not depend on seed" in str(warn.message) for warn in w))
 
     def test_check_fx_sanity_uniformity_violation(self):
         """Test check_fx_sanity fails and warns for fx that is heavily biased."""

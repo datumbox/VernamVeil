@@ -39,7 +39,7 @@ class VernamVeil(_Cypher):
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:
-            fx (FX): A callable objects that generates keystream bytes. This function is critical for the
+            fx (FX): A callable object that generates keystream bytes. This function is critical for the
                 encryption process and should be carefully designed to ensure cryptographic security.
             chunk_size (int): Size of message chunks. Defaults to 32.
             delimiter_size (int): The delimiter size in bytes used for separating chunks; must be
