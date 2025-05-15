@@ -403,6 +403,62 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ---
 
+## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
+
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is 7x slower than highly optimised, hardware-accelerated cyphers like AES-256. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation and C extension enabled) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+
+### ‍💻 Benchmark Setup
+
+**1. Create a 1GB random file:**
+```bash
+dd if=/dev/urandom of=/tmp/original.bin bs=1M count=1024 status=progress
+```
+
+**2. Generate a random 256-bit key and IV for AES-256-CBC:**
+```bash
+openssl rand -hex 32 > key.hex
+openssl rand -hex 16 > iv.hex
+```
+
+### 🔒 VernamVeil
+
+**Encoding:**
+```bash
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --buffer-size 134217728 --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+```
+_Time: 20.836s_
+
+**Decoding:**
+```bash
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/decrypted.bin --fx-file fx.py --buffer-size 136620352 --seed-file seed.bin --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+```
+_Time: 19.174s_
+
+### 🏁 AES-256-CBC (OpenSSL)
+
+**Encoding:**
+```bash
+time openssl enc -aes-256-cbc -in /tmp/original.bin -out /tmp/output.enc -K $(cat key.hex) -iv $(cat iv.hex) -pbkdf2
+```
+_Time: 3.007s_
+
+**Decoding:**
+```bash
+time openssl enc -d -aes-256-cbc -in /tmp/output.enc -out /tmp/decrypted.bin -K $(cat key.hex) -iv $(cat iv.hex) -pbkdf2
+```
+_Time: 2.636s_
+
+### 📊 Summary
+
+| Algorithm    | Encode Time | Decode Time |
+|--------------|-------------|-------------|
+| VernamVeil   | 20.8 s      | 19.2 s      |
+| AES-256-CBC  | 3.0 s       | 2.6 s       |
+
+> **Note:** VernamVeil is ~7x slower than AES-256-CBC in this setup. This is expected, as VernamVeil is written in Python and designed for flexibility and experimentation, not for production-grade speed or safety.
+
+---
+
 ## 📚 Documentation
 
 Full API and usage docs are available at: [https://datumbox.github.io/VernamVeil/](https://datumbox.github.io/VernamVeil/)
