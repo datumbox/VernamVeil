@@ -430,7 +430,7 @@ _Time: 20.836s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/decrypted.bin --fx-file fx.py --buffer-size 136620352 --seed-file seed.bin --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --buffer-size 136620352 --seed-file seed.bin --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
 _Time: 19.174s_
 
@@ -444,7 +444,7 @@ _Time: 3.007s_
 
 **Decoding:**
 ```bash
-time openssl enc -d -aes-256-cbc -in /tmp/output.enc -out /tmp/decrypted.bin -K $(cat key.hex) -iv $(cat iv.hex) -pbkdf2
+time openssl enc -d -aes-256-cbc -in /tmp/output.enc -out /tmp/output.dec -K $(cat key.hex) -iv $(cat iv.hex) -pbkdf2
 ```
 _Time: 2.636s_
 
