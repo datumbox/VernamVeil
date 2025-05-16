@@ -321,23 +321,27 @@ class VernamVeil(_Cypher):
         Returns:
             bytearray: Original message reconstructed from real chunks.
         """
-        # Locate all positions of the delimiter
+        # Estimate the ranges of all chunks
         delimiter_len = len(delimiter)
-        delimiter_indices = []
-        look_start = 0
+        all_chunk_ranges: list[tuple[int, int]] = []
+        prev_idx = None  # Tracks the index of the previous delimiter found
+        look_start = 0  # Start position for searching the next delimiter
         while True:
+            # Search for the next occurrence of the delimiter
             idx = noisy.find(delimiter, look_start)
             if idx == -1:
+                # No more delimiters found
                 break
-            delimiter_indices.append(idx)
+            if prev_idx is not None:
+                # We have found a pair of delimiters:
+                # The chunk starts after the previous delimiter and ends at the current one
+                all_chunk_ranges.append((prev_idx + delimiter_len, idx))
+                prev_idx = None  # Reset to look for the next pair
+            else:
+                # Store the index of the first delimiter in the pair
+                prev_idx = idx
+            # Move the search start past the current delimiter
             look_start = idx + delimiter_len
-
-        # Each chunk is framed by consecutive delimiters
-        all_chunk_ranges: list[tuple[int, int]] = []
-        for i in range(0, len(delimiter_indices) - 1, 2):
-            start = delimiter_indices[i] + delimiter_len
-            end = delimiter_indices[i + 1]
-            all_chunk_ranges.append((start, end))
 
         # Determine the number of real chunks
         total_count = len(all_chunk_ranges)

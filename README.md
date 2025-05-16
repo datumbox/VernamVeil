@@ -218,7 +218,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     weights = np.array([24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
 
     # Transform index i using a polynomial function to introduce uniqueness on fx
-    # Compute all powers: shape (i.size, degree)
+    # Compute all powers: shape (len(i), degree)
     powers = np.power.outer(i, np.arange(11, dtype=np.uint64))
 
     # Weighted sum (polynomial evaluation)

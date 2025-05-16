@@ -87,21 +87,27 @@ def hash_numpy(
     """
     if hash_name == "blake2b":
         hash_size = 64
+        if _HAS_C_MODULE:
+            ffi = _npblake2bffi.ffi
+            method = _npblake2bffi.lib.numpy_blake2b
+        else:
+            ffi = None
+            method = hashlib.blake2b
     elif hash_name == "sha256":
         hash_size = 32
+        if _HAS_C_MODULE:
+            ffi = _npsha256ffi.ffi
+            method = _npsha256ffi.lib.numpy_sha256
+        else:
+            ffi = None
+            method = hashlib.sha256
     else:
         raise ValueError(f"Unsupported hash_name '{hash_name}'.")
     n = len(i)
     out = np.empty((n, hash_size), dtype=np.uint8)
 
     i_bytes = i.byteswap().view(np.uint8)
-    if _HAS_C_MODULE:
-        if hash_name == "blake2b":
-            ffi = _npblake2bffi.ffi
-            method = _npblake2bffi.lib.numpy_blake2b
-        elif hash_name == "sha256":
-            ffi = _npsha256ffi.ffi
-            method = _npsha256ffi.lib.numpy_sha256
+    if ffi is not None:
         method(
             ffi.from_buffer(i_bytes),
             n,
@@ -111,10 +117,6 @@ def hash_numpy(
         )
         return out
     else:
-        if hash_name == "blake2b":
-            method = hashlib.blake2b
-        elif hash_name == "sha256":
-            method = hashlib.sha256
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
             if seed is not None:
                 digest = hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()

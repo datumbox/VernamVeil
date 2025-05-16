@@ -89,7 +89,7 @@ class _Cypher(ABC):
             input_file (str | Path | IO[bytes]): Path or file-like object for input.
             output_file (str | Path | IO[bytes]): Path or file-like object for output.
             seed (bytes): Initial seed for processing.
-            buffer_size (int): Bytes to read at a time. Defaults to 1MB.
+            buffer_size (int): Bytes to read at a time. Defaults to `1024 * 1024` (1MB).
             read_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
             write_queue_size (int): Maximum number of data blocks buffered in the
@@ -206,6 +206,7 @@ class _Cypher(ABC):
 
         try:
             block_delimiter, current_seed = self._generate_delimiter(seed)
+            delimiter_size = len(block_delimiter)
 
             if mode == "encode":
                 while exception_queue.empty():
@@ -253,7 +254,7 @@ class _Cypher(ABC):
                             break
 
                         # Remove the processed block and delimiter from the buffer
-                        buffer = buffer[delim_index + len(block_delimiter) :]
+                        buffer = buffer[delim_index + delimiter_size :]
 
                         # Refresh block delimiter
                         block_delimiter, current_seed = self._generate_delimiter(current_seed)

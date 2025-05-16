@@ -222,21 +222,27 @@ import numpy as np
 from vernamveil import FX, hash_numpy
 
 
-def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output.
-    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
-    # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
+def make_keystream_fn():
+    # Create a closure to capture the weights and initialise them only once
     weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
+    degrees = np.arange({degree + 1}, dtype=np.uint64)
 
-    # Transform index i using a polynomial function to introduce uniqueness on fx
-    # Compute all powers: shape (i.size, degree)
-    powers = np.power.outer(i, np.arange({degree + 1}, dtype=np.uint64))
-    # Weighted sum (polynomial evaluation)
-    result = np.dot(powers, weights)
+    def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+        # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
+        # followed by a cryptographically secure HMAC-Blake2b output.
+        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+        # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
-    # Cryptographic HMAC using Blake2b
-    return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+        # Transform index i using a polynomial function to introduce uniqueness on fx
+        # Compute all powers: shape (len(i), degree)
+        powers = np.power.outer(i, degrees)
+        # Weighted sum (polynomial evaluation)
+        result = np.dot(powers, weights)
+
+        # Cryptographic HMAC using Blake2b
+        return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
+
+    return keystream_fn
 """
     else:
         function_code = f"""
@@ -244,28 +250,33 @@ import hmac
 from vernamveil import FX
 
 
-def keystream_fn(i: int, seed: bytes) -> int:
-    # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output.
-    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
-    # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
+def make_keystream_fn():
+    # Create a closure to capture the weights and initialise them only once
     weights = [{", ".join(str(w) for w in weights)}]
 
-    # Transform index i using a polynomial function to introduce uniqueness on fx
-    current_pow = 1
-    result = 0
-    for weight in weights:
-        result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
-        current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
+    def keystream_fn(i: int, seed: bytes) -> int:
+        # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
+        # followed by a cryptographically secure HMAC-Blake2b output.
+        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+        # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
-    # Cryptographic HMAC using Blake2b
-    return hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+        # Transform index i using a polynomial function to introduce uniqueness on fx
+        current_pow = 1
+        result = 0
+        for weight in weights:
+            result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
+            current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
+
+        # Cryptographic HMAC using Blake2b
+        return hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+
+    return keystream_fn
 """
 
     function_code += f"""
 
 
-fx = FX(keystream_fn, block_size=64, vectorise={vectorise})
+fx = FX(make_keystream_fn(), block_size=64, vectorise={vectorise})
 """
 
     # Execute the string to define fx in a local namespace
