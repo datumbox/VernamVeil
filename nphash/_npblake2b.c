@@ -31,12 +31,8 @@ void numpy_blake2b(const char* restrict arr, const size_t n, const char* restric
         #pragma omp parallel for schedule(static)
         #endif
         for (i = 0; i < n_int; ++i) {
-            unsigned char hash[HASH_SIZE]; // Buffer for BLAKE2b output (64 bytes)
-            unsigned int hash_len = HASH_SIZE;
-            // Compute HMAC-BLAKE2b using OpenSSL: key=seed, msg=arr8[i]
-            HMAC(EVP_blake2b512(), seed, seedlen_int, arr8[i], BLOCK_SIZE, hash, &hash_len);
-            // Write the full hash to the output buffer
-            memcpy(&out[i * HASH_SIZE], hash, HASH_SIZE);
+            // Write HMAC output directly to the output buffer
+            HMAC(EVP_blake2b512(), seed, seedlen_int, arr8[i], BLOCK_SIZE, &out[i * HASH_SIZE], NULL);
         }
     } else {
         // No-seed mode: Just hash the block
@@ -45,18 +41,13 @@ void numpy_blake2b(const char* restrict arr, const size_t n, const char* restric
         #pragma omp parallel for schedule(static)
         #endif
         for (i = 0; i < n_int; ++i) {
-            unsigned char hash[HASH_SIZE]; // Buffer for BLAKE2b output (64 bytes)
             // Create a new digest context for each hash computation
             EVP_MD_CTX* ctx = EVP_MD_CTX_new();
-            // Compute BLAKE2b hash of the 8-byte (uint64) block
-            // Chain all hash steps and check for failure
-            if (ctx != NULL &&
-                EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1 &&
-                EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1 &&
-                EVP_DigestFinal_ex(ctx, hash, NULL) == 1) {
-                // Write the full hash to the output buffer
-                memcpy(&out[i * HASH_SIZE], hash, HASH_SIZE);
-            }
+            // Compute BLAKE2b hash of the 8-byte (uint64) block by chaining all hash steps
+            int ok = (ctx != NULL);
+            ok &= EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1;
+            ok &= EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1;
+            ok &= EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL) == 1;
             EVP_MD_CTX_free(ctx);
         }
     }
