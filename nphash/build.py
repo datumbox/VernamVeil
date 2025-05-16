@@ -59,14 +59,15 @@ def _detect_compiler() -> str:
     return "cc"
 
 
-def _supports_flto(compiler: str) -> bool:
-    """Check if the compiler supports -flto.
+def _supports_flag(compiler: str, flag: str) -> bool:
+    """Check if the compiler supports a given flag.
 
     Args:
         compiler (str): Compiler to check.
+        flag (str): Compiler flag to test.
 
     Returns:
-        bool: True if the compiler supports -flto, False otherwise.
+        bool: True if the compiler supports the flag, False otherwise.
     """
     compiler_path = shutil.which(compiler)
     if not compiler_path:
@@ -76,7 +77,7 @@ def _supports_flto(compiler: str) -> bool:
         exe = Path(tmpdir) / "test.out"
         src.write_text("int main(void) { return 0; }")
         result = subprocess.run(
-            shlex.split(compiler) + [str(src), "-flto", "-o", str(exe)],
+            shlex.split(compiler) + [str(src), flag, "-o", str(exe)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -181,9 +182,13 @@ def main() -> None:
         raise RuntimeError("Unsupported platform")
 
     # Try to add -flto if supported
-    if _supports_flto(compiler):
+    if _supports_flag(compiler, "-flto"):
         extra_compile_args.append("-flto")
         extra_link_args.append("-flto")
+
+    # Add -fomit-frame-pointer if supported
+    if _supports_flag(compiler, "-fomit-frame-pointer"):
+        extra_compile_args.append("-fomit-frame-pointer")
 
     # Add C source
     c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
