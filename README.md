@@ -28,7 +28,7 @@ from vernamveil import FX, VernamVeil
 def keystream_fn(i: int, seed: bytes) -> int:
     # Simple but cryptographically unsafe fx; see below for a more complex example
     b = seed[i % len(seed)]
-    result = ((i ** 2 + i * b + b ** 2) * (i + 7))
+    result = (i ** 2 + i * b + b ** 2) * (i + 7)
     result &= 0xFFFFFFFFFFFFFFFF
     return result.to_bytes(8, "big")
 
@@ -206,8 +206,8 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
 ### 🏎️ A fast version of the above `fx` that uses NumPy vectorisation and the `nphash` C module
 
 ```python
-from vernamveil import FX, hash_numpy
 import numpy as np
+from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
@@ -300,7 +300,7 @@ seed = real_cypher.get_initial_seed()
 cyphertext, _ = real_cypher.encode(secret_message, seed)
 
 # Decoy message to plausibly reveal
-decoy = b"This is a harmless message. Noting to see here. Look away!"
+decoy = b"This is a harmless message. Nothing to see here. Look away!"
 
 # Forge plausible fx and seed
 plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
@@ -310,7 +310,7 @@ plausible_fx, fake_seed = forge_plausible_fx(real_cypher, cyphertext, decoy)
 decoy_cypher = VernamVeil(plausible_fx, padding_range=(5, 25), chunk_size=32, decoy_ratio=0.3,
                           siv_seed_initialisation=False, auth_encrypt=False)
 revealed, _ = decoy_cypher.decode(cyphertext, fake_seed)
-print(revealed)  # b'This is a harmless message. Noting to see here. Look away!'
+print(revealed)  # b'This is a harmless message. Nothing to see here. Look away!'
 ```
 
 This approach allows you to demonstrate that a given cyphertext could plausibly contain a harmless message, providing a credible alternative explanation under duress, while the original secret remains protected.
@@ -351,7 +351,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 
 > ⚠️ **Warning: CLI Parameter Consistency**
 >
-> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt`, and `--vectorise`) as you did during encoding.
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation` and `--auth-encrypt`) as you did during encoding.
 >
 > For example, the following will **fail** with a `Authentication failed: MAC tag mismatch.` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
@@ -393,11 +393,11 @@ pip install .[dev,numpy,cffi]
 
 - The `[dev]` extra installs development and testing dependencies.
 - The `[numpy]` extra enables fast vectorised operations.
-- The `[cffi]` extra required for building the `nphash` C extension for accelerated BLAKE2b and SHA-256 in NumPy-based `fx` functions.
+- The `[cffi]` extra is required for building the `nphash` C extension for accelerated BLAKE2b and SHA-256 in NumPy-based `fx` functions. **You need to compile the C extension afterwards. See below.**
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 estimators for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 **To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
@@ -405,7 +405,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is 7x slower than highly optimised, hardware-accelerated cyphers like AES-256. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation and C extension enabled) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is 7x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation and C extension enabled) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 

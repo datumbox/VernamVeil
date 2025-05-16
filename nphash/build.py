@@ -5,7 +5,7 @@ BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementati
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
-    python nphash/build.py
+    python build.py
 
 This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
 """

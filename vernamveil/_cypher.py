@@ -85,17 +85,17 @@ class _Cypher(ABC):
         """Processes a file or stream in blocks using the provided Cypher for encryption or decryption.
 
         Args:
+            mode (Literal["encode", "decode"]): Operation mode ("encode" for encryption, "decode" for decryption).
             input_file (str | Path | IO[bytes]): Path or file-like object for input.
             output_file (str | Path | IO[bytes]): Path or file-like object for output.
             seed (bytes): Initial seed for processing.
-            mode (Literal["encode", "decode"]): Operation mode ("encode" for encryption, "decode" for decryption).
             buffer_size (int): Bytes to read at a time. Defaults to 1MB.
             read_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the IO reader thread and the main processing thread. Defaults to 4.
             write_queue_size (int): Maximum number of data blocks buffered in the
                 queue between the main processing thread and the IO writer thread. Defaults to 4.
             progress_callback (Callable, optional): Callback for progress reporting.
-                Receives two arguments: bytes_processed and total_size. Defaults to None.
+                Receives two arguments: `bytes_processed` and `total_size`. Defaults to None.
 
         Raises:
             ValueError: If `mode` is not "encode" or "decode".
@@ -162,7 +162,7 @@ class _Cypher(ABC):
             # Returns the data if successful, Empty data if an error occurs
             while exception_queue.empty():
                 try:
-                    return q.get(block=True, timeout=0.1)
+                    return q.get(block=True, timeout=0.05)
                 except queue.Empty:
                     continue
             return b""
@@ -172,7 +172,7 @@ class _Cypher(ABC):
             # Returns True if successful, False if an error occurs
             while exception_queue.empty():
                 try:
-                    q.put(data, block=True, timeout=0.1)
+                    q.put(data, block=True, timeout=0.05)
                     return True
                 except queue.Full:
                     continue

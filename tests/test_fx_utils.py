@@ -85,9 +85,7 @@ class TestFxUtils(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, self.num_samples)
         self.assertFalse(passed)
-        self.assertTrue(
-            any("constant" in str(warn.message) or "low-entropy" in str(warn.message) for warn in w)
-        )
+        self.assertTrue(any("constant" in str(warn.message) in str(warn.message) for warn in w))
 
     def test_seed_insensitivity_detection(self):
         """Test check_fx_sanity warns if output does not depend on seed."""
@@ -246,6 +244,22 @@ class TestFxUtils(unittest.TestCase):
             with warnings.catch_warnings(record=True) as w:
                 FX(keystream_fn, block_size=8, vectorise=False)
             self.assertTrue(any("NumPy will not be used" in str(warn.message) for warn in w))
+
+    def test_warns_if_numpy_present_but_c_module_missing(self):
+        """Test that FX warns if NumPy is present but the C module is not available."""
+
+        def keystream_fn(i, seed):
+            import numpy as np
+
+            return np.zeros((1, 8), dtype=np.uint8)
+
+        with (
+            patch("vernamveil._fx_utils._HAS_NUMPY", True),
+            patch("vernamveil._fx_utils._HAS_C_MODULE", False),
+        ):
+            with warnings.catch_warnings(record=True) as w:
+                FX(keystream_fn, block_size=8, vectorise=True)
+            self.assertTrue(any("C module is not available" in str(warn.message) for warn in w))
 
 
 if __name__ == "__main__":

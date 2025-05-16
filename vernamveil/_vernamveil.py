@@ -153,7 +153,7 @@ class VernamVeil(_Cypher):
         Returns:
             bytes: The resulting hash digest.
         """
-        if msg_list is not None:
+        if msg_list:
             hm = hmac.new(key, msg_list.pop(0), digestmod="blake2b")
             for m in msg_list:
                 hm.update(m)
@@ -314,7 +314,7 @@ class VernamVeil(_Cypher):
         """Remove noise and extract real chunks from a shuffled noisy message.
 
         Args:
-            noisy (bytearray): Encrypted and obfuscated message.
+            noisy (bytearray): Decrypted and obfuscated message.
             seed (bytes): Seed for deterministic chunk deshuffling.
             delimiter (memoryview): Delimiter used to detect chunks.
 
@@ -448,7 +448,7 @@ class VernamVeil(_Cypher):
             # always bytes. However, callers might still provide a sliced memoryview over bytes. This code is safe
             # because msg_bytes is only used to check for the delimiter, so at worst, the check is performed on the
             # entire underlying array. The expensive tobytes() copy is almost always avoided, unless the caller
-            # provides a memoryview is not backed by a bytes or bytearray object.
+            # provides a memoryview that is not backed by a bytes or bytearray object.
             msg_bytes = (
                 message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
             )

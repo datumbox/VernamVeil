@@ -14,7 +14,7 @@ from vernamveil._cli import main
 
 
 class _UnclosableBytesIO(BytesIO):
-    """Buffer that prevents closing during the test"""
+    """Buffer that prevents closing during the test."""
 
     def close(self):
         pass

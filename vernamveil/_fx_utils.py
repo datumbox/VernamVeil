@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from vernamveil._cypher import _HAS_NUMPY, _Bytes, _Integer, np
-from vernamveil._hash_utils import hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE, hash_numpy
 
 __all__ = [
+    "FX",
     "check_fx_sanity",
     "generate_default_fx",
     "generate_hmac_fx",
@@ -30,8 +31,8 @@ class FX:
     for use in the VernamVeil cypher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
 
     Attributes:
-        keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
-            bytes or np.ndarray[np.uint8].
+        keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes)` and returning
+            `bytes` or `np.ndarray[np.uint8]`.
         block_size (int): The number of bytes returned per call.
         vectorise (bool): Whether the keystream function performs vectorised operations.
         source_code (str): The source code of the keystream function.
@@ -54,8 +55,8 @@ class FX:
         """Initialise the FX wrapper.
 
         Args:
-            keystream_fn (Callable): Keystream function accepting (int | np.ndarray[np.uint64], bytes) and returning
-                bytes or np.ndarray[np.uint8].
+            keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes)` and returning
+                `bytes` or `np.ndarray[np.uint8]`.
             block_size (int): The number of bytes returned per call.
             vectorise (bool): Whether the keystream function performs vectorised operations.
             source_code (str): The source code of the keystream function.
@@ -64,8 +65,13 @@ class FX:
             ValueError: If `vectorise` is True but numpy is not installed.
         """
         super().__init__()
-        if vectorise and not _HAS_NUMPY:
-            raise ValueError("NumPy is required for vectorised mode but is not installed.")
+        if vectorise:
+            if not _HAS_NUMPY:
+                raise ValueError("NumPy is required for vectorised mode but is not installed.")
+            elif not _HAS_C_MODULE:
+                warnings.warn(
+                    "NumPy is installed but the C module is not available. Performance will be suboptimal."
+                )
         elif not vectorise and _HAS_NUMPY:
             warnings.warn(
                 "vectorise is False, NumPy will not be used. Consider setting it to True for better performance."
@@ -77,6 +83,15 @@ class FX:
         self.source_code = source_code
 
     def __call__(self, i: _Integer, seed: bytes) -> _Bytes:
+        """Generate the keystream for a given index and seed.
+
+        Args:
+            i (_Integer): The index or array of indices to generate the keystream for.
+            seed (bytes): The seed used for generating the keystream.
+
+        Returns:
+            _Bytes: The generated keystream bytes or array of bytes.
+        """
         return self.keystream_fn(i, seed)
 
 
@@ -94,13 +109,16 @@ def generate_hmac_fx(
         FX: A callable that returns pseudo-random bytes from HMAC-based function.
 
     Raises:
-        ValueError: If `vectorise` is True but numpy is not installed.
         ValueError: If `hash_name` is not "blake2b" or "sha256".
+        TypeError: If `vectorise` is not a boolean.
+        ValueError: If `vectorise` is True but numpy is not installed.
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
     if hash_name not in ("blake2b", "sha256"):
         raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
+    if not isinstance(vectorise, bool):
+        raise TypeError("vectorise must be a boolean.")
 
     # Dynamically generate the function code for scalar or vectorised HMAC-based PRF
     if vectorise:
@@ -143,6 +161,7 @@ fx = FX(keystream_fn, block_size={64 if hash_name == "blake2b" else 32}, vectori
     exec(
         function_code,
         {
+            "FX": FX,
             "hash_numpy": hash_numpy,
             "hmac": hmac,
             "np": np,
@@ -173,11 +192,12 @@ def generate_polynomial_fx(
         FX: A callable that returns pseudo-random bytes from the polynomial-based function.
 
     Raises:
-        ValueError: If `vectorise` is True but numpy is not installed.
         TypeError: If `degree` is not an integer.
         ValueError: If `degree` is not positive.
         TypeError: If `max_weight` is not an integer.
         ValueError: If `max_weight` is not positive.
+        TypeError: If `vectorise` is not a boolean.
+        ValueError: If `vectorise` is True but numpy is not installed.
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
@@ -189,6 +209,8 @@ def generate_polynomial_fx(
         raise TypeError("max_weight must be an integer.")
     elif max_weight <= 0:
         raise ValueError("max_weight must be a positive integer.")
+    if not isinstance(vectorise, bool):
+        raise TypeError("vectorise must be a boolean.")
 
     # Generate random weights for each term in the polynomial including the constant term
     weights = [max(1, secrets.randbelow(max_weight + 1)) for _ in range(degree + 1)]
@@ -251,6 +273,7 @@ fx = FX(keystream_fn, block_size=64, vectorise={vectorise})
     exec(
         function_code,
         {
+            "FX": FX,
             "hash_numpy": hash_numpy,
             "hmac": hmac,
             "np": np,
@@ -271,6 +294,9 @@ generate_default_fx = generate_polynomial_fx
 
 def load_fx_from_file(path: str | Path) -> FX:
     """Load the fx function from a Python file.
+
+    This uses `exec` internally to execute the file's code. Never use this with
+    files from untrusted sources, as it can run arbitrary code on your system.
 
     Args:
         path (str | Path): Path to the Python file containing fx.
@@ -294,13 +320,11 @@ def check_fx_sanity(
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
     Checks performed:
-        1. Type check: All outputs should be bytes of length fx.block_size (scalar) or np.ndarray[np.uint8]
-            of shape (num_samples, fx.block_size) (vectorised).
-        2. Output size consistency: Each output must have length fx.block_size.
-        3. Non-constant output: fx should return diverse values for varying i.
-        4. Seed sensitivity: fx output should change if the seed changes.
-        5. Basic uniformity: No single byte value should dominate.
-        6. Avalanche effect: Flipping a bit in the input should significantly change the output.
+        1. Type and output size check: All outputs should be `bytes` of length `fx.block_size` (scalar) or `np.ndarray[np.uint8]` of shape (num_samples, fx.block_size) (vectorised).
+        2. Non-constant output: fx should return diverse values for varying i.
+        3. Seed sensitivity: fx output should change if the seed changes.
+        4. Basic uniformity: No single byte value should dominate.
+        5. Avalanche effect: Flipping a bit in the input should significantly change the output.
 
     Args:
         fx (FX): The function to test.
@@ -312,7 +336,7 @@ def check_fx_sanity(
     """
     passed = True
 
-    # 1 & 2. Type check and output size consistency
+    # 1. Type and output size check
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
         outputs = fx(arr, seed)
@@ -345,13 +369,13 @@ def check_fx_sanity(
                     )
                     passed = False
 
-    # 3. Non-constant output for varying i
+    # 2. Non-constant output for varying i
     # Check that not all outputs are identical
     if len(set(outputs_list)) < num_samples // 10:
         warnings.warn("fx may be constant or low-entropy for varying i.")
         passed = False
 
-    # 4. Seed sensitivity
+    # 3. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if fx.vectorise:
         arr = np.arange(1, num_samples + 1, dtype=np.uint64)
@@ -363,7 +387,7 @@ def check_fx_sanity(
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
-    # 5. Basic uniformity
+    # 4. Basic uniformity
     # Concatenate all output bytes and count the frequency of each byte value (0-255)
     all_bytes = b"".join([bytes(o) for o in outputs_list])
     if len(all_bytes) == 0:
@@ -383,7 +407,7 @@ def check_fx_sanity(
             warnings.warn("At least one byte value never appears in fx output.")
             passed = False
 
-    # 6. Avalanche effect
+    # 5. Avalanche effect
     # Flip a bit in the input and check that the output changes significantly (Hamming distance)
     try:
         test_idx = 42

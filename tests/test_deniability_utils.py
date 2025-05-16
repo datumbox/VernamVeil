@@ -40,7 +40,7 @@ class TestDeniabilityUtils(unittest.TestCase):
             b"There is nothing worth seeing here, move along!!! "
         )
         plausible_fx, fake_seed = forge_plausible_fx(
-            cypher, cyphertext, decoy_message, max_obfuscate_attempts=10000
+            cypher, cyphertext, decoy_message, max_obfuscate_attempts=50000
         )
 
         fake_cypher = VernamVeil(
@@ -56,10 +56,11 @@ class TestDeniabilityUtils(unittest.TestCase):
         return decoy_out.decode(errors="replace"), decoy_message.decode(errors="replace")
 
     def _combo_name(self, chunk_size, delimiter_size, padding_range, decoy_ratio):
+        """Produce a string name for the test combo."""
         return f"chunk{chunk_size}_delim{delimiter_size}_pad{padding_range}_decoy{decoy_ratio}"
 
     def test_plausible_fx_source_code_roundtrip(self):
-        """Test that _PlausibleFX source code can be saved and loaded, preserving integers."""
+        """Test that _PlausibleFX source code can be saved and loaded, preserving bytes."""
         test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
         fx = _PlausibleFX(test_keystream, 2, False)
         source_code = fx.source_code

@@ -7,10 +7,10 @@ Welcome to the documentation for `VernamVeil <https://github.com/datumbox/Vernam
    :maxdepth: 3
    :caption: API Reference:
 
-   vernamveil_class
-   deniability_utilities
-   fx_utilities
-   hash_utilities
+   deniability_utils
+   fx_utils
+   hash_utils
+   vernamveil
 
 .. toctree::
    :maxdepth: 1

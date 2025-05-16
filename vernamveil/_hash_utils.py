@@ -80,7 +80,7 @@ def hash_numpy(
 
     Returns:
         np.ndarray[tuple[int, int], np.dtype[np.uint8]]: A 2D array of shape (n, H) where H is the hash output size in
-            bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
+        bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
 
     Raises:
         ValueError: If a hash algorithm is not supported.
