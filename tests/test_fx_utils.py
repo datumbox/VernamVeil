@@ -202,14 +202,42 @@ class TestFxUtils(unittest.TestCase):
         finally:
             tmp_path.unlink()
 
-    def test_load_fx_from_file_missing_function(self):
-        """Test load_fx_from_file raises ValueError if keystream_fn is missing."""
+    def test_load_fx_from_file_missing_fx(self):
+        """Test load_fx_from_file raises ImportError if 'fx' is missing."""
         with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
-            tmp.write("# no keystream_fn here\n")
+            tmp.write("# no fx here\n")
             tmp_path = Path(tmp.name)
         try:
-            with self.assertRaises(AttributeError):
+            with self.assertRaises(ImportError):
                 load_fx_from_file(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_load_fx_from_file_fx_wrong_type(self):
+        """Test load_fx_from_file raises TypeError if 'fx' is not an FX instance."""
+        with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
+            tmp.write("fx = 123\n")
+            tmp_path = Path(tmp.name)
+        try:
+            with self.assertRaises(TypeError):
+                load_fx_from_file(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_load_fx_from_file_valid_minimal_fx(self):
+        """Test load_fx_from_file works with a minimal valid FX instance."""
+        with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
+            tmp.write(
+                "from vernamveil._fx_utils import FX\n"
+                "def keystream_fn(i, seed):\n"
+                "    return b'12345678'\n"
+                "fx = FX(keystream_fn, block_size=8, vectorise=False)\n"
+            )
+            tmp_path = Path(tmp.name)
+        try:
+            fx_loaded = load_fx_from_file(tmp_path)
+            self.assertTrue(callable(fx_loaded))
+            self.assertEqual(fx_loaded(1, b"seed"), b"12345678")
         finally:
             tmp_path.unlink()
 

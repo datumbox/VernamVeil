@@ -306,7 +306,8 @@ def load_fx_from_file(path: str | Path) -> FX:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        ImportError: If the module could not be loaded.
+        ImportError: If the module could not be loaded or no `fx` was found.
+        TypeError: If the loaded `fx` is not an instance of FX.
     """
     # Check if the path is a valid file
     path = Path(path)
@@ -321,7 +322,11 @@ def load_fx_from_file(path: str | Path) -> FX:
     spec.loader.exec_module(module)
 
     # Fetch the fx function from the module
+    if not hasattr(module, "fx"):
+        raise ImportError(f"Module {path.resolve()} does not contain an 'fx'.")
     fx: FX = module.fx
+    if not isinstance(fx, FX):
+        raise TypeError(f"fx in {path.resolve()} is not an instance of FX.")
     return fx
 
 
