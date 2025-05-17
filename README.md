@@ -21,18 +21,16 @@ pip install .
 
 Minimal Example:
 ```python
+import hmac
 from vernamveil import FX, VernamVeil
 
 
 # Step 1: Define a custom key stream function; remember to store this securely
 def keystream_fn(i: int, seed: bytes) -> int:
-    # Simple but cryptographically unsafe fx; see below for a more complex example
-    b = seed[i % len(seed)]
-    result = (i ** 2 + i * b + b ** 2) * (i + 7)
-    result &= 0xFFFFFFFFFFFFFFFF
-    return result.to_bytes(8, "big")
+    # Simple cryptographically safe fx; see below for a more complex example
+    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
 
-fx = FX(keystream_fn, block_size=8, vectorise=False)
+fx = FX(keystream_fn, block_size=64, vectorise=False)
 
 
 # Step 2: Generate a random initial seed for encryption
