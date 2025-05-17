@@ -48,7 +48,7 @@ class TestHashUtils(unittest.TestCase):
                                 hash_numpy(i, seed, hash_name), fold_type=fold_type
                             )
 
-                            i_bytes = i.byteswap().tobytes()
+                            i_bytes = i.tobytes()
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):
@@ -89,7 +89,7 @@ class TestHashUtils(unittest.TestCase):
                                 hash_numpy(i, None, hash_name), fold_type=fold_type
                             )
 
-                            i_bytes = i.byteswap().tobytes()
+                            i_bytes = i.tobytes()
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):

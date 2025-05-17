@@ -106,10 +106,9 @@ def hash_numpy(
     n = len(i)
     out = np.empty((n, hash_size), dtype=np.uint8)
 
-    i_bytes = i.byteswap().view(np.uint8)
     if ffi is not None:
         method(
-            ffi.from_buffer(i_bytes),
+            ffi.cast("const uint64_t *", ffi.from_buffer(i)),
             n,
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
@@ -117,6 +116,7 @@ def hash_numpy(
         )
         return out
     else:
+        i_bytes = i.view(np.uint8)
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
             if seed is not None:
                 digest = hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()
