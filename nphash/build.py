@@ -142,7 +142,14 @@ def main() -> None:
     compiler = _detect_compiler()
     if sys.platform.startswith("linux"):
         libraries = ["ssl", "crypto", "gomp"]
-        extra_compile_args = ["-std=c99", "-fopenmp", "-O3", "-march=native", "-funroll-loops"]
+        extra_compile_args = [
+            "-std=c99",
+            "-fopenmp",
+            "-O3",
+            "-mtune=native",
+            "-march=native",
+            "-funroll-loops",
+        ]
         extra_link_args = ["-fopenmp"]
     elif sys.platform == "darwin":
         libraries = ["ssl", "crypto"]
@@ -162,7 +169,14 @@ def main() -> None:
         # For MSVC: /openmp, for MinGW: -fopenmp
         if "gcc" in compiler.lower():
             libraries = ["libssl", "libcrypto", "gomp"]
-            extra_compile_args = ["-std=c99", "-fopenmp", "-O3", "-march=native", "-funroll-loops"]
+            extra_compile_args = [
+                "-std=c99",
+                "-fopenmp",
+                "-O3",
+                "-mtune=native",
+                "-march=native",
+                "-funroll-loops",
+            ]
             extra_link_args = ["-fopenmp"]
         else:
             # MSVC
