@@ -405,7 +405,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is ~6x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled and an fx using `generate_hmac_fx()`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is 6x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled and an fx using `generate_hmac_fx()`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -424,15 +424,15 @@ openssl rand -hex 16 > iv.hex
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file hmac_fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
-_Time: 17.327s_
+_Time: 16.652s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136620352 --chunk-size 65536 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file hmac_fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
-_Time: 16.830s_
+_Time: 15.664s_
 
 ### 🏁 AES-256-CBC (OpenSSL)
 
@@ -452,7 +452,7 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 17.3 s      | 16.8 s      |
+| VernamVeil   | 16.7 s      | 15.7 s      |
 | AES-256-CBC  | 3.0 s       | 2.6 s       |
 
 > **Note:** VernamVeil is significantly slower than AES-256-CBC in this setup. This is expected, as VernamVeil is written in Python and designed for flexibility and experimentation, not for production-grade speed or safety.
