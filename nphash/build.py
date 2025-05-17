@@ -190,6 +190,10 @@ def main() -> None:
     if _supports_flag(compiler, "-fomit-frame-pointer"):
         extra_compile_args.append("-fomit-frame-pointer")
 
+    # Add explicit vectorization hints
+    if _supports_flag(compiler, "-ftree-vectorize"):
+        extra_compile_args.append("-ftree-vectorize")
+
     # Add C source
     c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
     c_source_blake2b = _get_c_source(c_path_blake2b, "BLAKE2b")
