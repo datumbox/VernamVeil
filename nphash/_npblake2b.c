@@ -45,10 +45,11 @@ void numpy_blake2b(const uint64_t* restrict arr, const size_t n, const char* res
             // Create a new digest context for each hash computation
             EVP_MD_CTX* ctx = EVP_MD_CTX_new();
             // Compute BLAKE2b hash of the uint64 block by chaining all hash steps
-            int ok = (ctx != NULL);
-            ok &= EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1;
-            ok &= EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1;
-            ok &= EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL) == 1;
+            if (ctx != NULL
+                && EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1
+                && EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1) {
+                EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL);
+            }
             EVP_MD_CTX_free(ctx);
         }
     }
