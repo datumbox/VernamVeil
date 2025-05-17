@@ -4,16 +4,16 @@ This module provides utilities for generating, loading, and checking the sanity 
 used by the VernamVeil cypher.
 """
 
-import hmac
 import importlib.util
 import secrets
+import tempfile
 import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Literal
 
 from vernamveil._cypher import _HAS_NUMPY, _Bytes, _Integer, np
-from vernamveil._hash_utils import _HAS_C_MODULE, hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE
 
 __all__ = [
     "FX",
@@ -142,7 +142,7 @@ import hmac
 from vernamveil import FX
 
 
-def keystream_fn(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> bytes:
     # Implements a standard HMAC-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
@@ -157,21 +157,15 @@ def keystream_fn(i: int, seed: bytes) -> int:
 fx = FX(keystream_fn, block_size={64 if hash_name == "blake2b" else 32}, vectorise={vectorise})
 """
 
-    # Execute the string to define fx in a local namespace
-    local_vars: dict[str, Any] = {}
-    exec(
-        function_code,
-        {
-            "FX": FX,
-            "hash_numpy": hash_numpy,
-            "hmac": hmac,
-            "np": np,
-        },
-        local_vars,
-    )
+    # Load the fx function from source code
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+        tmp.write(function_code)
+        tmp_path = Path(tmp.name)
+
+    fx = load_fx_from_file(tmp_path)
+    tmp_path.unlink(missing_ok=True)
 
     # Attach the code string directly to the function object for later reference
-    fx: FX = local_vars["fx"]
     fx.source_code = function_code
 
     return fx
@@ -255,7 +249,7 @@ def make_keystream_fn():
     # Create a closure to capture the weights and initialise them only once
     weights = [{", ".join(str(w) for w in weights)}]
 
-    def keystream_fn(i: int, seed: bytes) -> int:
+    def keystream_fn(i: int, seed: bytes) -> bytes:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
         # followed by a cryptographically secure HMAC-Blake2b output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
@@ -280,21 +274,15 @@ def make_keystream_fn():
 fx = FX(make_keystream_fn(), block_size=64, vectorise={vectorise})
 """
 
-    # Execute the string to define fx in a local namespace
-    local_vars: dict[str, Any] = {}
-    exec(
-        function_code,
-        {
-            "FX": FX,
-            "hash_numpy": hash_numpy,
-            "hmac": hmac,
-            "np": np,
-        },
-        local_vars,
-    )
+    # Load the fx function from source code
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+        tmp.write(function_code)
+        tmp_path = Path(tmp.name)
+
+    fx = load_fx_from_file(tmp_path)
+    tmp_path.unlink(missing_ok=True)
 
     # Attach the code string directly to the function object for later reference
-    fx: FX = local_vars["fx"]
     fx.source_code = function_code
 
     return fx
