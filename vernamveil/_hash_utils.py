@@ -114,7 +114,6 @@ def hash_numpy(
             len(seed) if seed is not None else 0,
             ffi.from_buffer(out.data),
         )
-        return out
     else:
         i_bytes = i.view(np.uint8)
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
@@ -123,4 +122,5 @@ def hash_numpy(
             else:
                 digest = method(i_bytes.data[j : j + 8]).digest()
             out[idx, :] = np.frombuffer(digest, dtype=np.uint8)
-        return out
+
+    return out
