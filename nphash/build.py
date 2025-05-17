@@ -181,18 +181,13 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
-    # Try to add -flto if supported
-    if _supports_flag(compiler, "-flto"):
-        extra_compile_args.append("-flto")
-        extra_link_args.append("-flto")
-
-    # Add -fomit-frame-pointer if supported
-    if _supports_flag(compiler, "-fomit-frame-pointer"):
-        extra_compile_args.append("-fomit-frame-pointer")
-
-    # Add explicit vectorization hints
-    if _supports_flag(compiler, "-ftree-vectorize"):
-        extra_compile_args.append("-ftree-vectorize")
+    # Try to add optional flags if supported
+    for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
+        if _supports_flag(compiler, flag):
+            if flag.startswith("-Wl,"):
+                extra_link_args.append(flag)
+            else:
+                extra_compile_args.append(flag)
 
     # Add C source
     c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
