@@ -43,6 +43,25 @@ class _Cypher(ABC):
         pass
 
     @abstractmethod
+    def _hmac(
+        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
+    ) -> bytes:
+        """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
+
+        If `msg_list` is provided, each element is sequentially fed into the HMAC as message data.
+        If `msg_list` is `None`, only the key is hashed.
+
+        Args:
+            key (bytes or bytearray or memoryview): The key for HMAC or Hash.
+            msg_list (list of bytes or memoryview, optional): List of message parts to hash with the key.
+                If None, only the key is hashed.
+
+        Returns:
+            bytes: The resulting hash digest.
+        """
+        pass
+
+    @abstractmethod
     def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
         """Encrypt a message.
 
@@ -205,7 +224,8 @@ class _Cypher(ABC):
         writer_thread.start()
 
         try:
-            block_delimiter, current_seed = self._generate_delimiter(seed)
+            current_seed = self._hmac(seed, [b"block_delimiter"])
+            block_delimiter, current_seed = self._generate_delimiter(current_seed)
             delimiter_size = len(block_delimiter)
 
             if mode == "encode":

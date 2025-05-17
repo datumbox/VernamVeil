@@ -126,17 +126,6 @@ class VernamVeil(_Cypher):
 
         return secrets.token_bytes(num_bytes)
 
-    @property
-    def _hmac_length(self) -> int:
-        """Return the length of the HMAC digest used in the VernamVeil class.
-
-        This is a constant value representing the size of the hash output from the BLAKE2b algorithm.
-
-        Returns:
-            int: The length of the HMAC digest in bytes.
-        """
-        return 64
-
     def _hmac(
         self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
     ) -> bytes:
@@ -524,7 +513,7 @@ class VernamVeil(_Cypher):
         if not isinstance(cyphertext, memoryview):
             cyphertext = memoryview(cyphertext)
 
-        HMAC_LENGTH = self._hmac_length
+        HMAC_LENGTH = 64
 
         # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
