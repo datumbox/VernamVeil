@@ -224,6 +224,7 @@ class _Cypher(ABC):
         writer_thread.start()
 
         try:
+            # Generate the initial block delimiter
             current_seed = self._hmac(seed, [b"block_delimiter"])
             block_delimiter, current_seed = self._generate_delimiter(current_seed)
             delimiter_size = len(block_delimiter)
