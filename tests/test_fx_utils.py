@@ -186,6 +186,33 @@ class TestFxUtils(unittest.TestCase):
         finally:
             tmp_path.unlink()
 
+    def test_load_fx_from_file_file_not_found(self):
+        """Test load_fx_from_file raises FileNotFoundError for missing file."""
+        with self.assertRaises(FileNotFoundError):
+            load_fx_from_file("nonexistent_fx_file.py")
+
+    def test_load_fx_from_file_invalid_python(self):
+        """Test load_fx_from_file raises SyntaxError for invalid Python code."""
+        with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
+            tmp.write("def keystream_fn(:\n    pass\n")  # Invalid syntax
+            tmp_path = Path(tmp.name)
+        try:
+            with self.assertRaises(SyntaxError):
+                load_fx_from_file(tmp_path)
+        finally:
+            tmp_path.unlink()
+
+    def test_load_fx_from_file_missing_function(self):
+        """Test load_fx_from_file raises ValueError if keystream_fn is missing."""
+        with tempfile.NamedTemporaryFile("w+", suffix=".py", delete=False) as tmp:
+            tmp.write("# no keystream_fn here\n")
+            tmp_path = Path(tmp.name)
+        try:
+            with self.assertRaises(AttributeError):
+                load_fx_from_file(tmp_path)
+        finally:
+            tmp_path.unlink()
+
     def test_scalar_fx_call_and_attributes(self):
         """Test FX scalar mode: __call__, block_size, vectorise, and source_code."""
 

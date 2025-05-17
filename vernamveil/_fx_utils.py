@@ -5,6 +5,7 @@ used by the VernamVeil cypher.
 """
 
 import hmac
+import importlib.util
 import secrets
 import warnings
 from collections import Counter
@@ -306,7 +307,7 @@ generate_default_fx = generate_polynomial_fx
 def load_fx_from_file(path: str | Path) -> FX:
     """Load the fx function from a Python file.
 
-    This uses `exec` internally to execute the file's code. Never use this with
+    This uses `importlib` internally to import the `fx`. Never use this with
     files from untrusted sources, as it can run arbitrary code on your system.
 
     Args:
@@ -314,12 +315,21 @@ def load_fx_from_file(path: str | Path) -> FX:
 
     Returns:
         FX: The loaded fx function.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ImportError: If the module could not be loaded.
     """
-    global_vars: dict[str, Any] = {}
-    path_obj = Path(path)
-    code = path_obj.read_text()
-    exec(code, global_vars)
-    fx: FX = global_vars["fx"]
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"File not found: {path.resolve()}")
+
+    spec: Any = importlib.util.spec_from_file_location("fx_module", path.resolve())
+    module = importlib.util.module_from_spec(spec)
+    if module is None:
+        raise ImportError(f"Could not load module from {path.resolve()}")
+    spec.loader.exec_module(module)
+    fx: FX = module.fx
     return fx
 
 

@@ -257,7 +257,7 @@ VernamVeil includes helper tools to make working with key stream functions easie
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
 - `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies HMAC (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
 - `generate_hmac_fx`: Generates a deterministic `fx` function that applies HMAC (using a specified hash algorithm, e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but HMAC is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.
-- `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. This uses `exec` internally to execute the file's code. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
+- `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. This uses `importlib` internally to import the `fx`. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
 
