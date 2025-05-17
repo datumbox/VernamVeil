@@ -74,14 +74,14 @@ jobs:
               dec_time_s=$(awk "BEGIN {printf \"%.3f\", $dec_time / 1000000000}")
               total_dec=$((total_dec + dec_time))
 
-              echo "  Run $i: encode time: ${enc_time_s} s, decode time: ${dec_time_s} s"
+              echo "  Run $i: encode time: ${enc_time_s}s, decode time: ${dec_time_s}s"
             done
             avg_enc=$(awk "BEGIN {printf \"%.3f\", $total_enc / $NUM_RUNS / 1000000000}")
             avg_dec=$(awk "BEGIN {printf \"%.3f\", $total_dec / $NUM_RUNS / 1000000000}")
             avg_total=$(awk "BEGIN {printf \"%.3f\", ($total_enc + $total_dec) / $NUM_RUNS / 1000000000}")
-            echo "Average encode time for ${size}mb: ${avg_enc} s"
-            echo "Average decode time for ${size}mb: ${avg_dec} s"
-            echo "Average total time for ${size}mb: ${avg_total} s"
+            echo "Average encode time for ${size}mb: ${avg_enc}s"
+            echo "Average decode time for ${size}mb: ${avg_dec}s"
+            echo "Average total time for ${size}mb: ${avg_total}s"
             echo "---------------------------------------------"
           done
         shell: bash

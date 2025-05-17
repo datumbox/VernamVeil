@@ -405,7 +405,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is 6x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled and an fx using `generate_hmac_fx()`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is significantly slower (about 6x) than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, and an fx using `generate_hmac_fx`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -420,7 +420,7 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🔒 VernamVeil
+### 🐢 VernamVeil (Vectorised + C extension + HMAC `fx`)
 
 **Encoding:**
 ```bash
@@ -434,7 +434,7 @@ vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file h
 ```
 _Time: 15.664s_
 
-### 🏁 AES-256-CBC (OpenSSL)
+### 🐇 AES-256-CBC (OpenSSL)
 
 **Encoding:**
 ```bash
@@ -454,8 +454,6 @@ _Time: 2.636s_
 |--------------|-------------|-------------|
 | VernamVeil   | 16.7 s      | 15.7 s      |
 | AES-256-CBC  | 3.0 s       | 2.6 s       |
-
-> **Note:** VernamVeil is significantly slower than AES-256-CBC in this setup. This is expected, as VernamVeil is written in Python and designed for flexibility and experimentation, not for production-grade speed or safety.
 
 ---
 
