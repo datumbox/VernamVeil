@@ -320,15 +320,19 @@ def load_fx_from_file(path: str | Path) -> FX:
         FileNotFoundError: If the file does not exist.
         ImportError: If the module could not be loaded.
     """
+    # Check if the path is a valid file
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"File not found: {path.resolve()}")
 
+    # Load the module using importlib
     spec: Any = importlib.util.spec_from_file_location("fx_module", path.resolve())
     module = importlib.util.module_from_spec(spec)
     if module is None:
         raise ImportError(f"Could not load module from {path.resolve()}")
     spec.loader.exec_module(module)
+
+    # Fetch the fx function from the module
     fx: FX = module.fx
     return fx
 
