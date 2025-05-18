@@ -64,7 +64,7 @@ def hash_numpy(
     seed: bytes | None = None,
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
-    """Compute a 2D uint8 NumPy array by hashing each index with an optional seed using a hashing algorithm.
+    """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
 
     If no seed is provided, the index is hashed directly.
 
