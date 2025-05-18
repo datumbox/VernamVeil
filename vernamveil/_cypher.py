@@ -43,16 +43,20 @@ class _Cypher(ABC):
         pass
 
     @abstractmethod
-    def _hmac(
-        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview]
+    def _hash(
+        self,
+        key: bytes | bytearray | memoryview,
+        msg_list: list[bytes | memoryview],
+        use_hmac: bool = False,
     ) -> bytes:
-        """Generate a hash-based message authentication code (HMAC).
+        """Generate a Keyed Hash or Hash-based Message Authentication Code (HMAC).
 
-        Each element in `msg_list` is sequentially fed into the HMAC as message data.
+        Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for HMAC.
+            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
             msg_list (list of bytes or memoryview): List of message parts to hash with the key.
+            use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
         Returns:
             bytes: The resulting hash digest.
@@ -223,7 +227,7 @@ class _Cypher(ABC):
 
         try:
             # Generate the initial block delimiter
-            current_seed = self._hmac(seed, [b"block_delimiter"])
+            current_seed = self._hash(seed, [b"block_delimiter"])
             block_delimiter, current_seed = self._generate_delimiter(current_seed)
             delimiter_size = len(block_delimiter)
 

@@ -48,7 +48,7 @@ def _find_obfuscated_decoy_message(
         delimiter, seed = cypher._generate_delimiter(fake_seed)
 
         # Generate shuffle seed for obfuscation
-        shuffle_seed = cypher._hmac(seed, [b"shuffle"])
+        shuffle_seed = cypher._hash(seed, [b"shuffle"])
 
         # Obfuscate the decoy message
         obfuscated = cypher._obfuscate(decoy_view, shuffle_seed, delimiter)

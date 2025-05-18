@@ -3,6 +3,7 @@
 Defines the main encryption class and core cryptographic operations.
 """
 
+import hashlib
 import hmac
 import math
 import secrets
@@ -125,24 +126,34 @@ class VernamVeil(_Cypher):
 
         return secrets.token_bytes(num_bytes)
 
-    def _hmac(
-        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview]
+    def _hash(
+        self,
+        key: bytes | bytearray | memoryview,
+        msg_list: list[bytes | memoryview],
+        use_hmac: bool = False,
     ) -> bytes:
-        """Generate a hash-based message authentication code (HMAC).
+        """Generate a Keyed Hash or Hash-based Message Authentication Code (HMAC).
 
-        Each element in `msg_list` is sequentially fed into the HMAC as message data.
+        Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for HMAC.
+            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
             msg_list (list of bytes or memoryview): List of message parts to hash with the key.
+            use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
         Returns:
             bytes: The resulting hash digest.
         """
-        hm = hmac.new(key, msg_list[0], digestmod="blake2b")
-        for i in range(1, len(msg_list)):
-            hm.update(msg_list[i])
-        return hm.digest()
+        if use_hmac:
+            hm = hmac.new(key, msg_list[0], digestmod="blake2b")
+            for i in range(1, len(msg_list)):
+                hm.update(msg_list[i])
+            return hm.digest()
+        else:
+            hasher = hashlib.blake2b(key=key)
+            for m in msg_list:
+                hasher.update(m)
+            return hasher.digest()
 
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
@@ -170,7 +181,7 @@ class VernamVeil(_Cypher):
         else:
             # Standard: generate hashes one by one
             hashes = [
-                int.from_bytes(self._hmac(seed, [i.to_bytes(8, "big")]), "big")
+                int.from_bytes(self._hash(seed, [i.to_bytes(8, "big")]), "big")
                 for i in range(1, total_count)
             ]
 
@@ -394,7 +405,7 @@ class VernamVeil(_Cypher):
                 seed_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
 
             # Refresh the seed differently for encoding and decoding
-            seed = self._hmac(seed, [seed_data])
+            seed = self._hash(seed, [seed_data])
 
         return result, seed
 
@@ -408,7 +419,7 @@ class VernamVeil(_Cypher):
             tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
         delimiter = self._generate_bytes(self._delimiter_size, seed)
-        seed = self._hmac(seed, [b"delimiter"])
+        seed = self._hash(seed, [b"delimiter"])
         return delimiter, seed
 
     def encode(
@@ -445,7 +456,7 @@ class VernamVeil(_Cypher):
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed, the timestamp and the message
             timestamp = time.time_ns().to_bytes(8, "big")
-            siv_hash = self._hmac(seed, [message, timestamp])
+            siv_hash = self._hash(seed, [message, timestamp])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
@@ -457,8 +468,7 @@ class VernamVeil(_Cypher):
             output = bytearray()
 
         # Produce a unique seed for Authenticated Encryption
-        # This ensures integrity by generating a MAC tag for the cyphertext
-        auth_seed = self._hmac(seed, [b"auth"]) if self._auth_encrypt else b""
+        auth_seed = self._hash(seed, [b"auth"]) if self._auth_encrypt else b""
 
         # Generate the delimiter
         delimiter, seed = self._generate_delimiter(seed)
@@ -471,7 +481,7 @@ class VernamVeil(_Cypher):
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during shuffling and to match the order
         # of operations with decode.
-        shuffle_seed = self._hmac(seed, [b"shuffle"])
+        shuffle_seed = self._hash(seed, [b"shuffle"])
 
         # Add noise and shuffle the message
         noisy = self._obfuscate(message, shuffle_seed, delimiter)
@@ -483,7 +493,7 @@ class VernamVeil(_Cypher):
         # Authenticated Encryption
         if self._auth_encrypt:
             # The tag is computed over the cyphertext and the configuration of the cypher
-            tag = self._hmac(auth_seed, [cyphertext, str(self).encode()])
+            tag = self._hash(auth_seed, [cyphertext, str(self).encode()], use_hmac=True)
             output.extend(tag)
 
         return output, last_seed
@@ -507,26 +517,26 @@ class VernamVeil(_Cypher):
         if not isinstance(cyphertext, memoryview):
             cyphertext = memoryview(cyphertext)
 
-        HMAC_LENGTH = 64
+        HASH_LENGTH = 64
 
         # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
         if self._siv_seed_initialisation:
-            # Split the data by taking the first HMAC_LENGTH bytes
-            encrypted_siv_hash, cyphertext = cyphertext[:HMAC_LENGTH], cyphertext[HMAC_LENGTH:]
+            # Split the data by taking the first HASH_LENGTH bytes
+            encrypted_siv_hash, cyphertext = cyphertext[:HASH_LENGTH], cyphertext[HASH_LENGTH:]
             # Decrypt the SIV hash (throw away) and evolve the seed with it
             _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            # Split the data by taking the last HMAC_LENGTH bytes
-            encrypted_data, expected_tag = cyphertext[:-HMAC_LENGTH], cyphertext[-HMAC_LENGTH:]
+            # Split the data by taking the last HASH_LENGTH bytes
+            encrypted_data, expected_tag = cyphertext[:-HASH_LENGTH], cyphertext[-HASH_LENGTH:]
 
             # Produce a unique seed for Authenticated Encryption
-            auth_seed = self._hmac(seed, [b"auth"])
+            auth_seed = self._hash(seed, [b"auth"])
 
             # Estimate the tag and compare it with the expected
-            tag = self._hmac(auth_seed, [encrypted_data, str(self).encode()])
+            tag = self._hash(auth_seed, [encrypted_data, str(self).encode()], use_hmac=True)
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:
@@ -537,7 +547,7 @@ class VernamVeil(_Cypher):
 
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during unshuffling and to match the order
         # of operations with encode.
-        shuffle_seed = self._hmac(seed, [b"shuffle"])
+        shuffle_seed = self._hash(seed, [b"shuffle"])
 
         # Decrypt the noisy message
         decrypted, last_seed = self._xor_with_key(encrypted_data, seed, False)
