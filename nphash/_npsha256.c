@@ -22,12 +22,13 @@ void numpy_sha256(const uint64_t* restrict arr, const size_t n, const char* rest
     const bool seeded = seed != NULL && seedlen > 0;
     const int seedlen_int = (int)seedlen;
     const int n_int = (int)n;
+    int i;
 
     #ifdef _OPENMP
     // Parallelise the loop with OpenMP to use multiple CPU cores
     #pragma omp parallel for schedule(static)
     #endif
-    for (int i = 0; i < n_int; ++i) {
+    for (i = 0; i < n_int; ++i) {
         // Create a new digest context for each hash computation; ensure thread safety
         EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
