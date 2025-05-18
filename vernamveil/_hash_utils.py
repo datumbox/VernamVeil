@@ -4,7 +4,6 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
-import hmac
 from typing import Literal
 
 try:
@@ -65,17 +64,17 @@ def hash_numpy(
     seed: bytes | None = None,
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
-    """Compute a 2D uint8 NumPy array by HMAC-ing or hashing each index with a seed using a hashing algorithm.
+    """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
 
     If no seed is provided, the index is hashed directly.
 
     This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation
-    (with OpenMP and OpenSSL) for efficient, parallelised HMAC hashing from Python. If the C module isn't available
+    (with OpenMP and OpenSSL) for efficient, parallelised hashing from Python. If the C module isn't available
     a NumPy fallback is used.
 
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
-        seed (bytes, optional): The seed bytes used as the HMAC key. If None, hashes only the index.
+        seed (bytes, optional): The seed bytes are prepended to the index. If None, hashes only the index.
         hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
 
     Returns:
@@ -117,10 +116,10 @@ def hash_numpy(
     else:
         i_bytes = i.view(np.uint8)
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
+            hasher = method()
             if seed is not None:
-                digest = hmac.new(seed, i_bytes.data[j : j + 8], digestmod=method).digest()
-            else:
-                digest = method(i_bytes.data[j : j + 8]).digest()
-            out[idx, :] = np.frombuffer(digest, dtype=np.uint8)
+                hasher.update(seed)
+            hasher.update(i_bytes.data[j : j + 8])
+            out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
 
     return out

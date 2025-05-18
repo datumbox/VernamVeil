@@ -1,5 +1,4 @@
 import hashlib
-import hmac
 import secrets
 import unittest
 from unittest.mock import patch
@@ -52,9 +51,9 @@ class TestHashUtils(unittest.TestCase):
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):
-                                digest = hmac.new(
-                                    seed, i_bytes[j : j + 8], digestmod=method
-                                ).digest()
+                                hasher = method(seed)
+                                hasher.update(i_bytes[j : j + 8])
+                                digest = hasher.digest()
                                 if fold_type == "full":
                                     return int.from_bytes(digest, "big") % 2**64
                                 else:  # "view"

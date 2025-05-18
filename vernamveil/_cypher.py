@@ -44,17 +44,15 @@ class _Cypher(ABC):
 
     @abstractmethod
     def _hmac(
-        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
+        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview]
     ) -> bytes:
-        """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
+        """Generate a hash-based message authentication code (HMAC).
 
-        If `msg_list` is provided, each element is sequentially fed into the HMAC as message data.
-        If `msg_list` is `None`, only the key is hashed.
+        Each element in `msg_list` is sequentially fed into the HMAC as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for HMAC or Hash.
-            msg_list (list of bytes or memoryview, optional): List of message parts to hash with the key.
-                If None, only the key is hashed.
+            key (bytes or bytearray or memoryview): The key for HMAC.
+            msg_list (list of bytes or memoryview): List of message parts to hash with the key.
 
         Returns:
             bytes: The resulting hash digest.
