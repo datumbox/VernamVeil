@@ -4,6 +4,7 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
+import hmac
 from typing import Literal
 
 try:
@@ -114,12 +115,19 @@ def hash_numpy(
             ffi.from_buffer(out.data),
         )
     else:
-        i_bytes = i.view(np.uint8)
+        i_bytes = i.view(np.uint8).data
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
-            hasher = method()
-            if seed is not None:
-                hasher.update(seed)
-            hasher.update(i_bytes.data[j : j + 8])
-            out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
+            if hash_name == "blake2b":
+                hasher = method()
+                if seed is not None:
+                    hasher.update(seed)
+                hasher.update(i_bytes[j : j + 8])
+                digest = hasher.digest()
+            elif hash_name == "sha256":
+                if seed is not None:  # Not safe for seeded hashes, use HMAC
+                    digest = hmac.new(seed, i_bytes[j : j + 8], digestmod=method).digest()
+                else:
+                    digest = method(i_bytes[j : j + 8]).digest()
+            out[idx, :] = np.frombuffer(digest, dtype=np.uint8)
 
     return out

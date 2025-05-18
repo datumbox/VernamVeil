@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import secrets
 import unittest
 from unittest.mock import patch
@@ -51,9 +52,14 @@ class TestHashUtils(unittest.TestCase):
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):
-                                hasher = method(seed)
-                                hasher.update(i_bytes[j : j + 8])
-                                digest = hasher.digest()
+                                if hash_name == "blake2b":
+                                    hasher = method(seed)
+                                    hasher.update(i_bytes[j : j + 8])
+                                    digest = hasher.digest()
+                                elif hash_name == "sha256":  # Not safe for seeded hashes, use HMAC
+                                    digest = hmac.new(
+                                        seed, i_bytes[j : j + 8], digestmod=method
+                                    ).digest()
                                 if fold_type == "full":
                                     return int.from_bytes(digest, "big") % 2**64
                                 else:  # "view"

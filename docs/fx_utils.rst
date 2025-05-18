@@ -14,6 +14,6 @@ Fx Utilities
 
    Alias for :func:`vernamveil.generate_polynomial_fx`.
 
-.. autofunction:: generate_keyed_hash_fx
+.. autofunction:: generate_hash_prf_fx
 .. autofunction:: generate_polynomial_fx
 .. autofunction:: load_fx_from_file

@@ -19,7 +19,7 @@ __all__ = [
     "FX",
     "check_fx_sanity",
     "generate_default_fx",
-    "generate_keyed_hash_fx",
+    "generate_hash_prf_fx",
     "generate_polynomial_fx",
     "load_fx_from_file",
 ]
@@ -96,18 +96,18 @@ class FX:
         return self.keystream_fn(i, seed)
 
 
-def generate_keyed_hash_fx(
+def generate_hash_prf_fx(
     hash_name: Literal["blake2b", "sha256"] = "blake2b",
     vectorise: bool = False,
 ) -> FX:
-    """Generate a standard keyed hash-based pseudorandom function (PRF) using Blake2b or SHA256.
+    """Generate a standard hash-based pseudorandom function (PRF) using Blake2b or SHA256.
 
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        FX: A callable that returns pseudo-random bytes from keyed hash-based function.
+        FX: A callable that returns pseudo-random bytes from hash-based function.
 
     Raises:
         ValueError: If `hash_name` is not "blake2b" or "sha256".
@@ -121,7 +121,7 @@ def generate_keyed_hash_fx(
     if not isinstance(vectorise, bool):
         raise TypeError("vectorise must be a boolean.")
 
-    # Dynamically generate the function code for scalar or vectorised keyed hash-based PRF
+    # Dynamically generate the function code for scalar or vectorised hash-based PRF
     if vectorise:
         function_code = f"""
 import numpy as np
@@ -129,11 +129,11 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
+    # Implements a standard hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
-    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the hash.
 
-    # Cryptographic keyed hash using {hash_name}
+    # Cryptographic hash using {hash_name}
     return hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
 """
     else:
@@ -143,11 +143,11 @@ from vernamveil import FX
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
-    # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
+    # Implements a standard hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
-    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the hash.
 
-    # Cryptographic keyed hash using {hash_name}
+    # Cryptographic hash using {hash_name}
     hasher = hashlib.new(hash_name, key=seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
@@ -226,8 +226,8 @@ def make_keystream_fn():
 
     def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
-        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
+        # followed by a cryptographically secure hash (Blake2b) output.
+        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
         # Transform index i using a polynomial function to introduce uniqueness on fx
@@ -236,7 +236,7 @@ def make_keystream_fn():
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
 
-        # Cryptographic keyed hash using Blake2b
+        # Cryptographic hash using Blake2b
         return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return keystream_fn
@@ -253,8 +253,8 @@ def make_keystream_fn():
 
     def keystream_fn(i: int, seed: bytes) -> bytes:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
-        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
+        # followed by a cryptographically secure hash (Blake2b) output.
+        # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
         # Transform index i using a polynomial function to introduce uniqueness on fx
@@ -264,7 +264,7 @@ def make_keystream_fn():
             result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-        # Cryptographic keyed hash using Blake2b
+        # Cryptographic hash using Blake2b
         hasher = hashlib.blake2b(seed)
         hasher.update(i.to_bytes(8, "big"))
         return hasher.digest()
