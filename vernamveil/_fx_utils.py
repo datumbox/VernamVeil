@@ -148,7 +148,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Cryptographic keyed hash using {hash_name}
-    hasher = hashlib.new(hash_name, seed)
+    hasher = hashlib.new(hash_name, key=seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
