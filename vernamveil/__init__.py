@@ -7,7 +7,7 @@ from vernamveil._fx_utils import (
     FX,
     check_fx_sanity,
     generate_default_fx,
-    generate_hmac_fx,
+    generate_keyed_hash_fx,
     generate_polynomial_fx,
     load_fx_from_file,
 )
@@ -29,7 +29,7 @@ __all__ = [
     "fold_bytes_to_uint64",
     "forge_plausible_fx",
     "generate_default_fx",
-    "generate_hmac_fx",
+    "generate_keyed_hash_fx",
     "generate_polynomial_fx",
     "hash_numpy",
     "load_fx_from_file",

@@ -127,28 +127,23 @@ class VernamVeil(_Cypher):
         return secrets.token_bytes(num_bytes)
 
     def _hmac(
-        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview] | None = None
+        self, key: bytes | bytearray | memoryview, msg_list: list[bytes | memoryview]
     ) -> bytes:
-        """Generate a hash-based message authentication code (HMAC) using the Blake2b algorithm.
+        """Generate a hash-based message authentication code (HMAC).
 
-        If `msg_list` is provided, each element is sequentially fed into the HMAC as message data.
-        If `msg_list` is `None`, only the key is hashed.
+        Each element in `msg_list` is sequentially fed into the HMAC as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for HMAC or Hash.
-            msg_list (list of bytes or memoryview, optional): List of message parts to hash with the key.
-                If None, only the key is hashed.
+            key (bytes or bytearray or memoryview): The key for HMAC.
+            msg_list (list of bytes or memoryview): List of message parts to hash with the key.
 
         Returns:
             bytes: The resulting hash digest.
         """
-        if msg_list:
-            hm = hmac.new(key, msg_list.pop(0), digestmod="blake2b")
-            for m in msg_list:
-                hm.update(m)
-            return hm.digest()
-        else:
-            return hashlib.blake2b(key).digest()
+        hm = hmac.new(key, msg_list[0], digestmod="blake2b")
+        for i in range(1, len(msg_list)):
+            hm.update(msg_list[i])
+        return hm.digest()
 
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int

@@ -66,11 +66,13 @@ def keystream_fn(i, seed):
 fx = FX(keystream_fn, block_size=8, vectorise=False)
 """
         self.fx_strong_code = """
-import hmac
+import hashlib
 from vernamveil import FX
 
 def keystream_fn(i, seed):
-    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
+    hasher = hashlib.blake2b(seed)
+    hasher.update(i.to_bytes(8, "big"))
+    return hasher.digest()
 
 fx = FX(keystream_fn, block_size=64, vectorise=False)
 """
