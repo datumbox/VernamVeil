@@ -3,7 +3,6 @@
 Defines the main encryption class and core cryptographic operations.
 """
 
-import hashlib
 import hmac
 import math
 import secrets

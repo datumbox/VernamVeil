@@ -21,14 +21,16 @@ pip install .
 
 Minimal Example:
 ```python
-import hmac
+import hashlib
 from vernamveil import FX, VernamVeil
 
 
 # Step 1: Define a custom key stream function; remember to store this securely
 def keystream_fn(i: int, seed: bytes) -> int:
     # Simple cryptographically safe fx; see below for a more complex example
-    return hmac.new(seed, i.to_bytes(8, "big"), digestmod="blake2b").digest()
+    hasher = hashlib.blake2b(seed)
+    hasher.update(i.to_bytes(8, "big"))
+    return hasher.digest()
 
 fx = FX(keystream_fn, block_size=64, vectorise=False)
 
@@ -167,23 +169,23 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
 
 **Recommended approach:**  
-Apply a unique, high-entropy transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure method such as HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.
+Apply a unique, high-entropy transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure keyed hash method. This ensures your keystream is both unpredictable and securely bound to your secret.
 
 **Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
 
 Below we provide some example `fx` methods to illustrate these principles in practice:
 
-### 🧠 A more robust, HMAC-based scalar `fx` (not cryptographically standard)
+### 🧠 A more robust, Keyed Hash-based scalar `fx` (not cryptographically standard)
 
 ```python
-import hmac
+import hashlib
 from vernamveil import FX
 
 
 def keystream_fn(i: int, seed: bytes) -> int:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output.
-    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+    # followed by a cryptographically secure keyed hash (Blake2b) output.
+    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
 
@@ -194,8 +196,10 @@ def keystream_fn(i: int, seed: bytes) -> int:
         result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
         current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-    # Cryptographic HMAC using Blake2b
-    return hmac.new(seed, result.to_bytes(8, "big"), digestmod="blake2b").digest()
+    # Cryptographic keyed hash using Blake2b
+    hasher = hashlib.blake2b(seed)
+    hasher.update(i.to_bytes(8, "big"))
+    return hasher.digest()
 
 
 fx = FX(keystream_fn, block_size=64, vectorise=False)
@@ -210,8 +214,8 @@ from vernamveil import FX, hash_numpy
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure HMAC-Blake2b output.
-    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the HMAC.
+    # followed by a cryptographically secure keyed hash (Blake2b) output.
+    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = np.array([24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
 
@@ -222,14 +226,14 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Weighted sum (polynomial evaluation)
     result = np.dot(powers, weights)
 
-    # Cryptographic HMAC using Blake2b
+    # Cryptographic keyed hash using Blake2b
     return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
 fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
-### 🛡️ A cryptographically strong HMAC-SHA256 `fx` (vectorised & C-accelerated)
+### 🛡️ A cryptographically strong Keyed Hash SHA256 `fx` (vectorised & C-accelerated)
 
 ```python
 import numpy as np
@@ -237,11 +241,11 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a standard HMAC-based pseudorandom function (PRF) using sha256.
+    # Implements a standard keyed hash-based pseudorandom function (PRF) using sha256.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
-    # Security relies entirely on the secrecy of the seed and the cryptographic strength of HMAC.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic HMAC using sha256
+    # Cryptographic keyed hash using sha256
     return hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
 
 
@@ -255,8 +259,8 @@ fx = FX(keystream_fn, block_size=64, vectorise=True)
 VernamVeil includes helper tools to make working with key stream functions easier:
 
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
-- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies HMAC (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
-- `generate_hmac_fx`: Generates a deterministic `fx` function that applies HMAC (using a specified hash algorithm, e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but HMAC is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.
+- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
+- `generate_keyed_hash_fx`: Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.
 - `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. This uses `importlib` internally to import the `fx`. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
@@ -379,7 +383,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 - **Compact Implementation**: The core algorithm implementation is about 200 lines of code, excluding comments, documentation and empty lines.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
-- **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 estimations for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
+- **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b and SHA-256 keyed hashing for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
@@ -395,7 +399,7 @@ pip install .[dev,numpy,cffi]
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
 
 **To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
@@ -403,7 +407,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is significantly slower (about 5.5x) than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, and an fx using `generate_hmac_fx`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is significantly slower (about 5.5x) than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, and a fx using `generate_keyed_hash_fx`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -418,17 +422,17 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🐢 VernamVeil (Vectorised + C extension + HMAC `fx`)
+### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx`)
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file hmac_fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file keyed_hash_fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
 _Time: 16.528s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file hmac_fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file keyed_hash_fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
 _Time: 15.511s_
 

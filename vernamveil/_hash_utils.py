@@ -119,7 +119,7 @@ def hash_numpy(
             hasher = method()
             if seed is not None:
                 hasher.update(seed)
-            hasher.update(i_bytes.data[j: j + 8])
+            hasher.update(i_bytes.data[j : j + 8])
             out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
 
     return out
