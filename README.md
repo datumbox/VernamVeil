@@ -233,7 +233,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
 fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
-### 🛡️ A cryptographically strong Keyed Hash SHA256 `fx` (vectorised & C-accelerated)
+### 🛡️ A cryptographically strong Keyed Hash Blake2b `fx` (vectorised & C-accelerated)
 
 ```python
 import numpy as np
@@ -241,12 +241,12 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a standard keyed hash-based pseudorandom function (PRF) using sha256.
+    # Implements a standard keyed hash-based pseudorandom function (PRF) using blake2b.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic keyed hash using sha256
-    return hash_numpy(i, seed, "sha256")  # uses C module if available, else NumPy fallback
+    # Cryptographic keyed hash using blake2b
+    return hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
 fx = FX(keystream_fn, block_size=64, vectorise=True)
