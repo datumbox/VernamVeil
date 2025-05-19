@@ -138,7 +138,10 @@ def forge_plausible_fx(
     # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
     block_size = cypher._fx.block_size
     delimiter_len = math.ceil(len(delimiter) / block_size) * block_size
-    delimiter_bytes = delimiter.tobytes().ljust(delimiter_len, b"\x00")
+    delimiter_bytes = delimiter.tobytes()
+    padding_len = delimiter_len - len(delimiter)
+    if padding_len > 0:
+        delimiter_bytes += VernamVeil.get_initial_seed(num_bytes=padding_len)
 
     # 4. Prepend the delimiter bytes to the keystream_values
     keystream_values = [
@@ -150,11 +153,14 @@ def forge_plausible_fx(
     # the chunk_size is not a multiple of block_size. This can lead to the fx sampling the wrong bytes.
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
         for block_start in range(start, end, block_size):
-            # Pad to block_size bytes if needed
-            ct_block = cyphertext[block_start : block_start + block_size].ljust(block_size, b"\x00")
-            obf_block = obfuscated[block_start : block_start + block_size].ljust(
-                block_size, b"\x00"
-            )
+            ct_block = cyphertext[block_start : block_start + block_size]
+            obf_block = obfuscated[block_start : block_start + block_size]
+
+            # Pad to block_size bytes if needed using random bytes
+            padding_len = block_size - len(ct_block)
+            if padding_len > 0:
+                ct_block += VernamVeil.get_initial_seed(num_bytes=padding_len)
+                obf_block += VernamVeil.get_initial_seed(num_bytes=padding_len)
 
             ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
             keystream_values.append(ks)
