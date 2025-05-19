@@ -9,6 +9,12 @@ Fx Utilities
    :inherited-members:
    :show-inheritance:
 
+.. autoclass:: OTPFX
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :show-inheritance:
+
 .. autofunction:: check_fx_sanity
 .. py:function:: generate_default_fx(*args, **kwargs)
 
