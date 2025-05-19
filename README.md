@@ -266,6 +266,7 @@ Example:
 ```python
 from vernamveil import OTPFX, VernamVeil
 
+
 def get_true_random_bytes(n: int) -> bytes:
     # Replace with a function that returns n bytes from a true random source.
     # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, dice, etc.)
@@ -297,6 +298,10 @@ decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
 
 **Note:** The keystream must be truly random, at least as long as the message, and never reused. Reusing a keystream completely breaks the security of OTP encryption.
 
+> **Warning:**  
+> Do **not** use or test your `OTPFX` instance (e.g., by calling it or running sanity checks) before actual encryption or decryption.  
+> Any use will consume part of the keystream, which cannot be recovered, and will cause decryption to fail.  
+> Always use a fresh, unused `OTPFX` instance for each encryption or decryption operation.
 
 ---
 
@@ -376,7 +381,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 - **Auto-generate `fx.py` and `seed.bin`** during encoding if not provided; these files are saved in the current working directory.
 - **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.bin` for both encoding and decoding.
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more. Set `--verbosity info` to see progress information (off by default).
-- **Sanity checks**: Optionally verify that your `fx` function is suitable for cryptographic use.
+- **Sanity checks**: Optionally verify that your `fx` function is suitable for cryptographic use. These checks are automatically skipped for `OTPFX` to avoid consuming the keystream.
 
 ### 💻 Usage
 
