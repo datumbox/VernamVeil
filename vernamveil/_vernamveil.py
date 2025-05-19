@@ -397,15 +397,15 @@ class VernamVeil(_Cypher):
             # XOR the chunk with the key
             if self._fx.vectorise:
                 np.bitwise_xor(arr[start:end], keystream, out=processed[start:end])
-                seed_data = (arr[start:end] if is_encode else processed[start:end]).data
+                plaintext_data = (arr[start:end] if is_encode else processed[start:end]).data
             else:
                 for i in range(chunk_len):
                     pos = start + i
                     processed[pos] = arr[pos] ^ keystream[i]
-                seed_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
+                plaintext_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
 
             # Refresh the seed differently for encoding and decoding
-            seed = self._hash(seed, [seed_data])
+            seed = self._hash(seed, [plaintext_data])
 
         return result, seed
 

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import FX, OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._vernamveil import VernamVeil
 
 try:
     import numpy as np
@@ -148,6 +149,17 @@ class TestFxUtils(unittest.TestCase):
     def test_check_default_fx_sanity_vectorised(self):
         """Test check_fx_sanity passes for a good vectorised default fx."""
         fx = generate_default_fx(vectorise=True)
+        with warnings.catch_warnings(record=True) as w:
+            passed = check_fx_sanity(fx, self.seed, 10000)
+        self.assertTrue(passed)
+        self.assertEqual(len(w), 0)
+
+    def test_check_otpfx_sanity(self):
+        """Test check_fx_sanity passes for a valid OTPFX instance."""
+        block_size = 64
+        num_blocks = 21000
+        keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for i in range(num_blocks)]
+        fx = OTPFX(keystream, block_size, vectorise=False)
         with warnings.catch_warnings(record=True) as w:
             passed = check_fx_sanity(fx, self.seed, 10000)
         self.assertTrue(passed)

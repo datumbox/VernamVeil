@@ -12,7 +12,7 @@ from typing import IO, Callable, cast
 
 from vernamveil import __version__
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._fx_utils import check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._fx_utils import OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
 from vernamveil._hash_utils import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
@@ -268,7 +268,13 @@ def main(args: list[str] | None = None) -> None:
 
     # Optionally check fx and seed sanity
     if parsed_args.command == "encode" and parsed_args.check_sanity:
-        if not check_fx_sanity(fx, seed):
+        if isinstance(fx, OTPFX):
+            _vprint(
+                "Warning: fx is an OTPFX. Skipping sanity check to avoid consuming the keystream.",
+                "warning",
+                verbosity,
+            )
+        elif not check_fx_sanity(fx, seed, num_samples=10000):
             _vprint(
                 "Error: fx sanity check failed. Check your fx function for correctness.",
                 "error",

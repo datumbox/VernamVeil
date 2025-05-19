@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from vernamveil._cli import main
 from vernamveil._fx_utils import OTPFX
+from vernamveil._vernamveil import VernamVeil
 
 
 class _UnclosableBytesIO(BytesIO):
@@ -450,6 +451,27 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             self._encode(self.infile, self.encfile, extra_args=["--check-sanity"])
         self.assertTrue(self.encfile.exists())
 
+    def test_encode_with_otpfx_skips_sanity_check_and_warns(self):
+        """Test that encoding with OTPFX and --check-sanity skips the check and prints a warning."""
+        with self._in_tempdir():
+            block_size = 64
+            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(1000)]
+            fx_path = self._create_fx(
+                code=OTPFX(keystream, block_size=block_size, vectorise=False).source_code
+            )
+            seed_path = self._create_seed(content=b"long_and_unsecure_seed")
+            stderr = StringIO()
+            with patch("sys.stderr", stderr):
+                self._encode(
+                    self.infile,
+                    self.encfile,
+                    fx_file=fx_path,
+                    seed_file=seed_path,
+                    extra_args=["--check-sanity"],
+                )
+            self.assertIn("Warning: fx is an OTPFX.", stderr.getvalue())
+            self.assertTrue(self.encfile.exists())
+
     def test_encode_with_check_sanity_fails_fx(self):
         """Test that sanity check fails if fx does not depend on seed."""
         stderr = StringIO()
@@ -775,9 +797,9 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
     def test_encode_decode_with_otpfx(self):
         """Test encoding and decoding using a custom OTPFX keystream."""
         with self._in_tempdir():
-            # Generate a random keystream (simulate with os.urandom for test)
+            # Generate a random keystream
             block_size = 64
-            keystream = [os.urandom(block_size) for _ in range(100)]
+            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)]
 
             # Write OTPFX definition to fx.py
             fx_path = self._create_fx(
