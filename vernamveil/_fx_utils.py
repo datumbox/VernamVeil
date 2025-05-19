@@ -207,7 +207,7 @@ def generate_keyed_hash_fx(
 ) -> FX:
     """Generate a standard keyed hash-based pseudorandom function (PRF) using Blake2b or SHA256.
 
-    This is the recommended secure default `fx` for VernamVeil cypher.
+    This is the recommended secure default `fx` for the VernamVeil cypher.
 
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
@@ -236,7 +236,7 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # The secure default `fx` of VernamVeil cypher.
+    # The secure default `fx` of the VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
@@ -251,7 +251,7 @@ from vernamveil import FX
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
-    # The secure default `fx` of VernamVeil cypher.
+    # The secure default `fx` of the VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
@@ -340,7 +340,7 @@ def make_keystream_fn():
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
         # Transform index i using a polynomial function to introduce uniqueness on fx
-        # Compute all powers: shape (len(i), degree)
+        # Compute all powers: shape (len(i), degree + 1)
         powers = np.power.outer(i, degrees)
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
