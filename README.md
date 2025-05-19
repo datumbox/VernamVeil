@@ -162,7 +162,7 @@ cypher.process_file("decode", "encrypted.dat", "decrypted.txt", initial_seed)
 
 When creating your own key stream function (`fx`), it is essential to follow best practices to ensure the unpredictability and security of your cypher. Poorly designed functions can introduce vulnerabilities, bias, or even make the encryption reversible by attackers. Use the following guidelines:
 
-- **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible.
+- **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible. Use a standard cryptographic pseudorandom function (PRF) before returning the output.
 - **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
 - **Type Correctness**: The function must return a `bytes` or a NumPy `uint8` array in vectorised mode.
 - **Determinism**: `fx` must be deterministic for the same inputs. Do not use external state or randomness inside your function.
@@ -170,7 +170,7 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
 
 **Recommended approach:**  
-Apply a unique, high-entropy transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure keyed hash method or HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.
+Apply a unique transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure keyed hash method or HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.
 
 **Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
 
