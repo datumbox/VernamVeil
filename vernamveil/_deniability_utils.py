@@ -137,10 +137,10 @@ def forge_plausible_fx(
 
     # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
     block_size = cypher._fx.block_size
-    actual_delimiter_len = len(delimiter)
-    delimiter_len = math.ceil(actual_delimiter_len / block_size) * block_size
+    original_delimiter_size = cypher._delimiter_size
+    delimiter_len = math.ceil(original_delimiter_size / block_size) * block_size
     delimiter_bytes = delimiter.tobytes()
-    padding_len = delimiter_len - actual_delimiter_len
+    padding_len = delimiter_len - original_delimiter_size
     if padding_len > 0:
         delimiter_bytes += VernamVeil.get_initial_seed(num_bytes=padding_len)
 
