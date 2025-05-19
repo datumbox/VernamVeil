@@ -179,7 +179,7 @@ class OTPFX(FX):
         """Generates the next value in the keystream.
 
         Args:
-            i (_Integer): the index of the bytes in the message.
+            i (_Integer): The index or array of indices to generate the keystream for.
             _ (bytes): Unused parameter for compatibility.
 
         Returns:

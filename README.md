@@ -51,7 +51,7 @@ decrypted, _ = cypher.decode(encrypted, initial_seed)
 **VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
 Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray[np.uint64], seed: bytes) -> bytes | np.ndarray[np.uint8]`:
-- `i`: the index of the bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations.
+- `i`: the index of the block of bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations.
 - `seed`: a byte string that provides context and state; should be kept secret.
 - **Output**: bytes or uint8 NumPy array representing the key stream values.
 
