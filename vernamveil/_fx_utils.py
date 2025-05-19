@@ -147,7 +147,7 @@ class OTPFX(FX):
         decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
 
     .. warning::
-        Only reset `fx.position` to 0 for decryption of the same ciphertext. Never reuse the keystream for a new message.
+        Only reset `fx.position` to 0 for decryption of the same cyphertext. Never reuse the keystream for a new message.
 
     """
 
