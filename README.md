@@ -242,6 +242,7 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    # The secure default `fx` of VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using blake2b.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
@@ -309,8 +310,8 @@ VernamVeil includes helper tools to make working with key stream functions easie
 
 - `OTPFX`: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`. 
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
-- `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
-- `generate_keyed_hash_fx`: Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.
+- `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default `fx` for VernamVeil cypher.
+- `generate_polynomial_fx`: Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
 - `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. This uses `importlib` internally to import the `fx`. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
@@ -476,13 +477,13 @@ openssl rand -hex 16 > iv.hex
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file keyed_hash_fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
 _Time: 9.841s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file keyed_hash_fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
 ```
 _Time: 8.408s_
 

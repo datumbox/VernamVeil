@@ -207,6 +207,8 @@ def generate_keyed_hash_fx(
 ) -> FX:
     """Generate a standard keyed hash-based pseudorandom function (PRF) using Blake2b or SHA256.
 
+    This is the recommended secure default `fx` for VernamVeil cypher.
+
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
@@ -234,6 +236,7 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    # The secure default `fx` of VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
@@ -248,12 +251,13 @@ from vernamveil import FX
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
+    # The secure default `fx` of VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Cryptographic keyed hash using {hash_name}
-    hasher = hashlib.new(hash_name, key=seed)
+    hasher = hashlib.new("{hash_name}", key=seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
@@ -398,7 +402,7 @@ fx = FX(make_keystream_fn(), block_size=64, vectorise={vectorise})
 
 
 # Default function for key stream generation
-generate_default_fx = generate_polynomial_fx
+generate_default_fx = generate_keyed_hash_fx
 
 
 def load_fx_from_file(path: str | Path) -> FX:

@@ -18,7 +18,7 @@ Fx Utilities
 .. autofunction:: check_fx_sanity
 .. py:function:: generate_default_fx(*args, **kwargs)
 
-   Alias for :func:`vernamveil.generate_polynomial_fx`.
+   Alias for :func:`vernamveil.generate_keyed_hash_fx`.
 
 .. autofunction:: generate_keyed_hash_fx
 .. autofunction:: generate_polynomial_fx
