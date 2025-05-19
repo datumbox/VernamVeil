@@ -1,6 +1,6 @@
 # Building the `nphash` C Library with `build.py`
 
-This project optionally uses a C extension called `nphash` to efficiently compute BLAKE2b and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations.
+This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations.
 
 The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
@@ -70,7 +70,14 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 
 ## Usage
 
-After building, you can import and use the extension from Python code:
+To confirm that the C extension is compiled and being used by VernamVeil, you can check the internal boolean `_HAS_C_MODULE`:
+
+```python
+from vernamveil._hash_utils import _HAS_C_MODULE
+# True if the C extension is available and in use, False otherwise.
+```
+
+After building, you can use the extension from Python code:
 
 ```python
 from vernamveil import hash_numpy
