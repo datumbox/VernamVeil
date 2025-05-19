@@ -137,9 +137,10 @@ def forge_plausible_fx(
 
     # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
     block_size = cypher._fx.block_size
-    delimiter_len = math.ceil(len(delimiter) / block_size) * block_size
+    actual_delimiter_len = len(delimiter)
+    delimiter_len = math.ceil(actual_delimiter_len / block_size) * block_size
     delimiter_bytes = delimiter.tobytes()
-    padding_len = delimiter_len - len(delimiter)
+    padding_len = delimiter_len - actual_delimiter_len
     if padding_len > 0:
         delimiter_bytes += VernamVeil.get_initial_seed(num_bytes=padding_len)
 
@@ -155,14 +156,13 @@ def forge_plausible_fx(
         for block_start in range(start, end, block_size):
             ct_block = cyphertext[block_start : block_start + block_size]
             obf_block = obfuscated[block_start : block_start + block_size]
+            ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
 
             # Pad to block_size bytes if needed using random bytes
-            padding_len = block_size - len(ct_block)
+            padding_len = block_size - len(ks)
             if padding_len > 0:
-                ct_block += VernamVeil.get_initial_seed(num_bytes=padding_len)
-                obf_block += VernamVeil.get_initial_seed(num_bytes=padding_len)
+                ks += VernamVeil.get_initial_seed(num_bytes=padding_len)
 
-            ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
             keystream_values.append(ks)
 
     # 6. Generate the fx function
