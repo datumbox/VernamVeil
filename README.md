@@ -63,7 +63,7 @@ This approach enables novel forms of key generation, especially for those who en
 
 ## 💡 Why VernamVeil?
 
-- **Using a function as a key** is appealing compared to fixed-size keys that repeat, which create vulnerabilities. While an infinitely long key would be uncrackable, a weak function introduces similar risks to repeating keys.
+- **Using a function as a key** is appealing compared to fixed-size keys that repeat, which create vulnerabilities.
 - Its **modular structure** means anyone can build their own `fx` functions with creative mathematical expressions or external data.
 - **Inspired by the OTP**, VernamVeil supports long, non-repeating key streams, as long as your function and seed combination allows it. It can also operate in one-time pad (OTP) mode when provided with a truly random, externally sourced keystream.
 
