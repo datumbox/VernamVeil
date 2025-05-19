@@ -299,9 +299,7 @@ decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
 **Note:** The keystream must be truly random, at least as long as the message, and never reused. Reusing a keystream completely breaks the security of OTP encryption.
 
 > **Warning:**  
-> Do **not** use or test your `OTPFX` instance (e.g., by calling it or running sanity checks) before actual encryption or decryption.  
-> Any use will consume part of the keystream, which cannot be recovered, and will cause decryption to fail.  
-> Always use a fresh, unused `OTPFX` instance for each encryption or decryption operation.
+> Do **not** use or test your `OTPFX` instance (e.g., by calling it or running sanity checks) before actual encryption or decryption. Any use will consume part of the keystream, which cannot be recovered, and will cause decryption to fail. Always use a fresh, unused `OTPFX` instance for each encryption or decryption operation.
 
 ---
 
