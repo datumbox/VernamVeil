@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._fx_utils import FX, check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._fx_utils import FX, OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
 
 try:
     import numpy as np
@@ -315,6 +315,48 @@ class TestFxUtils(unittest.TestCase):
             with warnings.catch_warnings(record=True) as w:
                 FX(keystream_fn, block_size=8, vectorise=True)
             self.assertTrue(any("C module is not available" in str(warn.message) for warn in w))
+
+    def test_otp_fx_source_code_roundtrip(self):
+        """Test that OTPFX source code can be saved and loaded, preserving bytes."""
+
+        test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
+        fx = OTPFX(test_keystream, 2, False)
+        source_code = fx.source_code
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "fx_source.py"
+            with open(path, "w") as f:
+                f.write(source_code)
+            loaded_fx: OTPFX = load_fx_from_file(str(path))
+            self.assertEqual(list(loaded_fx.keystream), test_keystream)
+
+    def test_otpfx_keystream_exhaustion(self):
+        """Test that OTPFX raises IndexError when the keystream is exhausted."""
+        test_keystream = [b"42", b"99"]
+        fx = OTPFX(test_keystream, 2, False)
+        # Consume all available keystream values
+        fx(0, b"seed")
+        fx(1, b"seed")
+        # Next call should raise IndexError
+        with self.assertRaises(IndexError):
+            fx(2, b"seed")
+
+    def test_otpfx_large_keystream_roundtrip(self):
+        """Test that OTPFX with a large keystream can be saved and loaded, preserving all bytes."""
+        # Create a large keystream
+        block_size = 64
+        num_blocks = 100000
+        test_keystream = [bytes([i % 256] * block_size) for i in range(num_blocks)]
+        fx = OTPFX(test_keystream, block_size, False)
+        source_code = fx.source_code
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "fx_large_source.py"
+            with open(path, "w") as f:
+                f.write(source_code)
+            loaded_fx: OTPFX = load_fx_from_file(path)
+            # Check that the loaded keystream matches the original
+            self.assertEqual(list(loaded_fx.keystream), test_keystream)
 
 
 if __name__ == "__main__":

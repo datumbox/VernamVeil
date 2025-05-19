@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._deniability_utils import _PlausibleFX, forge_plausible_fx
+from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import generate_default_fx, load_fx_from_file
 from vernamveil._vernamveil import VernamVeil
 
@@ -58,20 +58,6 @@ class TestDeniabilityUtils(unittest.TestCase):
     def _combo_name(self, chunk_size, delimiter_size, padding_range, decoy_ratio):
         """Produce a string name for the test combo."""
         return f"chunk{chunk_size}_delim{delimiter_size}_pad{padding_range}_decoy{decoy_ratio}"
-
-    def test_plausible_fx_source_code_roundtrip(self):
-        """Test that _PlausibleFX source code can be saved and loaded, preserving bytes."""
-        test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
-        fx = _PlausibleFX(test_keystream, 2, False)
-        source_code = fx.source_code
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "fx_source.py"
-            with open(path, "w") as f:
-                f.write(source_code)
-            loaded_fx = load_fx_from_file(str(path))
-            self.assertTrue(hasattr(loaded_fx, "_keystream"))
-            self.assertEqual(list(loaded_fx._keystream), test_keystream)
 
     def test_end_to_end_deniability_disk_io(self):
         """End-to-end test: store/load all artifacts and verify deniability."""

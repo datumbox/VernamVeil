@@ -17,6 +17,7 @@ from vernamveil._hash_utils import _HAS_C_MODULE
 
 __all__ = [
     "FX",
+    "OTPFX",
     "check_fx_sanity",
     "generate_default_fx",
     "generate_keyed_hash_fx",
@@ -94,6 +95,110 @@ class FX:
             _Bytes: The generated keystream bytes or array of bytes.
         """
         return self.keystream_fn(i, seed)
+
+
+class OTPFX(FX):
+    """A callable class for one-time-pad (OTP) keystreams used in VernamVeil.
+
+    This class wraps a user-supplied keystream (as a list of bytes blocks), providing a consistent interface
+    for OTP encryption and decryption. The keystream must be at least as long as the message to be encrypted,
+    and each keystream must be used only once for cryptographic security.
+
+    Attributes:
+        keystream (list[bytes]): The list of keystream blocks (each of length `block_size`).
+        position (int): The current position in the keystream.
+        block_size (int): The number of bytes returned per call.
+        vectorise (bool): Whether the keystream is used in vectorised mode.
+        source_code (str): The source code to reconstruct this OTPFX instance.
+
+    **Security Warning:**
+        One-time-pad keystreams must never be reused for different messages. Reusing a keystream
+        completely breaks the security of the encryption.
+
+    Example:
+
+    .. code-block:: python
+
+        def get_true_random_bytes(n: int) -> bytes:
+            # Replace with a function that returns n bytes from a true random source.
+            # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, dice, etc.)
+            # Using `secrets` or `os.urandom` is not truly random and does not provide the same guarantees.
+            raise NotImplementedError()
+
+        # Generate a long enough keystream
+        block_size = 64
+        keystream = [get_true_random_bytes(block_size) for _ in range(100)]
+
+        # Create a cypher with the OTPFX instance
+        fx = OTPFX(keystream, block_size=block_size, vectorise=False)
+        cypher = VernamVeil(fx)
+
+        # Encrypt a message
+        initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
+        encrypted_message = cypher.encrypt(b"some message", initial_seed)
+
+        # Optionally clip the keystream to the used portion
+        fx.keystream = fx.keystream[:fx.position]  # remember to store this securely
+
+        # Reset the pointer for decryption
+        fx.position = 0
+
+        # Decrypt the message
+        decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
+
+    .. warning::
+        Only reset `fx.position` to 0 for decryption of the same ciphertext. Never reuse the keystream for a new message.
+
+    """
+
+    def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool):
+        """Initializes the OTPFX instance.
+
+        Args:
+            keystream (list[bytes]): A list of bytes representing the keystream, split in equal block_size bytes.
+            block_size (int): The block size for the keystream.
+            vectorise (bool): Whether to use vectorised operations.
+
+        Raises:
+            ValueError: If the keystream blocks are not of the same size.
+        """
+        for idx, block in enumerate(keystream):
+            if len(block) != block_size:
+                raise ValueError(
+                    f"Keystream block at index {idx} has length {len(block)} (expected {block_size})"
+                )
+
+        self.keystream = keystream
+        self.position = 0
+        source_code = (
+            f"from vernamveil import OTPFX\nfx = OTPFX({keystream}, {block_size}, {vectorise})"
+        )
+        super().__init__(self.__call__, block_size, vectorise, source_code=source_code)
+
+    def __call__(self, i: _Integer, _: bytes) -> _Bytes:
+        """Generates the next value in the keystream.
+
+        Args:
+            i (_Integer): the index of the bytes in the message.
+            _ (bytes): Unused parameter for compatibility.
+
+        Returns:
+            _Bytes: The next value in the keystream.
+
+        Raises:
+            IndexError: If the keystream is exhausted and no more values are available.
+        """
+        n = len(i) if self.vectorise else 1
+        vals = []
+        for __ in range(n):
+            if self.position >= len(self.keystream):
+                raise IndexError("Keystream exhausted. No more values available.")
+            vals.append(self.keystream[self.position])
+            self.position += 1
+
+        if not self.vectorise:
+            return vals[0]
+        return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
 
 def generate_keyed_hash_fx(

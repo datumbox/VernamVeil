@@ -9,8 +9,7 @@ The utility reuses as many private methods of VernamVeil as possible to ensure c
 import copy
 import math
 
-from vernamveil._cypher import _Bytes, _Integer, np
-from vernamveil._fx_utils import FX
+from vernamveil._fx_utils import FX, OTPFX
 from vernamveil._vernamveil import VernamVeil
 
 __all__ = [
@@ -83,46 +82,6 @@ def _estimate_obfuscated_length(cypher: VernamVeil, message_len: int, pad_val: i
     total_count = real_count + decoy_count
 
     return 2 * total_count * (delimiter_size + pad_val) + message_len + decoy_count * chunk_size
-
-
-class _PlausibleFX(FX):
-    """A callable class that generates fake keystream values for plausible deniability."""
-
-    def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool):
-        """Initializes the PlausibleFX instance.
-
-        Args:
-            keystream (list[bytes]): A list of bytes representing the fake keystream.
-            block_size (int): The block size for the keystream.
-            vectorise (bool): Whether to use vectorised operations.
-        """
-        self._keystream = keystream
-        self._pos = 0
-        self._len = len(keystream)
-        source_code = f"from vernamveil._deniability_utils import _PlausibleFX\nfx = _PlausibleFX({keystream}, {block_size}, {vectorise})"
-        super().__init__(self.__call__, block_size, vectorise, source_code=source_code)
-
-    def __call__(self, i: _Integer, _: bytes) -> _Bytes:
-        """Generates the next value in the fake keystream.
-
-        Args:
-            i (_Integer): the index of the bytes in the message.
-            _ (bytes): Unused parameter for compatibility.
-
-        Returns:
-            _Bytes: The next value in the fake keystream.
-        """
-        n = len(i) if self.vectorise else 1
-        vals = []
-        for __ in range(n):
-            if self._pos >= self._len:
-                self._pos = 0
-            vals.append(self._keystream[self._pos])
-            self._pos += 1
-
-        if not self.vectorise:
-            return vals[0]
-        return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
 
 def forge_plausible_fx(
@@ -201,6 +160,6 @@ def forge_plausible_fx(
             keystream_values.append(ks)
 
     # 6. Generate the fx function
-    plausible_fx = _PlausibleFX(keystream_values, block_size, cypher._fx.vectorise)
+    plausible_fx = OTPFX(keystream_values, block_size, cypher._fx.vectorise)
 
     return plausible_fx, fake_seed
