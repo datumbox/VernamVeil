@@ -27,7 +27,7 @@ from vernamveil import FX, VernamVeil
 
 # Step 1: Define a custom key stream function; remember to store this securely
 def keystream_fn(i: int, seed: bytes) -> int:
-    # Simple cryptographically safe fx; see below for a more complex example
+    # Simple cryptographically safe fx; see below for more examples
     hasher = hashlib.blake2b(seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
@@ -71,7 +71,7 @@ This approach enables novel forms of key generation, especially for those who en
 
 ## ✨ Cryptographic Characteristics
 
-1. **Function-Based, Symmetric, OTP-Inspired Cypher**: VernamVeil uses a user-defined function `fx` and an `initial_seed` (both secret) to dynamically generate the key stream. This approach is symmetric, identical secrets and encryption configuration are required for both encryption and decryption, making the process fully reversible. The design is inspired by the One-Time Pad, supporting non-repeating, functionally generated keys.
+1. **Function-Based, Symmetric Cypher with OTP Support**: VernamVeil uses a user-defined function `fx` and an `initial_seed` (both secret) to dynamically generate the key stream. This approach is symmetric: identical secrets and encryption configuration are required for both encryption and decryption, making the process fully reversible. VernamVeil can also operate in one-time pad (OTP) mode when provided with a truly random, externally sourced keystream, with utilities available to support this use case.
 2. **Synthetic IV Seed Initialisation, Stateful Seed Evolution & Avalanche Effects**: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as a keyed hash of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by key-hashing the previous seed with the chunk's plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).
 3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimizing the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
 4. **Modular & Configurable Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs or cryptographic hashes. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs. 
@@ -84,6 +84,7 @@ This approach enables novel forms of key generation, especially for those who en
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
 - **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behaviour of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Use Secure Seeds & Avoid Reuse**: Generate initial seeds using the provided `VernamVeil.get_initial_seed()` method which is cryptographically safe. Treat each `initial_seed` as a one-time-use context and use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
+- **True One-Time Pad Support**: If you use the `OTPFX` class with a truly random keystream (generated from a physical entropy source), VernamVeil can be configured to operate as a one-time pad cypher. The keystream must be at least as long as the message, used only once, and never reused for any other message. Generating such keystreams is challenging in practice; pseudo-random generators (including cryptographically secure ones) do not provide the same guarantees as a true one-time pad.
 - **Message Ordering & Replay**: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct `initial_seed`. The Synthetic IV mechanism, by incorporating the current timestamp, ensures each cyphertext is unique even for identical messages and seeds, and specifically provides resilience against accidental seed reuse for the first message. However, the cypher itself does not guarantee full replay protection or enforce message ordering; these must be handled by the application. For strict anti-replay or ordering requirements, implement explicit mechanisms (such as sequence numbers or nonces) at a higher layer.
 
 ---
@@ -254,10 +255,56 @@ fx = FX(keystream_fn, block_size=64, vectorise=True)
 
 ---
 
+## 🎲 One-Time Pad (OTP) Mode
+
+VernamVeil can operate as a one-time pad (OTP) cypher when provided with a truly random keystream. By supplying a keystream of random bytes (generated from a physical entropy source) through the `fx` interface, VernamVeil achieves the properties of an OTP: the keystream must be at least as long as the message, used only once, and never reused for any other message. Note that pseudo-random generators, including cryptographically secure ones, do not provide the same guarantees as a true one-time pad.
+
+To facilitate OTP mode, VernamVeil provides the `OTPFX` utility. `OTPFX` is a wrapper that allows you to use an externally generated, truly random keystream as a drop-in replacement for a function-based `fx`. You provide a list of random byte blocks (each of a fixed size), and `OTPFX` ensures these are used sequentially as the keystream during encryption and decryption.
+
+Example:
+
+```python
+from vernamveil import OTPFX, VernamVeil
+
+def get_true_random_bytes(n: int) -> bytes:
+    # Replace with a function that returns n bytes from a true random source.
+    # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, dice, etc.)
+    # Using `secrets` or `os.urandom` is not truly random and does not provide the same guarantees.
+    raise NotImplementedError()
+
+# Prepare a keystream of random blocks
+block_size = 64
+keystream = [get_true_random_bytes(block_size) for _ in range(100)]
+
+# Create a cypher with the OTPFX instance
+fx = OTPFX(keystream, block_size=block_size, vectorise=False)
+cypher = VernamVeil(fx)
+
+# Encrypt a message as per usual
+initial_seed = VernamVeil.get_initial_seed()  # remember to store this securely
+encrypted_message = cypher.encrypt(b"some message", initial_seed)
+
+# Optionally clip the keystream to the used portion
+fx.keystream = fx.keystream[:fx.position]  # remember to store this securely
+
+# Reset the pointer for decryption
+fx.position = 0
+
+# Decrypt the message
+decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
+
+```
+
+**Note:** The keystream must be truly random, at least as long as the message, and never reused. Reusing a keystream completely breaks the security of OTP encryption.
+
+
+---
+
 ## 🧰 Provided `fx` Utilities
 
 VernamVeil includes helper tools to make working with key stream functions easier:
 
+- `OTPFX`: A wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`. 
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
 - `generate_default_fx` (same as `generate_polynomial_fx`): Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (Blake2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
 - `generate_keyed_hash_fx`: Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes.

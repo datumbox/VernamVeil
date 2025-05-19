@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil._cli import main
+from vernamveil._fx_utils import OTPFX
 
 
 class _UnclosableBytesIO(BytesIO):
@@ -770,6 +771,31 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
                 self._encode(missing_input, self.encfile)
             self.assertIn(f"Error: input file '{missing_input}' does not exist.", stderr.getvalue())
+
+    def test_encode_decode_with_otpfx(self):
+        """Test encoding and decoding using a custom OTPFX keystream."""
+        with self._in_tempdir():
+            # Generate a random keystream (simulate with os.urandom for test)
+            block_size = 64
+            keystream = [os.urandom(block_size) for _ in range(100)]
+
+            # Write OTPFX definition to fx.py
+            fx_path = self._create_fx(
+                code=OTPFX(keystream, block_size=block_size, vectorise=False).source_code
+            )
+
+            # Create a seed
+            seed_path = self._create_seed()
+
+            # Write a small input file
+            infile = self._write_file("otp_input.txt", b"otp test data")
+            encfile = self.temp_dir_path / "otp_output.enc"
+            decfile = self.temp_dir_path / "otp_output.dec"
+
+            # Encode and decode
+            self._encode(infile, encfile, fx_file=fx_path, seed_file=seed_path)
+            self._decode(encfile, decfile, fx_file=fx_path, seed_file=seed_path)
+            self._assert_decoded_matches_input(infile, decfile)
 
 
 if __name__ == "__main__":

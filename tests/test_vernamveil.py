@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._fx_utils import generate_default_fx
+from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
 from vernamveil._hash_utils import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
@@ -166,6 +166,79 @@ class TestVernamVeil(unittest.TestCase):
         self._for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=True)
         self._for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
         self._for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
+
+    def test_otpfx_roundtrip_encryption_decryption(self):
+        """Test OTPFX: roundtrip encryption/decryption with keystream serialization and reload."""
+
+        # Generate a large enough pseudo-random keystream
+        block_size = 64
+        keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)]
+
+        # Message and cypher configuration
+        message = b"Secret message for OTPFX roundtrip test!"
+        cypher_kwargs = dict(
+            chunk_size=8,
+            delimiter_size=4,
+            padding_range=(2, 2),
+            decoy_ratio=0.5,
+            siv_seed_initialisation=True,
+            auth_encrypt=True,
+        )
+
+        for vectorise in (False, True) if _HAS_NUMPY else (False,):
+            # Instantiate the OTPFX with the keystream
+            fx = OTPFX(keystream, block_size, vectorise=vectorise)
+
+            # Encrypt the message
+            seed = VernamVeil.get_initial_seed()
+            cypher = VernamVeil(fx, **cypher_kwargs)
+            encrypted, _ = cypher.encode(message, seed)
+
+            # Serialize and reload the OTPFX
+            with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+                tmp.write(fx.source_code)
+                fx_path = tmp.name
+            fx_loaded = load_fx_from_file(fx_path)
+
+            # Decrypt with the reloaded fx
+            cypher = VernamVeil(fx_loaded, **cypher_kwargs)
+            decrypted, _ = cypher.decode(encrypted, seed)
+            self.assertEqual(message, decrypted)
+
+    def test_otpfx_reset_and_clip_encryption_decryption(self):
+        """Test OTPFX: encryption/decryption with keystream reset and clip."""
+
+        # Generate a large enough pseudo-random keystream
+        block_size = 64
+        keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)]
+
+        # Message and cypher configuration
+        message = b"Secret message for OTPFX reset and clip test!"
+        cypher_kwargs = dict(
+            chunk_size=8,
+            delimiter_size=4,
+            padding_range=(2, 2),
+            decoy_ratio=0.5,
+            siv_seed_initialisation=True,
+            auth_encrypt=True,
+        )
+
+        for vectorise in (False, True) if _HAS_NUMPY else (False,):
+            # Instantiate the OTPFX with the keystream
+            fx = OTPFX(keystream, block_size, vectorise=vectorise)
+
+            # Encrypt the message
+            seed = VernamVeil.get_initial_seed()
+            cypher = VernamVeil(fx, **cypher_kwargs)
+            encrypted, _ = cypher.encode(message, seed)
+
+            # Clip the keystream and reset the position
+            fx.keystream = fx.keystream[: fx.position]
+            fx.position = 0
+
+            # Decrypt the message
+            decrypted, _ = cypher.decode(encrypted, seed)
+            self.assertEqual(message, decrypted)
 
 
 if __name__ == "__main__":
