@@ -100,7 +100,7 @@ class FX:
 class OTPFX(FX):
     """A callable class for one-time-pad (OTP) keystreams used in VernamVeil.
 
-    This class wraps a user-supplied keystream (as a list of bytes blocks), providing a consistent interface
+    This class wraps a user-supplied keystream (as a list of byte blocks), providing a consistent interface
     for OTP encryption and decryption. The keystream must be at least as long as the message to be encrypted,
     and each keystream must be used only once for cryptographic security.
 
@@ -121,7 +121,7 @@ class OTPFX(FX):
 
         def get_true_random_bytes(n: int) -> bytes:
             # Replace with a function that returns n bytes from a true random source.
-            # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, dice, etc.)
+            # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, etc.)
             # Using `secrets` or `os.urandom` is not truly random and does not provide the same guarantees.
             raise NotImplementedError()
 
@@ -214,7 +214,7 @@ def generate_keyed_hash_fx(
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
 
     Returns:
-        FX: A callable that returns pseudo-random bytes from keyed hash-based function.
+        FX: A callable that returns pseudo-random bytes from a keyed hash-based function.
 
     Raises:
         ValueError: If `hash_name` is not "blake2b" or "sha256".

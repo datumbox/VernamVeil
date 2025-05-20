@@ -26,7 +26,7 @@ from vernamveil import FX, VernamVeil
 
 
 # Step 1: Define a custom key stream function; remember to store this securely
-def keystream_fn(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> bytes:
     # Simple cryptographically safe fx; see below for more examples
     hasher = hashlib.blake2b(seed)
     hasher.update(i.to_bytes(8, "big"))
@@ -154,7 +154,7 @@ cypher.process_file("decode", "encrypted.dat", "decrypted.txt", initial_seed)
 
 ---
 
-## 🧪💻 How to Design a Custom `fx`
+## 🧪 How to Design a Custom `fx`
 
 > ⚠️ **Warning: Designing cryptographic functions is difficult and risky**
 >
@@ -183,7 +183,7 @@ import hashlib
 from vernamveil import FX
 
 
-def keystream_fn(i: int, seed: bytes) -> int:
+def keystream_fn(i: int, seed: bytes) -> bytes:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
     # followed by a cryptographically secure keyed hash (Blake2b) output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
@@ -270,7 +270,7 @@ from vernamveil import OTPFX, VernamVeil
 
 def get_true_random_bytes(n: int) -> bytes:
     # Replace with a function that returns n bytes from a true random source.
-    # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, dice, etc.)
+    # For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, etc.)
     # Using `secrets` or `os.urandom` is not truly random and does not provide the same guarantees.
     raise NotImplementedError()
 
