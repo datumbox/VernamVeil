@@ -556,7 +556,7 @@ def check_fx_sanity(
             hamming = sum(bin(a ^ b).count("1") for a, b in zip(orig, flipped))
             if hamming < len(orig) * 2:  # expect at least 2 bits per byte to flip
                 warnings.warn(
-                    f"Avalanche effect weak: flipping a bit in input changed only {hamming} bits out of {len(orig)*8}."
+                    f"Avalanche effect weak: flipping a bit in input changed only {hamming} bits out of {len(orig) * 8}."
                 )
                 passed = False
         else:
