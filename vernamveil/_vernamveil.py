@@ -382,11 +382,9 @@ class VernamVeil(_Cypher):
         data_len = len(data)
         result = bytearray(data_len)
         if self._fx.vectorise:
-            arr = np.frombuffer(data, dtype=np.uint8)
             # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
             processed = np.frombuffer(result, dtype=np.uint8)
         else:
-            arr = data
             processed = result
 
         for start, end in self._generate_chunk_ranges(data_len):
@@ -396,13 +394,13 @@ class VernamVeil(_Cypher):
 
             # XOR the chunk with the key
             if self._fx.vectorise:
-                np.bitwise_xor(arr[start:end], keystream, out=processed[start:end])
-                plaintext_data = (arr[start:end] if is_encode else processed[start:end]).data
+                np.bitwise_xor(data[start:end], keystream, out=processed[start:end])
+                plaintext_data = data[start:end] if is_encode else processed[start:end].data
             else:
                 for i in range(chunk_len):
                     pos = start + i
-                    processed[pos] = arr[pos] ^ keystream[i]
-                plaintext_data = arr[start:end] if is_encode else memoryview(processed)[start:end]
+                    processed[pos] = data[pos] ^ keystream[i]
+                plaintext_data = data[start:end] if is_encode else memoryview(processed)[start:end]
 
             # Refresh the seed differently for encoding and decoding
             seed = self._hash(seed, [plaintext_data])
