@@ -111,7 +111,7 @@ def hash_numpy(
             n,
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
-            ffi.from_buffer(out.data),
+            ffi.from_buffer(out),
         )
     else:
         i_bytes = i.view(np.uint8)
