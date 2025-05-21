@@ -152,10 +152,12 @@ def forge_plausible_fx(
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where
     # the chunk_size is not a multiple of block_size. This can lead to the fx sampling the wrong bytes.
+    view_cyphertext = memoryview(cyphertext)
+    view_obfuscated = memoryview(obfuscated)
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
         for block_start in range(start, end, block_size):
-            ct_block = cyphertext[block_start : block_start + block_size]
-            obf_block = obfuscated[block_start : block_start + block_size]
+            ct_block = view_cyphertext[block_start : block_start + block_size]
+            obf_block = view_obfuscated[block_start : block_start + block_size]
             ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
 
             # Pad to block_size bytes if needed using random bytes
