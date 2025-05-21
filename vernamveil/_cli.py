@@ -16,6 +16,10 @@ from vernamveil._fx_utils import OTPFX, check_fx_sanity, generate_default_fx, lo
 from vernamveil._hash_utils import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
+__all__ = [
+    "main",
+]
+
 
 def _add_common_args(p: argparse.ArgumentParser) -> None:
     """Add common CLI arguments for both encode and decode subcommands.
