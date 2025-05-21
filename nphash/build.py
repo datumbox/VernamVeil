@@ -21,19 +21,22 @@ from pathlib import Path
 
 from cffi import FFI
 
+__all__ = [
+    "main",
+]
 
-def _get_c_source(path: Path, name: str) -> str:
+
+def _get_c_source(path: Path) -> str:
     """Read and return the contents of a C source file.
 
     Args:
         path (Path): Path to the C source file.
-        name (str): Name of the hash function (for error messages).
 
     Returns:
         str: Contents of the C source file.
     """
     if not path.exists():
-        print(f"Error: C source file '{path}' for {name} not found.")
+        print(f"Error: C source file '{path}' was not found.")
         sys.exit(1)
     with path.open() as f:
         return f.read()
@@ -73,8 +76,9 @@ def _supports_flag(compiler: str, flag: str) -> bool:
     if not compiler_path:
         return False  # Compiler not found
     with tempfile.TemporaryDirectory() as tmpdir:
-        src = Path(tmpdir) / "test.c"
-        exe = Path(tmpdir) / "test.out"
+        tmp_path = Path(tmpdir)
+        src = tmp_path / "test.c"
+        exe = tmp_path / "test.out"
         src.write_text("int main(void) { return 0; }")
         result = subprocess.run(
             shlex.split(compiler) + [str(src), flag, "-o", str(exe)],
@@ -88,8 +92,8 @@ def _print_build_summary(
     libraries: list[str],
     extra_compile_args: list[str],
     extra_link_args: list[str],
-    include_dirs: list[Path],
-    library_dirs: list[Path],
+    include_dirs: list[str],
+    library_dirs: list[str],
 ) -> None:
     """Print a summary of the build configuration.
 
@@ -204,11 +208,13 @@ def main() -> None:
                 extra_compile_args.append(flag)
 
     # Add C source
-    c_path_blake2b = Path(__file__).parent / "_npblake2b.c"
-    c_source_blake2b = _get_c_source(c_path_blake2b, "BLAKE2b")
+    parent_dir = Path(__file__).parent
+    c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
+    c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
 
-    c_path_sha256 = Path(__file__).parent / "_npsha256.c"
-    c_source_sha256 = _get_c_source(c_path_sha256, "SHA256")
+    # Dependencies
+    include_paths = [str(p) for p in include_dirs]
+    library_paths = [str(p) for p in library_dirs]
 
     # Add extension build
     ffibuilder_blake2b.set_source(
@@ -217,8 +223,8 @@ def main() -> None:
         libraries=libraries,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        include_dirs=[str(p) for p in include_dirs],
-        library_dirs=[str(p) for p in library_dirs],
+        include_dirs=include_paths,
+        library_dirs=library_paths,
     )
 
     ffibuilder_sha256.set_source(
@@ -227,11 +233,13 @@ def main() -> None:
         libraries=libraries,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        include_dirs=[str(p) for p in include_dirs],
-        library_dirs=[str(p) for p in library_dirs],
+        include_dirs=include_paths,
+        library_dirs=library_paths,
     )
 
-    _print_build_summary(libraries, extra_compile_args, extra_link_args, include_dirs, library_dirs)
+    _print_build_summary(
+        libraries, extra_compile_args, extra_link_args, include_paths, library_paths
+    )
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
 
