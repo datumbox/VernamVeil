@@ -270,6 +270,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
         function_code = f"""
 import hashlib
 from vernamveil import FX
+{'import blake3' if hash_name == 'blake3' else ''}
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
@@ -279,9 +280,18 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Cryptographic keyed hash using {hash_name}
+"""
+        if hash_name == "blake3":
+            function_code += f"""
+    hasher = blake3.blake3(key=seed[:32])
+    hasher.update(i.to_bytes(8, "big"))
+    return hasher.digest(length={block_size})
+"""
+        else:
+            function_code += f"""
     hasher = hashlib.new("{hash_name}", key=seed)
     hasher.update(i.to_bytes(8, "big"))
-    return hasher.digest({f'length={block_size}' if hash_name == 'blake3' else ''})
+    return hasher.digest()
 """
 
     function_code += f"""

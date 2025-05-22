@@ -106,6 +106,8 @@ def hash_numpy(
             ffi = None
             method = hashlib.blake2b
     elif hash_name == "blake3":
+        if seed is not None:
+            seed = seed[:32]  # Ensure seed is at most 32 bytes
         if hash_size is None:
             hash_size = 32
         elif hash_size <= 0:

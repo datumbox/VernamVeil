@@ -272,19 +272,6 @@ def main(args: list[str] | None = None) -> None:
 
     # Optionally check fx and seed sanity
     if parsed_args.command == "encode" and parsed_args.check_sanity:
-        if isinstance(fx, OTPFX):
-            _vprint(
-                "Warning: fx is an OTPFX. Skipping sanity check to avoid consuming the keystream.",
-                "warning",
-                verbosity,
-            )
-        elif not check_fx_sanity(fx, seed, num_samples=10000):
-            _vprint(
-                "Error: fx sanity check failed. Check your fx function for correctness.",
-                "error",
-                verbosity,
-            )
-            sys.exit(1)
         if len(seed) < 16:
             _vprint(
                 "Error: Seed is too short. It must be at least 16 bytes for security.",
@@ -292,6 +279,24 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
+        if isinstance(fx, OTPFX):
+            _vprint(
+                "Warning: fx is an OTPFX. Skipping sanity check to avoid consuming the keystream.",
+                "warning",
+                verbosity,
+            )
+        else:
+            try:
+                passed = check_fx_sanity(fx, seed, num_samples=10000)
+            except:
+                passed = False
+            if not passed:
+                _vprint(
+                    "Error: fx sanity check failed. Check your fx function for correctness.",
+                    "error",
+                    verbosity,
+                )
+                sys.exit(1)
 
     # Print version and platform information
     _vprint(
