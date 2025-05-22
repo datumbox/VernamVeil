@@ -4,18 +4,20 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
+import hmac
+import math
 from typing import Literal
 
 try:
     import numpy as np
 
-    from nphash import _npblake2bffi, _npsha256ffi
+    from nphash import _npblake2bffi, _nphkdfffi, _npsha256ffi
 
     _HAS_C_MODULE = True
 except ImportError:
     _HAS_C_MODULE = False
 
-__all__ = ["fold_bytes_to_uint64", "hash_numpy"]
+__all__ = ["fold_bytes_to_uint64", "hash_numpy", "hkdf_numpy"]
 
 
 def fold_bytes_to_uint64(
@@ -121,5 +123,78 @@ def hash_numpy(
                 hasher.update(seed)
             hasher.update(i_bytes.data[j : j + 8])
             out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
+
+    return out
+
+
+def hkdf_numpy(
+    key: bytes,
+    info: bytes,
+    outlen: int,
+    digest_name: Literal["blake2b", "sha256"] = "blake2b",
+) -> "np.ndarray[tuple[int], np.dtype[np.uint8]]":
+    """Derive a key stream using HKDF expand with the given key and info.
+
+    Uses a C-accelerated implementation if available, otherwise falls back to a pure Python version.
+
+    Args:
+        key (bytes): The input key material.
+        info (bytes): Context/application-specific info to bind the output.
+        outlen (int): Desired length of output in bytes.
+        digest_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
+
+    Returns:
+        np.ndarray[tuple[int], np.dtype[np.uint8]]: Output key stream as a 1D uint8 NumPy array of length `outlen`.
+
+    Raises:
+        ValueError: If the hash algorithm is not supported.
+        ValueError: If the output length is too large.
+        RuntimeError: If the C HKDF fails.
+    """
+    if digest_name == "blake2b":
+        hash_size = 64
+        if _HAS_C_MODULE:
+            ffi = _nphkdfffi.ffi
+            method = _nphkdfffi.lib.numpy_hkdf
+        else:
+            method = hashlib.blake2b
+    elif digest_name == "sha256":
+        hash_size = 32
+        if _HAS_C_MODULE:
+            ffi = _nphkdfffi.ffi
+            method = _nphkdfffi.lib.numpy_hkdf
+        else:
+            method = hashlib.sha256
+    else:
+        raise ValueError(f"Unsupported digest_name '{digest_name}'.")
+
+    if outlen > 255 * hash_size:
+        # RFC 5869: HKDF-Expand output length must be <= 255 * hash_length
+        raise ValueError("Output length too large for HKDF expand.")
+
+    out = np.empty(outlen, dtype=np.uint8)
+
+    if _HAS_C_MODULE:
+        ret = method(
+            ffi.from_buffer(key),
+            len(key),
+            ffi.new("char[]", digest_name.encode()),
+            ffi.from_buffer(info),
+            len(info),
+            outlen,
+            ffi.from_buffer(out),
+        )
+        if ret != 0:
+            raise RuntimeError("C HKDF failed")
+    else:
+        # Pure Python HKDF-Expand (RFC 5869)
+        n_blocks = math.ceil(outlen / hash_size)
+        prev = b""
+        offset = 0
+        for i in range(1, n_blocks + 1):
+            prev = hmac.new(key, prev + info + bytes([i]), method).digest()
+            end = min(offset + hash_size, outlen)
+            out[offset:end] = np.frombuffer(prev, dtype=np.uint8)[: end - offset]
+            offset = end
 
     return out

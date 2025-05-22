@@ -10,9 +10,10 @@ from vernamveil._fx_utils import (
     generate_default_fx,
     generate_keyed_hash_fx,
     generate_polynomial_fx,
+    generate_prf_fx,
     load_fx_from_file,
 )
-from vernamveil._hash_utils import fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import fold_bytes_to_uint64, hash_numpy, hkdf_numpy
 from vernamveil._vernamveil import VernamVeil
 
 __version__: str
@@ -33,6 +34,8 @@ __all__ = [
     "generate_default_fx",
     "generate_keyed_hash_fx",
     "generate_polynomial_fx",
+    "generate_prf_fx",
     "hash_numpy",
+    "hkdf_numpy",
     "load_fx_from_file",
 ]

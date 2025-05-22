@@ -8,6 +8,7 @@ build/
 dist/
 docs-html/
 .env
-nphash/_npsha256ffi*
 nphash/_npblake2bffi*
+nphash/_nphkdfffi*
+nphash/_npsha256ffi*
 reports/

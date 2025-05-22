@@ -22,6 +22,7 @@ __all__ = [
     "generate_default_fx",
     "generate_keyed_hash_fx",
     "generate_polynomial_fx",
+    "generate_prf_fx",
     "load_fx_from_file",
 ]
 
@@ -385,6 +386,102 @@ def make_keystream_fn():
 
 
 fx = FX(make_keystream_fn(), block_size=64, vectorise={vectorise})
+"""
+
+    # Load the fx function from source code
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+        tmp.write(function_code)
+        tmp_path = Path(tmp.name)
+
+    fx = load_fx_from_file(tmp_path)
+    tmp_path.unlink(missing_ok=True)
+
+    # Attach the code string directly to the function object for later reference
+    fx.source_code = function_code
+
+    return fx
+
+
+def generate_prf_fx(
+    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+    vectorise: bool = False,
+) -> FX:
+    """Generate a pseudorandom function (PRF) for keystream generation using HMAC or HKDF-Expand.
+
+    This function returns an `FX` instance that produces cryptographically secure keystream bytes
+    from a secret seed and an input index. In scalar (non-vectorised) mode, it uses HMAC with the
+    specified hash function. In vectorised mode, it uses HKDF-Expand to generate longer keystreams
+    efficiently.
+
+    Args:
+        hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
+        vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
+
+    Returns:
+        FX: A callable PRF suitable for use as a keystream generator.
+
+    Raises:
+        ValueError: If `hash_name` is not "blake2b" or "sha256".
+        TypeError: If `vectorise` is not a boolean.
+        ValueError: If `vectorise` is True but numpy is not installed.
+    """
+    if vectorise and np is None:
+        raise ValueError("NumPy is required for vectorised mode but is not installed.")
+    if hash_name not in ("blake2b", "sha256"):
+        raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
+    if not isinstance(vectorise, bool):
+        raise TypeError("vectorise must be a boolean.")
+
+    block_size = 64 if hash_name == "blake2b" else 32
+
+    # Dynamically generate the function code for scalar or vectorised PRF
+    if vectorise:
+        function_code = f"""
+import numpy as np
+from vernamveil import FX, hkdf_numpy
+
+
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    # Implements a HKDF-Expand using {hash_name}.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # The `info` parameter is varied (using a counter) for each chunk to expand the keystream
+    # beyond the HKDF per-call output limit (255 * hash_size), as allowed by RFC 5869.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the HKDF.
+
+    total_bytes = len(i) * {block_size}
+    max_per_call = {255 * block_size}
+    output = np.empty(total_bytes, dtype=np.uint8)
+
+    # Generate the keystream in chunks to avoid exceeding the HKDF per-call output limit
+    for ctr, chunk_start in enumerate(range(0, total_bytes, max_per_call)):
+        chunk_len = min(max_per_call, total_bytes - chunk_start)
+        info = ctr.to_bytes(8, "big")
+
+        # HKDF using {hash_name}
+        output[chunk_start:chunk_start + chunk_len] = hkdf_numpy(seed, info, chunk_len, "{hash_name}")  # uses C module if available, else Python fallback
+
+    return output.reshape((-1, {block_size}), copy=False)
+"""
+    else:
+        function_code = f"""
+import hashlib
+import hmac
+from vernamveil import FX
+
+
+def keystream_fn(i: int, seed: bytes) -> bytes:
+    # Implements a HMAC using {hash_name}.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the HMAC.
+
+    # HMAC using {hash_name}
+    return hmac.new(seed, i.to_bytes(8, "big"), hashlib.{hash_name}).digest()
+"""
+
+    function_code += f"""
+
+
+fx = FX(keystream_fn, block_size={block_size}, vectorise={vectorise})
 """
 
     # Load the fx function from source code

@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npblake2bffi and _npsha256ffi C extensions that provide fast, parallelised
+This script uses cffi to compile the _npblake2bffi, _nphkdfffi and _npsha256ffi C extensions that provide fast, parallelised
 BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _npblake2bffi, _nphkdfffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import platform
@@ -136,6 +136,16 @@ def main() -> None:
         """
     )
 
+    ffibuilder_hkdf = FFI()
+    ffibuilder_hkdf.cdef(
+        """
+        int numpy_hkdf(const unsigned char* key, const size_t keylen,
+                       const char* digest_name,
+                       const unsigned char* info, size_t infolen,
+                       size_t outlen, uint8_t* restrict out);
+        """
+    )
+
     # Platform-specific build options
     libraries = []
     extra_compile_args = []
@@ -211,6 +221,7 @@ def main() -> None:
     parent_dir = Path(__file__).parent
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
+    c_source_hkdf = _get_c_source(parent_dir / "_nphkdf.c")
 
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
@@ -237,11 +248,22 @@ def main() -> None:
         library_dirs=library_paths,
     )
 
+    ffibuilder_hkdf.set_source(
+        "_nphkdfffi",
+        c_source_hkdf,
+        libraries=libraries,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        include_dirs=include_paths,
+        library_dirs=library_paths,
+    )
+
     _print_build_summary(
         libraries, extra_compile_args, extra_link_args, include_paths, library_paths
     )
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
+    ffibuilder_hkdf.compile(verbose=True)
 
 
 if __name__ == "__main__":

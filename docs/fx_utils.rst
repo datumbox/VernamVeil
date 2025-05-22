@@ -22,4 +22,5 @@ Fx Utilities
 
 .. autofunction:: generate_keyed_hash_fx
 .. autofunction:: generate_polynomial_fx
+.. autofunction:: generate_prf_fx
 .. autofunction:: load_fx_from_file

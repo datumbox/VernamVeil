@@ -1,10 +1,12 @@
 import hashlib
+import hmac
+import math
 import secrets
 import unittest
 from unittest.mock import patch
 
 from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._hash_utils import _HAS_C_MODULE, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE, fold_bytes_to_uint64, hash_numpy, hkdf_numpy
 
 try:
     import numpy as np
@@ -104,6 +106,44 @@ class TestHashUtils(unittest.TestCase):
                             )
 
                             np.testing.assert_array_equal(expected, output)
+
+    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
+    def test_numpy_hkdf_correctness(self):
+        """Test numpy_hkdf output matches a pure Python HKDF-Expand for both algorithms and C/Python paths."""
+        checks = [False]
+        if _HAS_C_MODULE:
+            checks.append(True)
+        for has_c in checks:
+            for digest_name, hash_size in (("sha256", 32), ("blake2b", 64)):
+                with self.subTest(_HAS_C_MODULE=has_c, digest_name=digest_name):
+                    with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
+                        key = secrets.token_bytes(hash_size)
+                        info = secrets.token_bytes(16)
+                        outlen = 100  # Not a multiple of hash_size to test partial block
+
+                        # Reference HKDF-Expand (RFC 5869)
+                        def hkdf_expand(key, info, outlen, digest_name):
+                            if digest_name == "sha256":
+                                digestmod = "sha256"
+                                hash_size = 32
+                            elif digest_name == "blake2b":
+                                digestmod = "blake2b"
+                                hash_size = 64
+                            else:
+                                raise ValueError
+                            n_blocks = math.ceil(outlen / hash_size)
+                            prev = b""
+                            output = bytearray()
+                            for i in range(1, n_blocks + 1):
+                                prev = hmac.new(key, prev + info + bytes([i]), digestmod).digest()
+                                output += prev
+                            return bytes(output[:outlen])
+
+                        expected = np.frombuffer(
+                            hkdf_expand(key, info, outlen, digest_name), dtype=np.uint8
+                        )
+                        actual = hkdf_numpy(key, info, outlen, digest_name)
+                        np.testing.assert_array_equal(expected, actual)
 
 
 if __name__ == "__main__":
