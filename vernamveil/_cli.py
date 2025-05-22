@@ -288,7 +288,7 @@ def main(args: list[str] | None = None) -> None:
         else:
             try:
                 passed = check_fx_sanity(fx, seed, num_samples=10000)
-            except:
+            except Exception:
                 passed = False
             if not passed:
                 _vprint(
