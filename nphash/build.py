@@ -223,7 +223,19 @@ def main() -> None:
     parent_dir = Path(__file__).parent
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
-    c_source_blake3 = _get_c_source(parent_dir / "_npblake3.c")
+    c_source_blake3 = (
+        _get_c_source(parent_dir / "_npblake3.c")
+        + "\n"
+        + "\n".join(
+            _get_c_source(f)
+            for f in sorted((parent_dir.parent / "third_party" / "blake3").glob("*"))
+        )
+    )
+
+    extra_compile_args.append("-DBLAKE3_NO_AVX2")
+    extra_compile_args.append("-DBLAKE3_NO_AVX512")
+    extra_compile_args.append("-DBLAKE3_NO_SSE2")
+    extra_compile_args.append("-DBLAKE3_NO_SSE41")
 
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
