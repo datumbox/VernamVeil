@@ -24,6 +24,9 @@ dev = [
     "sphinx-autodoc-typehints>=3.0",
     "sphinx_rtd_theme>=3.0",
 ]
+blake3 = [
+    "blake3>=1.0"
+]
 numpy = [
     "numpy>=2.2"
 ]
@@ -57,4 +60,4 @@ include = ["vernamveil", "nphash"]
 
 [tool.setuptools.package-data]
 "vernamveil" = ["py.typed"]
-"nphash" = ["py.typed", "_npblake2bffi.*.so", "_npsha256ffi.*.so"]
+"nphash" = ["py.typed", "_npblake2bffi.*.so", "_npblake3ffi.*.so", "_npsha256ffi.*.so"]

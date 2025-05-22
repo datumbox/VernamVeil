@@ -9,5 +9,6 @@ dist/
 docs-html/
 .env
 nphash/_npblake2bffi*
+nphash/_npblake3ffi*
 nphash/_npsha256ffi*
 reports/

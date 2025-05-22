@@ -4,16 +4,22 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
-from typing import Literal
+from typing import Any, Literal
 
 try:
     import numpy as np
 
-    from nphash import _npblake2bffi, _npsha256ffi
+    from nphash import _npblake2bffi, _npblake3ffi, _npsha256ffi
 
     _HAS_C_MODULE = True
 except ImportError:
     _HAS_C_MODULE = False
+
+blake3: Any
+try:
+    import blake3
+except ImportError:
+    blake3 = None
 
 __all__ = ["fold_bytes_to_uint64", "hash_numpy"]
 
@@ -62,7 +68,8 @@ def fold_bytes_to_uint64(
 def hash_numpy(
     i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
     seed: bytes | None = None,
-    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+    hash_name: Literal["blake2b", "blake3", "sha256"] = "blake2b",
+    hash_size: int | None = None,
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
     """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
 
@@ -75,25 +82,45 @@ def hash_numpy(
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes are prepended to the index. If None, hashes only the index.
-        hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
+        hash_name (Literal["blake2b", "blake3", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
+        hash_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
+            and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 
     Returns:
         np.ndarray[tuple[int, int], np.dtype[np.uint8]]: A 2D array of shape (n, H) where H is the hash output size in
-        bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
+        bytes. Each row contains the full hash output for the corresponding input.
 
     Raises:
+        ValueError: If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.
         ValueError: If a hash algorithm is not supported.
     """
     if hash_name == "blake2b":
-        hash_size = 64
+        if hash_size is None:
+            hash_size = 64
+        elif hash_size != 64:
+            raise ValueError("blake2b hash_size must be 64 bytes.")
         if _HAS_C_MODULE:
             ffi = _npblake2bffi.ffi
             method = _npblake2bffi.lib.numpy_blake2b
         else:
             ffi = None
             method = hashlib.blake2b
+    elif hash_name == "blake3":
+        if hash_size is None:
+            hash_size = 32
+        elif hash_size <= 0:
+            raise ValueError("blake3 hash_size must be larger than 0 bytes.")
+        if _HAS_C_MODULE:
+            ffi = _npblake3ffi.ffi
+            method = _npblake3ffi.lib.numpy_blake3
+        else:
+            ffi = None
+            method = blake3.blake3
     elif hash_name == "sha256":
-        hash_size = 32
+        if hash_size is None:
+            hash_size = 32
+        elif hash_size != 32:
+            raise ValueError("sha256 hash_size must be 32 bytes.")
         if _HAS_C_MODULE:
             ffi = _npsha256ffi.ffi
             method = _npsha256ffi.lib.numpy_sha256
@@ -106,20 +133,24 @@ def hash_numpy(
     out = np.empty((n, hash_size), dtype=np.uint8)
 
     if ffi is not None:
-        method(
+        args = [
             ffi.cast("const uint64_t *", ffi.from_buffer(i)),
             n,
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
             ffi.from_buffer(out),
-        )
+        ]
+        if hash_name == "blake3":
+            args.append(hash_size)
+        method(*args)
     else:
         i_bytes = i.view(np.uint8)
+        kwargs = {"length": hash_size} if hash_name == "blake3" else {}
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
             hasher = method()
             if seed is not None:
                 hasher.update(seed)
             hasher.update(i_bytes.data[j : j + 8])
-            out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
+            out[idx, :] = np.frombuffer(hasher.digest(**kwargs), dtype=np.uint8)
 
     return out

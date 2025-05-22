@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npblake2bffi and _npsha256ffi C extensions that provide fast, parallelised
+This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
 BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import platform
@@ -129,6 +129,13 @@ def main() -> None:
         """
     )
 
+    ffibuilder_blake3 = FFI()
+    ffibuilder_blake3.cdef(
+        """
+        void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
+        """
+    )
+
     ffibuilder_sha256 = FFI()
     ffibuilder_sha256.cdef(
         """
@@ -199,6 +206,11 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
+    # Add third_party to include_dirs
+    third_party_dir = Path(__file__).parent.parent / "third_party" / "blake3"
+    if third_party_dir.exists():
+        include_dirs.append(third_party_dir)
+
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
         if _supports_flag(compiler, flag):
@@ -211,6 +223,7 @@ def main() -> None:
     parent_dir = Path(__file__).parent
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
+    c_source_blake3 = _get_c_source(parent_dir / "_npblake3.c")
 
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
@@ -220,6 +233,16 @@ def main() -> None:
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
         c_source_blake2b,
+        libraries=libraries,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        include_dirs=include_paths,
+        library_dirs=library_paths,
+    )
+
+    ffibuilder_blake3.set_source(
+        "_npblake3ffi",
+        c_source_blake3,
         libraries=libraries,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
@@ -241,6 +264,7 @@ def main() -> None:
         libraries, extra_compile_args, extra_link_args, include_paths, library_paths
     )
     ffibuilder_blake2b.compile(verbose=True)
+    ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
 
 

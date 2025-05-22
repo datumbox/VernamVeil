@@ -16,36 +16,36 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         pip-dependencies:
-          - [dev]
-          - [dev, numpy]
+          - [dev, blake3]
+          - [dev, blake3, numpy]
         include:
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, blake3, numpy, cffi]
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
               cd nphash
               python build.py
-              ls -lh _npblake2bffi.* _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
               cd ..
               python -m pip install .
 
           - os: macos-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, blake3, numpy, cffi]
             build-steps: |
               brew install libomp openssl
               cd nphash
               python build.py
-              ls -lh _npblake2bffi.* _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
               cd ..
               python -m pip install .
 
           - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, blake3, numpy, cffi]
             build-steps: |
               choco install openssl --no-progress -y
               cd nphash
               python build.py
-              dir _npblake2bffi.* _npsha256ffi.*
+              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
               cd ..
               python -m pip install .
 
