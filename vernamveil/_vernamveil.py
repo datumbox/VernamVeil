@@ -245,39 +245,42 @@ class VernamVeil(_Cypher):
             for i in range(0, message_len, self._chunk_size)
         )
 
-    def _obfuscate(self, message: memoryview, seed: bytes, delimiter: memoryview) -> memoryview:
-        """Inject noise and padding into the message and shuffle the real chunk positions.
+    def _obfuscate(self, cyphertext: bytearray, seed: bytes) -> bytearray:
+        """Inject noise and padding into the cyphertext and shuffle the real chunk positions.
 
         Args:
-            message (memoryview): Original message.
+            cyphertext (bytearray): The cyphertext of the message.
             seed (bytes): Seed for deterministic shuffling of chunks.
-            delimiter (memoryview): Chunk delimiter.
 
         Returns:
-            memoryview: Obfuscated message with shuffled real and decoy chunks.
+            bytearray: Obfuscated cyphertext with shuffled real and decoy chunks.
         """
+        # Produce a unique seed for shuffling and to match the order of operations with deobfuscate.
+        shuffle_seed = self._hash(seed, [b"shuffle"])
+
         # Estimate the number of real and fake chunks
-        message_len = len(message)
-        real_count = math.ceil(message_len / self._chunk_size)
+        cyphertext_len = len(cyphertext)
+        real_count = math.ceil(cyphertext_len / self._chunk_size)
         decoy_count = max(1, int(self._decoy_ratio * real_count)) if self._decoy_ratio > 0 else 0
         total_count = real_count + decoy_count
 
         # Estimate shuffled positions of real chunks
-        shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
+        shuffled_positions = self._determine_shuffled_indices(shuffle_seed, real_count, total_count)
 
         # Use the randomness of the positions to shuffle the chunks
-        chunk_ranges_iter = self._generate_chunk_ranges(message_len)
+        chunk_ranges_iter = self._generate_chunk_ranges(cyphertext_len)
         shuffled_chunk_ranges = [(-1, -1) for _ in range(total_count)]
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
-        # Build the noisy message by combining fake and shuffled real chunks
+        # Build the noisy cyphertext by combining fake and shuffled real chunks
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
+        view = memoryview(cyphertext)
         for i in range(total_count):
             if shuffled_chunk_ranges[i][0] != -1:  # real chunk location
                 start, end = shuffled_chunk_ranges[i]
-                chunk: memoryview | bytes = message[start:end]
+                chunk: memoryview | bytes = view[start:end]
             else:
                 chunk = secrets.token_bytes(self._chunk_size)
 
@@ -289,10 +292,12 @@ class VernamVeil(_Cypher):
             )
             if pre_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
+            delimiter, seed = self._generate_delimiter(seed)
             noisy_blocks.extend(delimiter)
             # Actual data
             noisy_blocks.extend(chunk)
             # Post-pad
+            delimiter, seed = self._generate_delimiter(seed)
             noisy_blocks.extend(delimiter)
             post_pad_len = (
                 secrets.randbelow(pad_max - pad_min + 1) + pad_min
@@ -302,27 +307,32 @@ class VernamVeil(_Cypher):
             if post_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(post_pad_len))
 
-        return memoryview(noisy_blocks)
+        return noisy_blocks
 
-    def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
-        """Remove noise and extract real chunks from a shuffled noisy message.
+    def _deobfuscate(self, noisy_cyphertext: bytearray, seed: bytes) -> bytearray:
+        """Remove noise and extract real chunks from a shuffled noisy cyphertext.
 
         Args:
-            noisy (bytearray): Decrypted and obfuscated message.
+            noisy_cyphertext (bytearray): The obfuscated cyphertext of the message.
             seed (bytes): Seed for deterministic chunk deshuffling.
-            delimiter (memoryview): Delimiter used to detect chunks.
 
         Returns:
             bytearray: Original message reconstructed from real chunks.
         """
+        # Produce a unique seed for shuffling and to match the order of operations with obfuscate.
+        shuffle_seed = self._hash(seed, [b"shuffle"])
+
         # Estimate the ranges of all chunks
-        delimiter_len = len(delimiter)
+        delimiter_len = self._delimiter_size
         all_chunk_ranges: list[tuple[int, int]] = []
         prev_idx = None  # Tracks the index of the previous delimiter found
         look_start = 0  # Start position for searching the next delimiter
         while True:
+            # Generate a new delimiter
+            delimiter, seed = self._generate_delimiter(seed)
+
             # Search for the next occurrence of the delimiter
-            idx = noisy.find(delimiter, look_start)
+            idx = noisy_cyphertext.find(delimiter, look_start)
             if idx == -1:
                 # No more delimiters found
                 break
@@ -354,11 +364,15 @@ class VernamVeil(_Cypher):
             real_count = total_count
 
         # Estimate the shuffled real positions
-        shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
+        # TODO: this call is out of order with the obfuscate call. It won't work for OTP. It needs to go on top but
+        #      it is not possible without storing the total_count in the meta-data. Recovering total_count after the
+        #      delimiter generation consumes the seed (which is fixable via producing a shuffle seed) but it also
+        #      leads to out-of-order calls on fx which messes up the OTP.
+        shuffled_positions = self._determine_shuffled_indices(shuffle_seed, real_count, total_count)
 
         # Reconstruct and unshuffle the message
         message = bytearray()
-        view = memoryview(noisy)
+        view = memoryview(noisy_cyphertext)
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
             message.extend(view[start:end])
@@ -431,23 +445,10 @@ class VernamVeil(_Cypher):
 
         Returns:
             tuple[bytearray, bytes]: Encrypted message and final seed.
-
-        Raises:
-            ValueError: If the delimiter appears in the message.
         """
         # Convert to memoryview for efficient slicing
         if not isinstance(message, memoryview):
-            msg_bytes = message
             message = memoryview(message)
-        else:
-            # Accessing memoryview.obj can be unsafe if the memoryview is a slice, but in this library, inputs are
-            # always bytes. However, callers might still provide a sliced memoryview over bytes. This code is safe
-            # because msg_bytes is only used to check for the delimiter, so at worst, the check is performed on the
-            # entire underlying array. The expensive tobytes() copy is almost always avoided, unless the caller
-            # provides a memoryview that is not backed by a bytes or bytearray object.
-            msg_bytes = (
-                message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
-            )
 
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
@@ -468,30 +469,21 @@ class VernamVeil(_Cypher):
         # Produce a unique seed for Authenticated Encryption
         auth_seed = self._hash(seed, [b"auth"]) if self._auth_encrypt else b""
 
-        # Generate the delimiter
-        delimiter, seed = self._generate_delimiter(seed)
-
-        # Delimiter conflict check
-        if msg_bytes.find(delimiter) != -1:
-            raise ValueError(
-                "The delimiter appears in the message. Consider increasing the delimiter size."
-            )
-
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during shuffling and to match the order
         # of operations with decode.
-        shuffle_seed = self._hash(seed, [b"shuffle"])
+        obfuscate_seed = self._hash(seed, [b"obfuscate"])
 
-        # Add noise and shuffle the message
-        noisy = self._obfuscate(message, shuffle_seed, delimiter)
+        # Encrypt the message
+        cyphertext, last_seed = self._xor_with_key(message, seed, True)
 
-        # Encrypt the noisy message
-        cyphertext, last_seed = self._xor_with_key(noisy, seed, True)
-        output.extend(cyphertext)
+        # Add noise and shuffle the cyphertext
+        noisy_cyphertext = self._obfuscate(cyphertext, obfuscate_seed)
+        output.extend(noisy_cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            # The tag is computed over the cyphertext and the configuration of the cypher
-            tag = self._hash(auth_seed, [cyphertext, str(self).encode()], use_hmac=True)
+            # The tag is computed over the noisy cyphertext and the configuration of the cypher
+            tag = self._hash(auth_seed, [noisy_cyphertext, str(self).encode()], use_hmac=True)
             output.extend(tag)
 
         return output, last_seed
@@ -540,17 +532,14 @@ class VernamVeil(_Cypher):
         else:
             encrypted_data = cyphertext
 
-        # Generate the delimiter
-        delimiter, seed = self._generate_delimiter(seed)
-
         # Produce a unique seed for Obfuscation to avoid reusing the same seed during unshuffling and to match the order
         # of operations with encode.
-        shuffle_seed = self._hash(seed, [b"shuffle"])
-
-        # Decrypt the noisy message
-        decrypted, last_seed = self._xor_with_key(encrypted_data, seed, False)
+        obfuscate_seed = self._hash(seed, [b"obfuscate"])
 
         # Denoise, Unshuffle and extract the real message
-        message = self._deobfuscate(decrypted, shuffle_seed, delimiter)
+        denoised_cyphertext = self._deobfuscate(bytearray(encrypted_data), obfuscate_seed)
+
+        # Decrypt the message
+        message, last_seed = self._xor_with_key(memoryview(denoised_cyphertext), seed, False)
 
         return message, last_seed

@@ -125,15 +125,6 @@ class TestVernamVeil(unittest.TestCase):
         self._for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=False)
         self._for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
-    def test_delimiter_conflict_raises(self):
-        """Test that encoding fails if the delimiter appears in the message."""
-        cypher = VernamVeil(generate_default_fx())
-        cypher._delimiter_size = 1  # override to force a delimiter size of 1 byte
-        message = bytes(range(256))  # Message contains every possible byte value
-        with self.assertRaises(ValueError) as ctx:
-            cypher.encode(message, self.initial_seed)
-        self.assertIn("The delimiter appears in the message.", str(ctx.exception))
-
     def test_avalanche_effect(self):
         """Test that flipping a single bit in the input causes ~50% of output bits to change (avalanche effect)."""
         message = b"This is a test message for avalanche effect!"
