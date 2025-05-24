@@ -188,7 +188,12 @@ class VernamVeil(_Cypher):
 
         # Shuffle deterministically based on the hashed seed
         for i in range(total_count - 1, 0, -1):
+            # Create a random number between 0 and i        for i in range(total_count - 1, 0, -1):
             # Create a random number between 0 and i
+            j = hashes[i - 1] % (i + 1)
+
+            # Swap elements at positions i and j
+            positions[i], positions[j] = positions[j], positions[i]
             j = hashes[i - 1] % (i + 1)
 
             # Swap elements at positions i and j
@@ -268,7 +273,7 @@ class VernamVeil(_Cypher):
 
         # Use the randomness of the positions to shuffle the chunks
         chunk_ranges_iter = self._generate_chunk_ranges(message_len)
-        shuffled_chunk_ranges = [(-1, -1) for _ in range(total_count)]
+        shuffled_chunk_ranges: list[None | tuple[int, int]] = [None for _ in range(total_count)]
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
@@ -276,9 +281,9 @@ class VernamVeil(_Cypher):
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
         pad_width = pad_max - pad_min + 1
-        for i in range(total_count):
-            if shuffled_chunk_ranges[i][0] != -1:  # real chunk location
-                start, end = shuffled_chunk_ranges[i]
+        for chunk_range in shuffled_chunk_ranges:
+            if chunk_range is not None:
+                start, end = chunk_range
                 chunk: memoryview | bytes = message[start:end]
             else:
                 chunk = secrets.token_bytes(self._chunk_size)
