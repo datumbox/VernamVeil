@@ -301,18 +301,16 @@ def main(args: list[str] | None = None) -> None:
         verbosity,
     )
 
-    # Prepare VernamVeil keyword arguments
-    vernamveil_kwargs = {
-        "chunk_size": parsed_args.chunk_size,
-        "delimiter_size": parsed_args.delimiter_size,
-        "padding_range": tuple(parsed_args.padding_range),
-        "decoy_ratio": parsed_args.decoy_ratio,
-        "siv_seed_initialisation": parsed_args.siv_seed_initialisation,
-        "auth_encrypt": parsed_args.auth_encrypt,
-    }
-
     # Initialise the VernamVeil object
-    cypher = VernamVeil(fx, **vernamveil_kwargs)
+    cypher = VernamVeil(
+        fx,
+        chunk_size=parsed_args.chunk_size,
+        delimiter_size=parsed_args.delimiter_size,
+        padding_range=tuple(parsed_args.padding_range),
+        decoy_ratio=parsed_args.decoy_ratio,
+        siv_seed_initialisation=parsed_args.siv_seed_initialisation,
+        auth_encrypt=parsed_args.auth_encrypt,
+    )
 
     # Define progress callback if verbosity is "info"
     progress_callback: Callable[[int, int], None] | None
@@ -320,10 +318,11 @@ def main(args: list[str] | None = None) -> None:
 
         def progress_callback(processed: int, total: int) -> None:
             percent = 100.0 * processed / total if total > 0 else 0.0
-            print(f"\rProgress: {percent:.2f}%", end="", file=sys.stderr, flush=True)
             if processed >= total:
                 print("\rProgress: 100.00%", end="", file=sys.stderr, flush=True)
                 print("", file=sys.stderr, flush=True)
+            else:
+                print(f"\rProgress: {percent:.2f}%", end="", file=sys.stderr, flush=True)
 
     else:
         progress_callback = None
