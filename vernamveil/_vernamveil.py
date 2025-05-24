@@ -417,7 +417,7 @@ class VernamVeil(_Cypher):
             tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
         delimiter = self._generate_bytes(self._delimiter_size, seed)
-        seed = self._hash(seed, [b"delimiter"])
+        seed = self._hash(seed, [delimiter])
         return delimiter, seed
 
     def encode(
