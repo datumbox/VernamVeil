@@ -91,19 +91,21 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
     )
 
 
-def _vprint(msg: str, level: str, verbosity: str) -> None:
+def _vprint(msg: str, level: str, verbosity: str, end: str = "\n", flush: bool = False) -> None:
     """Conditionally print a message to stderr based on the verbosity level.
 
     Args:
         msg (str): The message to print.
         level (str): The message level: 'info', 'warning', or 'error'.
         verbosity (str): The verbosity setting: 'info', 'warning', 'error', or 'none'.
+        end (str): The string appended after the message (default: newline).
+        flush (bool): Whether to forcibly flush the output buffer (default: False).
     """
     levels: dict[str, int] = {"info": 0, "warning": 1, "error": 2, "none": 3}
     msg_level = levels[level]
     user_level = levels[verbosity]
     if msg_level >= user_level:
-        print(msg, file=sys.stderr)
+        print(msg, file=sys.stderr, end=end, flush=flush)
 
 
 def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> IO[bytes]:
@@ -317,12 +319,18 @@ def main(args: list[str] | None = None) -> None:
     if verbosity == "info":
 
         def progress_callback(processed: int, total: int) -> None:
+            """Callback to report progress during file processing.
+
+            Args:
+                processed (int): Number of bytes processed so far.
+                total (int): Total number of bytes to process.
+            """
             percent = 100.0 * processed / total if total > 0 else 0.0
             if processed >= total:
-                print("\rProgress: 100.00%", end="", file=sys.stderr, flush=True)
-                print("", file=sys.stderr, flush=True)
+                _vprint("\rProgress: 100.00%", "info", verbosity, end="", flush=True)
+                _vprint("", "info", verbosity, flush=True)
             else:
-                print(f"\rProgress: {percent:.2f}%", end="", file=sys.stderr, flush=True)
+                _vprint(f"\rProgress: {percent:.2f}%", "info", verbosity, end="", flush=True)
 
     else:
         progress_callback = None
