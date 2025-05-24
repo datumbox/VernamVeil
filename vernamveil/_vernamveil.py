@@ -188,12 +188,7 @@ class VernamVeil(_Cypher):
 
         # Shuffle deterministically based on the hashed seed
         for i in range(total_count - 1, 0, -1):
-            # Create a random number between 0 and i        for i in range(total_count - 1, 0, -1):
             # Create a random number between 0 and i
-            j = hashes[i - 1] % (i + 1)
-
-            # Swap elements at positions i and j
-            positions[i], positions[j] = positions[j], positions[i]
             j = hashes[i - 1] % (i + 1)
 
             # Swap elements at positions i and j
