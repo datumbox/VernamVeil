@@ -8,7 +8,7 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
@@ -180,8 +180,9 @@ class VernamVeil(_Cypher):
             hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, "blake2b"))
         else:
             # Standard: generate hashes one by one
+            byteorder: Literal["little", "big"] = "big"
             hashes = [
-                int.from_bytes(self._hash(seed, [i.to_bytes(8, "big")]), "big")
+                int.from_bytes(self._hash(seed, [i.to_bytes(8, byteorder)]), byteorder)
                 for i in range(1, total_count)
             ]
 
@@ -274,6 +275,7 @@ class VernamVeil(_Cypher):
         # Build the noisy message by combining fake and shuffled real chunks
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
+        pad_width = pad_max - pad_min + 1
         for i in range(total_count):
             if shuffled_chunk_ranges[i][0] != -1:  # real chunk location
                 start, end = shuffled_chunk_ranges[i]
@@ -282,11 +284,7 @@ class VernamVeil(_Cypher):
                 chunk = secrets.token_bytes(self._chunk_size)
 
             # Pre-pad
-            pre_pad_len = (
-                secrets.randbelow(pad_max - pad_min + 1) + pad_min
-                if pad_max != pad_min
-                else pad_min
-            )
+            pre_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if pre_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
             noisy_blocks.extend(delimiter)
@@ -294,11 +292,7 @@ class VernamVeil(_Cypher):
             noisy_blocks.extend(chunk)
             # Post-pad
             noisy_blocks.extend(delimiter)
-            post_pad_len = (
-                secrets.randbelow(pad_max - pad_min + 1) + pad_min
-                if pad_max != pad_min
-                else pad_min
-            )
+            post_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if post_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(post_pad_len))
 

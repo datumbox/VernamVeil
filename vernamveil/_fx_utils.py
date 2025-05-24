@@ -196,9 +196,14 @@ class OTPFX(FX):
             vals.append(self.keystream[self.position])
             self.position += 1
 
-        if not self.vectorise:
+        if self.vectorise:
+            out = np.empty(n * self.block_size, dtype=np.uint8)
+            for idx, chunk in enumerate(vals):
+                offset = idx * self.block_size
+                out[offset : offset + self.block_size] = np.frombuffer(chunk, dtype=np.uint8)
+            return out
+        else:
             return vals[0]
-        return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
 
 def generate_keyed_hash_fx(
