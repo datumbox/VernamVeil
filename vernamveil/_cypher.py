@@ -45,7 +45,7 @@ class _Cypher(ABC):
     @abstractmethod
     def _hash(
         self,
-        key: bytes | bytearray | memoryview,
+        key: bytes | memoryview,
         msg_list: list[bytes | memoryview],
         use_hmac: bool = False,
     ) -> bytes:
@@ -54,7 +54,7 @@ class _Cypher(ABC):
         Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
+            key (bytes or memoryview): The key for the keyed hash or HMAC.
             msg_list (list of bytes or memoryview): List of message parts to hash with the key.
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 

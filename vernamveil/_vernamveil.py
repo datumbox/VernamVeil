@@ -98,7 +98,7 @@ class VernamVeil(_Cypher):
             f"padding_range={self._padding_range}, "
             f"decoy_ratio={self._decoy_ratio}, "
             f"siv_seed_initialisation={self._siv_seed_initialisation}, "
-            f"auth_encrypt={self._auth_encrypt}"
+            f"auth_encrypt={self._auth_encrypt})"
         )
 
     @classmethod
@@ -128,7 +128,7 @@ class VernamVeil(_Cypher):
 
     def _hash(
         self,
-        key: bytes | bytearray | memoryview,
+        key: bytes | memoryview,
         msg_list: list[bytes | memoryview],
         use_hmac: bool = False,
     ) -> bytes:
@@ -137,7 +137,7 @@ class VernamVeil(_Cypher):
         Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
+            key (bytes or memoryview): The key for the keyed hash or HMAC.
             msg_list (list of bytes or memoryview): List of message parts to hash with the key.
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
@@ -145,8 +145,9 @@ class VernamVeil(_Cypher):
             bytes: The resulting hash digest.
         """
         if use_hmac:
-            hm = hmac.new(key, msg_list[0], digestmod="blake2b")
-            for i in range(1, len(msg_list)):
+            n = len(msg_list)
+            hm = hmac.new(key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b")
+            for i in range(1, n):
                 hm.update(msg_list[i])
             return hm.digest()
         else:
@@ -268,7 +269,7 @@ class VernamVeil(_Cypher):
 
         # Use the randomness of the positions to shuffle the chunks
         chunk_ranges_iter = self._generate_chunk_ranges(message_len)
-        shuffled_chunk_ranges: list[None | tuple[int, int]] = [None for _ in range(total_count)]
+        shuffled_chunk_ranges: list[None | tuple[int, int]] = [None] * total_count
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
@@ -434,7 +435,7 @@ class VernamVeil(_Cypher):
             ValueError: If the delimiter appears in the message.
         """
         # Convert to memoryview for efficient slicing
-        if not isinstance(message, memoryview):
+        if isinstance(message, (bytes, bytearray)):
             msg_bytes = message
             message = memoryview(message)
         else:
