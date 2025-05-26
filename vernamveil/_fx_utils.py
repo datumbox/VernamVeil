@@ -519,7 +519,7 @@ def check_fx_sanity(
         outputs_alt_list = [bytes(row) for row in outputs_alt]
     else:
         outputs_alt_list = [fx(i, alt_seed) for i in range(1, num_samples + 1)]
-    if outputs_list == outputs_alt_list:
+    if not isinstance(fx, OTPFX) and outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
