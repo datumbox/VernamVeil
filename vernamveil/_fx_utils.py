@@ -246,7 +246,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic keyed hash using {hash_name}
+    # Hash using {hash_name}
     return hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
 """
     else:
@@ -261,8 +261,8 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic keyed hash using {hash_name}
-    hasher = hashlib.new("{hash_name}", key=seed)
+    # Hash using {hash_name}
+    hasher = hashlib.new("{hash_name}", seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
@@ -350,7 +350,7 @@ def make_keystream_fn():
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
 
-        # Cryptographic keyed hash using Blake2b
+        # Hash using Blake2b
         return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return keystream_fn
@@ -378,10 +378,8 @@ def make_keystream_fn():
             result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-        # Cryptographic keyed hash using Blake2b
-        hasher = hashlib.blake2b(seed)
-        hasher.update(i.to_bytes(8, "big"))
-        return hasher.digest()
+        # Hash using Blake2b
+        return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
 
     return keystream_fn
 """
