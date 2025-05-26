@@ -43,6 +43,10 @@ def _find_obfuscated_decoy_message(
         # Generate random fake seed
         fake_seed = cypher.get_initial_seed()
 
+        # Reset fx if OTPFX is used
+        if isinstance(cypher._fx, OTPFX):
+            cypher._fx.position = 0
+
         # Generate delimiter and evolve the seed
         delimiter, seed = cypher._generate_delimiter(fake_seed)
 
