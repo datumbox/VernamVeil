@@ -22,26 +22,34 @@ void numpy_blake2b(const uint64_t* restrict arr, const size_t n, const char* res
     const bool seeded = seed != NULL && seedlen > 0;
     const int seedlen_int = (int)seedlen;
     const int n_int = (int)n;
+    const EVP_MD *md = EVP_blake2b512();
     int i;
 
     #ifdef _OPENMP
     // Parallelise the loop with OpenMP to use multiple CPU cores
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel
     #endif
-    for (i = 0; i < n_int; ++i) {
+    {
         // Create a new digest context for each hash computation; ensure thread safety
         EVP_MD_CTX* ctx = EVP_MD_CTX_new();
 
-        // Compute BLAKE2b hash of the uint64 block by chaining all hash steps
-        bool ok = (ctx != NULL) && (EVP_DigestInit_ex(ctx, EVP_blake2b512(), NULL) == 1);
-        if (seeded) {
-            // If a seed is provided, add it first
-            ok &= EVP_DigestUpdate(ctx, seed, seedlen_int) == 1;
-        }
-        ok &= EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1;
-        if (ok) {
-            // Finalize the hash and write it to the output buffer
-            EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL);
+        if (ctx != NULL) {
+            #ifdef _OPENMP
+            #pragma omp for schedule(static)
+            #endif
+            for (i = 0; i < n_int; ++i) {
+                // Compute BLAKE2b hash of the uint64 block by chaining all hash steps
+                bool ok = EVP_DigestInit_ex(ctx, md, NULL) == 1;
+                if (seeded) {
+                    // If a seed is provided, add it first
+                    ok &= EVP_DigestUpdate(ctx, seed, seedlen_int) == 1;
+                }
+                ok &= EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1;
+                if (ok) {
+                    // Finalize the hash and write it to the output buffer
+                    EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL);
+                }
+            }
         }
 
         // Free the context to avoid memory leaks
