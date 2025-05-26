@@ -214,6 +214,11 @@ def generate_keyed_hash_fx(
 
     This is the recommended secure default `fx` for the VernamVeil cypher.
 
+    .. note::
+        For performance reasons, this function does not use an HMAC construction but instead concatenates the seed
+        with the index. This is safe in this context because the inputs are tightly controlled by the cypher and always
+        have fixed lengths.
+
     Args:
         hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
@@ -262,7 +267,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Hash using {hash_name}
-    hasher = hashlib.new("{hash_name}", seed)
+    hasher = hashlib.{hash_name}(seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
