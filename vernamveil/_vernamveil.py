@@ -453,7 +453,7 @@ class VernamVeil(_Cypher):
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed, the timestamp and the message
             timestamp = time.time_ns().to_bytes(8, "big")
-            siv_hash = self._hash(seed, [message, timestamp])
+            siv_hash = self._hash(seed, [timestamp, message])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
