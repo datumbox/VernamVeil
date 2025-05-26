@@ -22,7 +22,7 @@ def _find_obfuscated_decoy_message(
     decoy_message: bytes,
     target_len: int,
     max_attempts: int,
-) -> tuple[bytes, bytes, memoryview]:
+) -> tuple[bytes, bytes, bytes]:
     """Tries to produce an obfuscated version of the decoy message with the exact desired target length.
 
     Args:
@@ -32,7 +32,7 @@ def _find_obfuscated_decoy_message(
         max_attempts (int): The maximum number of attempts to find a valid obfuscated message.
 
     Returns:
-        tuple[bytes, bytes, memoryview]: A tuple containing the obfuscated message, the fake seed,
+        tuple[bytes, bytes, bytes]: A tuple containing the obfuscated message, the fake seed,
         and the delimiter.
 
     Raises:
@@ -58,7 +58,7 @@ def _find_obfuscated_decoy_message(
 
         # Check if the obfuscated message has the desired length
         if len(obfuscated) == target_len:
-            return obfuscated.tobytes(), fake_seed, delimiter
+            return obfuscated.tobytes(), fake_seed, delimiter.tobytes()
 
     raise ValueError(
         f"Could not find obfuscated decoy of length {target_len} in {max_attempts} attempts. "
@@ -142,16 +142,13 @@ def forge_plausible_fx(
     # 3. Generate the delimiter bytes and make sure they are a multiple of block_size
     block_size = cypher._fx.block_size
     original_delimiter_size = cypher._delimiter_size
-    delimiter_len = math.ceil(original_delimiter_size / block_size) * block_size
-    delimiter_bytes = delimiter.tobytes()
-    padding_len = delimiter_len - original_delimiter_size
-    if padding_len > 0:
-        delimiter_bytes += VernamVeil.get_initial_seed(num_bytes=padding_len)
+    delimiter_size = math.ceil(original_delimiter_size / block_size) * block_size
+    padding_size = delimiter_size - original_delimiter_size
+    if padding_size > 0:
+        delimiter += VernamVeil.get_initial_seed(num_bytes=padding_size)
 
     # 4. Prepend the delimiter bytes to the keystream_values
-    keystream_values = [
-        delimiter_bytes[i : i + block_size] for i in range(0, delimiter_len, block_size)
-    ]
+    keystream_values = [delimiter[i : i + block_size] for i in range(0, delimiter_size, block_size)]
 
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where
@@ -160,14 +157,15 @@ def forge_plausible_fx(
     view_obfuscated = memoryview(obfuscated)
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
         for block_start in range(start, end, block_size):
-            ct_block = view_cyphertext[block_start : block_start + block_size]
-            obf_block = view_obfuscated[block_start : block_start + block_size]
+            block_end = block_start + block_size
+            ct_block = view_cyphertext[block_start:block_end]
+            obf_block = view_obfuscated[block_start:block_end]
             ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
 
             # Pad to block_size bytes if needed using random bytes
-            padding_len = block_size - len(ks)
-            if padding_len > 0:
-                ks += VernamVeil.get_initial_seed(num_bytes=padding_len)
+            padding_size = block_size - len(ks)
+            if padding_size > 0:
+                ks += VernamVeil.get_initial_seed(num_bytes=padding_size)
 
             keystream_values.append(ks)
 
