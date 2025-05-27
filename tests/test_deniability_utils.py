@@ -5,7 +5,7 @@ from pathlib import Path
 
 from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._deniability_utils import forge_plausible_fx
-from vernamveil._fx_utils import generate_default_fx, load_fx_from_file
+from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -14,14 +14,13 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def _run_deniability_test(
         self,
+        real_fx,
         chunk_size,
         delimiter_size,
         padding_range,
         decoy_ratio,
-        vectorise,
     ):
         """Utility to run a basic deniability test with configurable parameters."""
-        real_fx = generate_default_fx(vectorise=vectorise)
         cypher = VernamVeil(
             real_fx,
             chunk_size=chunk_size,
@@ -149,6 +148,26 @@ class TestDeniabilityUtils(unittest.TestCase):
             self.assertEqual(real_out, secret_message)
             self.assertEqual(decoy_out, decoy_message)
 
+    def test_deniability_with_otpfx(self):
+        """Test deniability works when the real_fx is OTPFX."""
+        real_fx = OTPFX([VernamVeil.get_initial_seed() for _ in range(10)], 64, vectorise=False)
+        try:
+            decoy_out, decoy_message = self._run_deniability_test(
+                real_fx=real_fx,
+                chunk_size=33,
+                delimiter_size=9,
+                padding_range=(5, 15),
+                decoy_ratio=0.2,
+            )
+            self.assertEqual(decoy_out, decoy_message)
+        except ValueError as e:
+            msg = str(e)
+            self.assertTrue(
+                "Cannot plausibly forge decoy message of length" in msg
+                or "Could not find obfuscated decoy of length" in msg
+            )
+            self.skipTest("Could not find a decoy for this configuration.")
+
 
 # Generate all combinations
 chunk_sizes = [127, 128, 129]
@@ -166,11 +185,11 @@ def make_test_func(chunk_size, delimiter_size):
             with self.subTest(vectorise=vectorise):
                 try:
                     decoy_out, decoy_message = self._run_deniability_test(
+                        real_fx=generate_default_fx(vectorise=vectorise),
                         chunk_size=chunk_size,
                         delimiter_size=delimiter_size,
                         padding_range=(5, 150),
                         decoy_ratio=0.3,
-                        vectorise=vectorise,
                     )
                     self.assertEqual(decoy_out, decoy_message)
                 except ValueError as e:

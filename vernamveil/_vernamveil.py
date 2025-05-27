@@ -8,7 +8,7 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator
+from typing import Any, Iterator, Literal
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
@@ -98,7 +98,7 @@ class VernamVeil(_Cypher):
             f"padding_range={self._padding_range}, "
             f"decoy_ratio={self._decoy_ratio}, "
             f"siv_seed_initialisation={self._siv_seed_initialisation}, "
-            f"auth_encrypt={self._auth_encrypt}"
+            f"auth_encrypt={self._auth_encrypt})"
         )
 
     @classmethod
@@ -128,7 +128,7 @@ class VernamVeil(_Cypher):
 
     def _hash(
         self,
-        key: bytes | bytearray | memoryview,
+        key: bytes | memoryview,
         msg_list: list[bytes | memoryview],
         use_hmac: bool = False,
     ) -> bytes:
@@ -137,7 +137,7 @@ class VernamVeil(_Cypher):
         Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
+            key (bytes or memoryview): The key for the keyed hash or HMAC.
             msg_list (list of bytes or memoryview): List of message parts to hash with the key.
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
@@ -145,8 +145,9 @@ class VernamVeil(_Cypher):
             bytes: The resulting hash digest.
         """
         if use_hmac:
-            hm = hmac.new(key, msg_list[0], digestmod="blake2b")
-            for i in range(1, len(msg_list)):
+            n = len(msg_list)
+            hm = hmac.new(key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b")
+            for i in range(1, n):
                 hm.update(msg_list[i])
             return hm.digest()
         else:
@@ -180,8 +181,9 @@ class VernamVeil(_Cypher):
             hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, "blake2b"))
         else:
             # Standard: generate hashes one by one
+            byteorder: Literal["little", "big"] = "big"
             hashes = [
-                int.from_bytes(self._hash(seed, [i.to_bytes(8, "big")]), "big")
+                int.from_bytes(self._hash(seed, [i.to_bytes(8, byteorder)]), byteorder)
                 for i in range(1, total_count)
             ]
 
@@ -267,26 +269,23 @@ class VernamVeil(_Cypher):
 
         # Use the randomness of the positions to shuffle the chunks
         chunk_ranges_iter = self._generate_chunk_ranges(message_len)
-        shuffled_chunk_ranges = [(-1, -1) for _ in range(total_count)]
+        shuffled_chunk_ranges: list[None | tuple[int, int]] = [None] * total_count
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
         # Build the noisy message by combining fake and shuffled real chunks
         noisy_blocks = bytearray()
         pad_min, pad_max = self._padding_range
-        for i in range(total_count):
-            if shuffled_chunk_ranges[i][0] != -1:  # real chunk location
-                start, end = shuffled_chunk_ranges[i]
+        pad_width = pad_max - pad_min + 1
+        for chunk_range in shuffled_chunk_ranges:
+            if chunk_range is not None:
+                start, end = chunk_range
                 chunk: memoryview | bytes = message[start:end]
             else:
                 chunk = secrets.token_bytes(self._chunk_size)
 
             # Pre-pad
-            pre_pad_len = (
-                secrets.randbelow(pad_max - pad_min + 1) + pad_min
-                if pad_max != pad_min
-                else pad_min
-            )
+            pre_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if pre_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
             noisy_blocks.extend(delimiter)
@@ -294,11 +293,7 @@ class VernamVeil(_Cypher):
             noisy_blocks.extend(chunk)
             # Post-pad
             noisy_blocks.extend(delimiter)
-            post_pad_len = (
-                secrets.randbelow(pad_max - pad_min + 1) + pad_min
-                if pad_max != pad_min
-                else pad_min
-            )
+            post_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if post_pad_len > 0:
                 noisy_blocks.extend(secrets.token_bytes(post_pad_len))
 
@@ -385,7 +380,7 @@ class VernamVeil(_Cypher):
             # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
             processed = np.frombuffer(result, dtype=np.uint8)
         else:
-            processed = result
+            processed = memoryview(result)
 
         for start, end in self._generate_chunk_ranges(data_len):
             # Generate a key using fx
@@ -394,13 +389,17 @@ class VernamVeil(_Cypher):
 
             # XOR the chunk with the key
             if self._fx.vectorise:
-                np.bitwise_xor(data[start:end], keystream, out=processed[start:end])
-                plaintext_data = data[start:end] if is_encode else processed[start:end].data
+                # Store the slicing to avoid duplicate ops
+                data_slice = data[start:end]
+                processed_slice = processed[start:end]
+                # Writing to slices modifies the original data
+                np.bitwise_xor(data_slice, keystream, out=processed_slice)
+                plaintext_data = data_slice if is_encode else processed_slice.data
             else:
                 for i in range(chunk_len):
                     pos = start + i
-                    processed[pos] = data[pos] ^ keystream[i]
-                plaintext_data = data[start:end] if is_encode else memoryview(processed)[start:end]
+                    result[pos] = data[pos] ^ keystream[i]
+                plaintext_data = data[start:end] if is_encode else processed[start:end]
 
             # Refresh the seed differently for encoding and decoding
             seed = self._hash(seed, [plaintext_data])
@@ -417,7 +416,7 @@ class VernamVeil(_Cypher):
             tuple[memoryview, bytes]: The delimiter and the refreshed seed.
         """
         delimiter = self._generate_bytes(self._delimiter_size, seed)
-        seed = self._hash(seed, [b"delimiter"])
+        seed = self._hash(seed, [delimiter])
         return delimiter, seed
 
     def encode(
@@ -436,7 +435,7 @@ class VernamVeil(_Cypher):
             ValueError: If the delimiter appears in the message.
         """
         # Convert to memoryview for efficient slicing
-        if not isinstance(message, memoryview):
+        if isinstance(message, (bytes, bytearray)):
             msg_bytes = message
             message = memoryview(message)
         else:
@@ -454,7 +453,7 @@ class VernamVeil(_Cypher):
         if self._siv_seed_initialisation:
             # Generate the SIV hash from the initial seed, the timestamp and the message
             timestamp = time.time_ns().to_bytes(8, "big")
-            siv_hash = self._hash(seed, [message, timestamp])
+            siv_hash = self._hash(seed, [timestamp, message])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
@@ -490,8 +489,8 @@ class VernamVeil(_Cypher):
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            # The tag is computed over the cyphertext and the configuration of the cypher
-            tag = self._hash(auth_seed, [cyphertext, str(self).encode()], use_hmac=True)
+            # The tag is computed over the configuration of the cypher and the cyphertext.
+            tag = self._hash(auth_seed, [str(self).encode(), cyphertext], use_hmac=True)
             output.extend(tag)
 
         return output, last_seed
@@ -534,7 +533,7 @@ class VernamVeil(_Cypher):
             auth_seed = self._hash(seed, [b"auth"])
 
             # Estimate the tag and compare it with the expected
-            tag = self._hash(auth_seed, [encrypted_data, str(self).encode()], use_hmac=True)
+            tag = self._hash(auth_seed, [str(self).encode(), encrypted_data], use_hmac=True)
             if not hmac.compare_digest(tag, expected_tag):
                 raise ValueError("Authentication failed: MAC tag mismatch.")
         else:

@@ -196,9 +196,14 @@ class OTPFX(FX):
             vals.append(self.keystream[self.position])
             self.position += 1
 
-        if not self.vectorise:
+        if self.vectorise:
+            out = np.empty(n * self.block_size, dtype=np.uint8)
+            for idx, chunk in enumerate(vals):
+                offset = idx * self.block_size
+                out[offset : offset + self.block_size] = np.frombuffer(chunk, dtype=np.uint8)
+            return out
+        else:
             return vals[0]
-        return np.fromiter((b for chunk in vals for b in chunk), dtype=np.uint8)
 
 
 def generate_keyed_hash_fx(
@@ -209,6 +214,11 @@ def generate_keyed_hash_fx(
     """Generate a standard keyed hash-based pseudorandom function (PRF) using BLAKE2b, BLAKE3 or SHA256.
 
     This is the recommended secure default `fx` for the VernamVeil cypher.
+
+    .. note::
+        For performance reasons, this function does not use an HMAC construction but instead concatenates the seed
+        with the index. This is safe in this context because the inputs are tightly controlled by the cypher and always
+        have fixed lengths.
 
     Args:
         hash_name (Literal["blake2b", "blake3", "sha256"]): Hash function to use ("blake2b", "blake3" or "sha256").
@@ -263,7 +273,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic keyed hash using {hash_name}
+    # Hash using {hash_name}
     return hash_numpy(i, seed, "{hash_name}", hash_size={block_size})  # uses C module if available, else NumPy fallback
 """
     else:
@@ -279,7 +289,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Cryptographic keyed hash using {hash_name}
+    # Hash using {hash_name}
 """
         if hash_name == "blake3":
             function_code += f"""
@@ -289,7 +299,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
 """
         else:
             function_code += f"""
-    hasher = hashlib.new("{hash_name}", key=seed)
+    hasher = hashlib.{hash_name}(seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
@@ -377,7 +387,7 @@ def make_keystream_fn():
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
 
-        # Cryptographic keyed hash using Blake2b
+        # Hash using Blake2b
         return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return keystream_fn
@@ -405,10 +415,8 @@ def make_keystream_fn():
             result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-        # Cryptographic keyed hash using Blake2b
-        hasher = hashlib.blake2b(seed)
-        hasher.update(i.to_bytes(8, "big"))
-        return hasher.digest()
+        # Hash using Blake2b
+        return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
 
     return keystream_fn
 """
@@ -546,7 +554,7 @@ def check_fx_sanity(
         outputs_alt_list = [bytes(row) for row in outputs_alt]
     else:
         outputs_alt_list = [fx(i, alt_seed) for i in range(1, num_samples + 1)]
-    if outputs_list == outputs_alt_list:
+    if not isinstance(fx, OTPFX) and outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
 
