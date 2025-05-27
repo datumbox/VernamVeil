@@ -56,7 +56,10 @@ class TestHashUtils(unittest.TestCase):
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):
-                                hasher = method(seed)
+                                if hash_name == "blake3":
+                                    hasher = method(key=seed)
+                                else:
+                                    hasher = method(seed)
                                 hasher.update(i_bytes[j : j + 8])
                                 digest = hasher.digest()
                                 if fold_type == "full":
