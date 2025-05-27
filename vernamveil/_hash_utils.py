@@ -17,7 +17,9 @@ except ImportError:
 
 blake3: Any
 try:
-    import blake3
+    import blake3 as b3
+
+    blake3 = b3
 except ImportError:
     blake3 = None
 
