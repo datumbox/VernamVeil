@@ -79,7 +79,9 @@ class TestDeniabilityUtils(unittest.TestCase):
             b"There is nothing worth seeing here, move along!!!"
         )
         try:
-            plausible_fx, fake_seed = forge_plausible_fx(cypher, cyphertext, decoy_message)
+            plausible_fx, fake_seed = forge_plausible_fx(
+                cypher, cyphertext, decoy_message, max_obfuscate_attempts=50000
+            )
         except ValueError as e:
             msg = str(e)
             if (
@@ -156,7 +158,7 @@ class TestDeniabilityUtils(unittest.TestCase):
                 real_fx=real_fx,
                 chunk_size=33,
                 delimiter_size=9,
-                padding_range=(5, 15),
+                padding_range=(5, 25),
                 decoy_ratio=0.2,
             )
             self.assertEqual(decoy_out, decoy_message)

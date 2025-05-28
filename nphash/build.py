@@ -236,6 +236,7 @@ def main() -> None:
     extra_compile_args.append("-DBLAKE3_NO_AVX512")
     extra_compile_args.append("-DBLAKE3_NO_SSE2")
     extra_compile_args.append("-DBLAKE3_NO_SSE41")
+    extra_compile_args.append("-DBLAKE3_USE_NEON=0")
 
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
