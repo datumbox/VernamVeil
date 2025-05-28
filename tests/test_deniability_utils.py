@@ -153,7 +153,11 @@ class TestDeniabilityUtils(unittest.TestCase):
     def test_deniability_with_otpfx(self):
         """Test deniability works when the real_fx is OTPFX."""
         block_size = 64
-        real_fx = OTPFX([VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(10)], block_size, False)
+        real_fx = OTPFX(
+            [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(10)],
+            block_size,
+            False,
+        )
         try:
             decoy_out, decoy_message = self._run_deniability_test(
                 real_fx=real_fx,

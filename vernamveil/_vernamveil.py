@@ -182,14 +182,12 @@ class VernamVeil(_Cypher):
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
             if blake3 is not None:
-                hash_name = "blake3"
+                hash_name: Literal["blake2b", "blake3", "sha256"] = "blake3"
                 hash_size = 32
             else:
                 hash_name = "blake2b"
                 hash_size = 64
-            hashes = fold_bytes_to_uint64(
-                hash_numpy(i_arr, seed, hash_name, hash_size=hash_size)
-            )
+            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, hash_name, hash_size=hash_size))
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"
