@@ -102,7 +102,7 @@ class VernamVeil(_Cypher):
         )
 
     @classmethod
-    def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
+    def get_initial_seed(cls, num_bytes: int = 32) -> bytes:
         """Generate a cryptographically secure initial random seed.
 
         This method uses the `secrets` module to generate a random sequence of bytes
@@ -110,7 +110,7 @@ class VernamVeil(_Cypher):
 
         Args:
             num_bytes (int): The number of bytes to generate for the seed.
-                Defaults to 64 bytes if not provided.
+                Defaults to 32 bytes if not provided.
 
         Returns:
             bytes: A random byte string of the specified length.
@@ -150,13 +150,6 @@ class VernamVeil(_Cypher):
                 key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
             )
         elif blake3 is not None:
-            key_len = len(key)
-            if key_len > 32:
-                key = key[:32]
-            elif key_len < 32:
-                if isinstance(key, memoryview):
-                    key = key.tobytes()
-                key = key.ljust(32, b"\0")
             hasher = blake3.blake3(
                 msg_list[0] if n > 0 else b"", key=key, max_threads=blake3.blake3.AUTO
             )
@@ -188,8 +181,14 @@ class VernamVeil(_Cypher):
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
+            if blake3 is not None:
+                hash_name = "blake3"
+                hash_size = 32
+            else:
+                hash_name = "blake2b"
+                hash_size = 64
             hashes = fold_bytes_to_uint64(
-                hash_numpy(i_arr, seed, "blake3" if blake3 is not None else "blake2b")
+                hash_numpy(i_arr, seed, hash_name, hash_size=hash_size)
             )
         else:
             # Standard: generate hashes one by one
