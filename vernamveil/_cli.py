@@ -112,7 +112,7 @@ def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> I
     """Opens a file in the specified binary mode or returns the provided standard stream if file is '-' or None.
 
     Args:
-        file (str | None): Path to the file or '-' for the standard stream.
+        file (str, optional): Path to the file or '-' for the standard stream.
         mode (str): File open mode, e.g., 'rb' or 'wb'.
         std_stream (object): Standard stream to use if file is '-' or None.
 

@@ -8,7 +8,7 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator, Literal
+from typing import Any, Iterator, Literal, cast
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
@@ -128,8 +128,8 @@ class VernamVeil(_Cypher):
 
     def _hash(
         self,
-        key: bytes | memoryview,
-        msg_list: list[bytes | memoryview],
+        key: bytes | bytearray | memoryview,
+        msg_list: list[bytes | bytearray | memoryview],
         use_hmac: bool = False,
     ) -> bytes:
         """Generate a Keyed Hash or Hash-based Message Authentication Code (HMAC).
@@ -137,8 +137,8 @@ class VernamVeil(_Cypher):
         Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or memoryview): The key for the keyed hash or HMAC.
-            msg_list (list of bytes or memoryview): List of message parts to hash with the key.
+            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
+            msg_list (list of bytes or bytearray or memoryview): List of message parts to hash with the key.
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
         Returns:
