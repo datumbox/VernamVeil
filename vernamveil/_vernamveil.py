@@ -8,7 +8,7 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator, Literal, cast
+from typing import Any, Iterator, Literal
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
