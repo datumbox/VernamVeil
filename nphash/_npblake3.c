@@ -10,7 +10,6 @@
 #include <omp.h>
 #define CHUNK_SIZE 1024  // Size of each chunk in bytes for parallel processing
 #define MIN_PARALLEL_SIZE (2 * CHUNK_SIZE)  // Minimum size to enable parallel tree hashing
-#define MAX_CHUNKS 256  // Maximum number of chunks to process in parallel
 #define BLAKE3_OUT_DOUBLE_LEN (2 * BLAKE3_OUT_LEN)  // Double the output length for combining CVs
 #define MIN(a, b) ((a) < (b) ? (a) : (b))  // Macro to find the minimum of two values
 #endif
@@ -86,7 +85,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
     // Calculate the number of chunks based on the input data length
     const int datalen_int = (int)datalen;
-    const int num_chunks = MIN((datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE, MAX_CHUNKS);
+    const int num_chunks = (datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
     // Define a structure to hold the chaining values (CVs) for each chunk
     typedef struct {
@@ -94,10 +93,13 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
         uint64_t chunk_index;
         int num_blocks;
     } cv_node_t;
-    cv_node_t cvs[MAX_CHUNKS];
+    cv_node_t* cvs = NULL;
+    if (num_chunks > 1) {
+        cvs = (cv_node_t*)malloc(num_chunks * sizeof(cv_node_t));
+    }
 
-    // Use parallel tree hashing for large inputs, fallback to serial for small
-    if (datalen >= MIN_PARALLEL_SIZE && num_chunks > 1) {
+    // Use parallel tree hashing for large inputs, fallback to serial for small or allocation failure
+    if (datalen >= MIN_PARALLEL_SIZE && num_chunks > 1 && cvs != NULL) {
         // Parallel tree hashing path
 
         // Estimate the CVs for each chunk
@@ -155,6 +157,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
         final_data = cvs[0].cv;
         final_len = BLAKE3_OUT_LEN;
     }
+    free(cvs);
     #endif
 
     // Finalise hash
