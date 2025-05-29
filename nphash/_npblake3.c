@@ -118,7 +118,8 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             cvs[i].num_blocks = 1;
         }
 
-        // Allocate a second buffer for tree reduction to combine CVs
+        // Two buffers (ping-pong buffers) are required here to ensure that each reduction round
+        // reads from one buffer and writes to the other.
         cv_node_t* next_cvs = (cv_node_t*)malloc(num_chunks * sizeof(cv_node_t));
         if (next_cvs) {
             // Perform tree reduction to combine CVs
@@ -175,5 +176,6 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     // Finalise hash
     blake3_hash_bytes(final_data, final_len, key, seeded, out, hash_size);
 }
+
 
 
