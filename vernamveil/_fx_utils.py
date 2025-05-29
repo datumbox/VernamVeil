@@ -289,16 +289,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Hash using {hash_name}
-"""
-        if hash_name == "blake3":
-            function_code += f"""
-    hasher = blake3(key=seed, length={block_size})
-    hasher.update(i.to_bytes(8, "big"))
-    return hasher.digest()
-"""
-        else:
-            function_code += f"""
-    hasher = hashlib.{hash_name}(seed)
+    hasher = {'blake3(key=seed, length=' + str(block_size) + ')' if hash_name == 'blake3' else f'hashlib.{hash_name}(seed)'}
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
