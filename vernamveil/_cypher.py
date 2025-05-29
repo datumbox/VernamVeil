@@ -45,8 +45,8 @@ class _Cypher(ABC):
     @abstractmethod
     def _hash(
         self,
-        key: bytes | memoryview,
-        msg_list: list[bytes | memoryview],
+        key: bytes | bytearray | memoryview,
+        msg_list: list[bytes | bytearray | memoryview],
         use_hmac: bool = False,
     ) -> bytes:
         """Generate a Keyed Hash or Hash-based Message Authentication Code (HMAC).
@@ -54,8 +54,8 @@ class _Cypher(ABC):
         Each element in `msg_list` is sequentially fed into the Hash as message data.
 
         Args:
-            key (bytes or memoryview): The key for the keyed hash or HMAC.
-            msg_list (list of bytes or memoryview): List of message parts to hash with the key.
+            key (bytes or bytearray or memoryview): The key for the keyed hash or HMAC.
+            msg_list (list of bytes or bytearray or memoryview): List of message parts to hash with the key.
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
         Returns:
@@ -64,24 +64,31 @@ class _Cypher(ABC):
         pass
 
     @abstractmethod
-    def encode(self, message: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
+    def encode(
+        self, message: bytes | bytearray | memoryview, seed: bytes
+    ) -> tuple[bytearray, bytes]:
         """Encrypt a message.
 
         Args:
-            message (bytes or memoryview): Message to encode.
+            message (bytes or bytearray or memoryview): Message to encode.
             seed (bytes): Initial seed for encryption.
 
         Returns:
             tuple[bytearray, bytes]: Encrypted message and final seed.
+
+        Raises:
+            ValueError: If the delimiter appears in the message.
         """
         pass
 
     @abstractmethod
-    def decode(self, cyphertext: bytes | memoryview, seed: bytes) -> tuple[bytearray, bytes]:
+    def decode(
+        self, cyphertext: bytes | bytearray | memoryview, seed: bytes
+    ) -> tuple[bytearray, bytes]:
         """Decrypt an encoded message.
 
         Args:
-            cyphertext (bytes or memoryview): Encrypted and obfuscated message.
+            cyphertext (bytes or bytearray or memoryview): Encrypted and obfuscated message.
             seed (bytes): Initial seed for decryption.
 
         Returns:
@@ -172,13 +179,13 @@ class _Cypher(ABC):
             progress_callback(0, total_size)
 
         # Reader and Writer threads used for asynchronous IO
-        read_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=read_queue_size)
-        write_q: queue.Queue[bytes | memoryview] = queue.Queue(maxsize=write_queue_size)
+        read_q: queue.Queue[bytes | bytearray | memoryview] = queue.Queue(maxsize=read_queue_size)
+        write_q: queue.Queue[bytes | bytearray | memoryview] = queue.Queue(maxsize=write_queue_size)
         exception_queue: queue.Queue[BaseException] = queue.Queue()
 
         def queue_get(
-            q: queue.Queue[bytes | memoryview],
-        ) -> bytes | memoryview:
+            q: queue.Queue[bytes | bytearray | memoryview],
+        ) -> bytes | bytearray | memoryview:
             # Gets from queue in a blocking way with timeout, as long as the exception queue is empty
             # Returns the data if successful, Empty data if an error occurs
             while exception_queue.empty():
@@ -188,7 +195,9 @@ class _Cypher(ABC):
                     continue
             return b""
 
-        def queue_put(q: queue.Queue[bytes | memoryview], data: bytes | memoryview) -> bool:
+        def queue_put(
+            q: queue.Queue[bytes | bytearray | memoryview], data: bytes | bytearray | memoryview
+        ) -> bool:
             # Puts in queue in a blocking way with timeout, as long as the exception queue is empty
             # Returns True if successful, False if an error occurs
             while exception_queue.empty():
