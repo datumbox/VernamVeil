@@ -9,7 +9,9 @@
 // Enable parallelisation with OpenMP for multi-core performance
 #include <omp.h>
 #define CHUNK_SIZE 1024  // Size of each chunk in bytes for parallel processing
+#define MIN_PARALLEL_SIZE (2 * CHUNK_SIZE)  // Minimum size to enable parallel tree hashing
 #define MAX_CHUNKS 256  // Maximum number of chunks to process in parallel
+#define BLAKE3_OUT_DOUBLE_LEN (2 * BLAKE3_OUT_LEN)  // Double the output length for combining CVs
 #endif
 
 #define BLOCK_SIZE 8  // Each input element is a uint64 block
@@ -20,6 +22,23 @@ static inline void prepare_blake3_key(bool seeded, const char* restrict seed, co
         const size_t copylen = seedlen < BLAKE3_KEY_LEN ? seedlen : BLAKE3_KEY_LEN;
         memcpy(key, seed, copylen);
     }
+}
+
+// Inline helper to hash data with BLAKE3, with or without a key, and output variable-length hash
+static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const uint8_t key[BLAKE3_KEY_LEN], bool seeded, uint8_t* out, size_t hash_size) {
+    // Initialise the BLAKE3 hasher
+    blake3_hasher hasher;
+    if (seeded) {
+        // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+        blake3_hasher_init_keyed(&hasher, key);
+    } else {
+        // If no seed is provided, use the default BLAKE3 hasher
+        blake3_hasher_init(&hasher);
+    }
+    // Hash the data
+    blake3_hasher_update(&hasher, data, datalen);
+    // Finalise the hash and write it to the output buffer (arbitrary length)
+    blake3_hasher_finalize(&hasher, out, hash_size);
 }
 
 // Hashes an array of uint64 elements with a seed using BLAKE3, outputs variable-length hashes
@@ -42,21 +61,8 @@ void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* rest
     #pragma omp parallel for schedule(static)
     #endif
     for (i = 0; i < n_int; ++i) {
-        // Initialise the BLAKE3 hasher
-        blake3_hasher hasher;
-
-        if (seeded) {
-            // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
-            blake3_hasher_init_keyed(&hasher, key);
-        } else {
-            blake3_hasher_init(&hasher);
-        }
-
         // Hash the 8-byte block
-        blake3_hasher_update(&hasher, arr8[i], BLOCK_SIZE);
-
-        // Finalize the hash and write it to the output buffer (arbitrary length)
-        blake3_hasher_finalize(&hasher, &out[i * hash_size], hash_size);
+        blake3_hash_bytes(arr8[i], BLOCK_SIZE, key, seeded, &out[i * hash_size], hash_size);
     }
 }
 
@@ -78,61 +84,58 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     // Attempt to chunk and parallelise with OpenMP to use multiple CPU cores
 
     // Calculate the number of chunks based on the input data length
-    int num_chunks = (datalen + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    const int datalen_int = (int)datalen;
+    int num_chunks = (datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE;
     if (num_chunks > MAX_CHUNKS) num_chunks = MAX_CHUNKS;
 
     // Define a structure to hold the chaining values (CVs) for each chunk
     typedef struct {
         uint8_t cv[BLAKE3_OUT_LEN];
         uint64_t chunk_index;
-        size_t  num_blocks;
+        int num_blocks;
     } cv_node_t;
     cv_node_t cvs[MAX_CHUNKS];
 
     // Use parallel tree hashing for large inputs, fallback to serial for small
-    if (datalen >= CHUNK_SIZE * 2 && num_chunks > 1) {
+    if (datalen >= MIN_PARALLEL_SIZE && num_chunks > 1) {
         // Parallel tree hashing path
+
+        // Estimate the CVs for each chunk
         #pragma omp parallel for schedule(static)
         for (i = 0; i < num_chunks; ++i) {
-            size_t offset = i * CHUNK_SIZE;
-            size_t len = (offset + CHUNK_SIZE <= datalen) ? CHUNK_SIZE : (datalen - offset);
-            // Initialise the BLAKE3 hasher
-            blake3_hasher hasher;
+            // Calculate the offset and length for this chunk
+            const int offset = i * CHUNK_SIZE;
+            const int len = ((offset + CHUNK_SIZE <= datalen_int) ? CHUNK_SIZE : (datalen_int - offset));
 
-            if (seeded) {
-                // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
-                blake3_hasher_init_keyed(&hasher, key);
-            } else {
-                blake3_hasher_init(&hasher);
-            }
-            blake3_hasher_update(&hasher, data + offset, len);
-            blake3_hasher_finalize(&hasher, cvs[i].cv, BLAKE3_OUT_LEN);
+            // Hash the chunk
+            blake3_hash_bytes(data + offset, len, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
 
+            // Set the chunk index and number of blocks
             cvs[i].chunk_index = i;
             cvs[i].num_blocks = 1;
         }
+
         // Tree reduction (combine CVs)
         int num_nodes = num_chunks;
         while (num_nodes > 1) {
-            size_t new_nodes = (num_nodes + 1) / 2;
+            const int new_nodes = (num_nodes + 1) / 2;
             #pragma omp parallel for schedule(static)
             for (i = 0; i < new_nodes; ++i) {
                 const int left_index = 2 * i;
                 const int right_index = left_index + 1;
+
                 if (right_index < num_nodes) {
                     // Merge left/right children
-                    uint8_t block[64];
-                    memcpy(block, cvs[left_index].cv, 32);
-                    memcpy(block + 32, cvs[right_index].cv, 32);
-                    blake3_hasher hasher;
-                    if (seeded) {
-                        blake3_hasher_init_keyed(&hasher, key);
-                    } else {
-                        blake3_hasher_init(&hasher);
-                    }
-                    // Parent node: always 64 bytes, PARENT flag
-                    blake3_hasher_update(&hasher, block, 64);
-                    blake3_hasher_finalize(&hasher, cvs[i].cv, BLAKE3_OUT_LEN);
+
+                    // Create a block of BLAKE3_OUT_DOUBLE_LEN bytes from two CVs
+                    uint8_t block[BLAKE3_OUT_DOUBLE_LEN];
+                    memcpy(block, cvs[left_index].cv, BLAKE3_OUT_LEN);
+                    memcpy(block + BLAKE3_OUT_LEN, cvs[right_index].cv, BLAKE3_OUT_LEN);
+
+                    // Hash the combined block
+                    blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
+
+                    // Set the chunk index and number of blocks
                     cvs[i].chunk_index = cvs[left_index].chunk_index;
                     cvs[i].num_blocks = cvs[left_index].num_blocks + cvs[right_index].num_blocks;
                 } else {
@@ -144,19 +147,13 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             }
             num_nodes = new_nodes;
         }
-        // Prepare to finalize with the root CV
+
+        // Prepare to finalise with the root CV
         final_data = cvs[0].cv;
         final_len = BLAKE3_OUT_LEN;
     }
     #endif
 
-    // Finalize hash
-    blake3_hasher hasher;
-    if (seeded) {
-        blake3_hasher_init_keyed(&hasher, key);
-    } else {
-        blake3_hasher_init(&hasher);
-    }
-    blake3_hasher_update(&hasher, final_data, final_len);
-    blake3_hasher_finalize(&hasher, out, hash_size);
+    // Finalise hash
+    blake3_hash_bytes(final_data, final_len, key, seeded, out, hash_size);
 }
