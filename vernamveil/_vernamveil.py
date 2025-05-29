@@ -156,7 +156,9 @@ class VernamVeil(_Cypher):
         """
         n = len(msg_list)
         if use_hmac:
-            hasher = hmac.new(cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod="blake2b")
+            hasher = hmac.new(
+                cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
+            )
         else:
             hasher = self._HASH_METHOD(msg_list[0] if n > 0 else b"", key=key)
         for i in range(1, n):
