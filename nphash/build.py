@@ -133,6 +133,7 @@ def main() -> None:
     ffibuilder_blake3.cdef(
         """
         void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
+        void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
         """
     )
 

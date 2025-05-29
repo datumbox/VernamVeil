@@ -4,26 +4,87 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
-from typing import Any, Literal
+from typing import Literal
 
 try:
-    import numpy as np
-
     from nphash import _npblake2bffi, _npblake3ffi, _npsha256ffi
 
     _HAS_C_MODULE = True
 except ImportError:
     _HAS_C_MODULE = False
 
-blake3: Any
 try:
-    import blake3 as b3
-
-    blake3 = b3
+    import numpy as np
 except ImportError:
-    blake3 = None
+    pass
 
-__all__ = ["fold_bytes_to_uint64", "hash_numpy"]
+
+__all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
+
+
+class blake3:
+    """A hashlib-style BLAKE3 hash object using the C backend (single-shot only)."""
+
+    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32):
+        """Initialise a BLAKE3 hash object.
+
+        Args:
+            data (bytes): Initial data to hash. Defaults to an empty byte string.
+            key (bytes | None): Optional key for keyed hashing. If None, no key is used.
+            length (int): Desired output length in bytes. Default is 32 bytes.
+        """
+        self._key = key
+        self._length = length
+        self._data = bytearray(data)
+
+    def update(self, data: bytes | memoryview) -> None:
+        """Update the hash object with additional data.
+
+        Args:
+            data (bytes | memoryview): Data to add to the hash. Can be a bytes object or a memoryview.
+        """
+        self._data.extend(data)
+
+    def digest(self, *, length: int | None = None) -> bytearray:
+        """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
+
+        Args:
+            length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
+
+        Returns:
+            bytearray: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
+
+        Raises:
+            RuntimeError: If the C-backed BLAKE3 module is not available.
+        """
+        if not _HAS_C_MODULE:
+            raise RuntimeError("C-backed BLAKE3 is not available.")
+
+        if length is None:
+            length = self._length
+
+        ffi = _npblake3ffi.ffi
+        out = bytearray(length)
+        _npblake3ffi.lib.bytes_blake3(
+            ffi.from_buffer(self._data),
+            len(self._data),
+            ffi.from_buffer(self._key) if self._key is not None else ffi.NULL,
+            len(self._key) if self._key is not None else 0,
+            ffi.from_buffer(out),
+            length,
+        )
+        return out
+
+    def hexdigest(self, *, length: int | None = None) -> str:
+        """Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.
+
+        Args:
+            length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
+
+        Returns:
+            str: The BLAKE3 hash digest of the accumulated data as a hexadecimal string.
+        """
+        return self.digest(length=length).hex()
 
 
 def fold_bytes_to_uint64(
@@ -117,7 +178,7 @@ def hash_numpy(
             method = _npblake3ffi.lib.numpy_blake3
         else:
             ffi = None
-            method = blake3.blake3
+            method = blake3
     elif hash_name == "sha256":
         if hash_size is None:
             hash_size = 32

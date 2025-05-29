@@ -439,11 +439,10 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 To install the library with all optional dependencies (development tools, NumPy for vectorisation, and cffi for the C module):
 ```
-pip install .[dev,blake3,numpy,cffi]
+pip install .[dev,numpy,cffi]
 ```
 
 - The `[dev]` extra installs development and testing dependencies.
-- The `[blake3]` extra installs BLAKE3 support for the Python fallback .
 - The `[numpy]` extra enables fast vectorised operations.
 - The `[cffi]` extra is required for building the `nphash` C extension for accelerated BLAKE2b, BLAKE3 and SHA-256 in NumPy-based `fx` functions. **You need to compile the C extension afterwards. See below.**
 

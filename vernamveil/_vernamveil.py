@@ -12,7 +12,7 @@ from typing import Any, Iterator, Literal
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
-from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import _HAS_C_MODULE, blake3, fold_bytes_to_uint64, hash_numpy
 
 __all__ = ["VernamVeil"]
 
@@ -86,6 +86,16 @@ class VernamVeil(_Cypher):
         self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
 
+        # Hash configuration
+        if _HAS_C_MODULE:
+            self._hasher: Any = blake3
+            self._hash_name: Literal["blake2b", "blake3", "sha256"] = "blake3"
+            self._HASH_LENGTH = 32
+        else:
+            self._hasher = hashlib.blake2b
+            self._hash_name = "blake2b"
+            self._HASH_LENGTH = 64
+
     def __str__(self) -> str:
         """Return a string representation of the VernamVeil instance.
 
@@ -146,15 +156,11 @@ class VernamVeil(_Cypher):
         """
         n = len(msg_list)
         if use_hmac:
-            hasher: hmac.HMAC | hashlib.blake2b = hmac.new(
+            hasher: hmac.HMAC | hashlib.blake2b | blake3 = hmac.new(
                 key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
             )
-        elif blake3 is not None:
-            hasher = blake3.blake3(
-                msg_list[0] if n > 0 else b"", key=key, max_threads=blake3.blake3.AUTO
-            )
         else:
-            hasher = hashlib.blake2b(msg_list[0] if n > 0 else b"", key=key)
+            hasher = self._hasher(msg_list[0] if n > 0 else b"", key=key)
         for i in range(1, n):
             hasher.update(msg_list[i])
         return hasher.digest()
@@ -181,13 +187,9 @@ class VernamVeil(_Cypher):
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            if blake3 is not None:
-                hash_name: Literal["blake2b", "blake3", "sha256"] = "blake3"
-                hash_size = 32
-            else:
-                hash_name = "blake2b"
-                hash_size = 64
-            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, hash_name, hash_size=hash_size))
+            hashes = fold_bytes_to_uint64(
+                hash_numpy(i_arr, seed, self._hash_name, hash_size=self._HASH_LENGTH)
+            )
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"
@@ -527,7 +529,7 @@ class VernamVeil(_Cypher):
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
         if self._siv_seed_initialisation:
             # Split the data by taking the first HASH_LENGTH bytes
-            HASH_LENGTH = 64 if blake3 is None else 32
+            HASH_LENGTH = self._HASH_LENGTH
             encrypted_siv_hash, cyphertext = cyphertext[:HASH_LENGTH], cyphertext[HASH_LENGTH:]
             # Decrypt the SIV hash (throw away) and evolve the seed with it
             _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)

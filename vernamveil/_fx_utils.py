@@ -279,8 +279,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     else:
         function_code = f"""
 import hashlib
-from vernamveil import FX
-{'import blake3' if hash_name == 'blake3' else ''}
+from vernamveil import FX, blake3
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
@@ -293,7 +292,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
 """
         if hash_name == "blake3":
             function_code += f"""
-    hasher = blake3.blake3(key=seed[:32])
+    hasher = blake3(key=seed)
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest(length={block_size})
 """

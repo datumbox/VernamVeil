@@ -39,7 +39,12 @@ class TestVernamVeil(unittest.TestCase):
                     if use_c_backend is not None
                     else nullcontext()
                 )
-                with context:
+                context2 = (
+                    patch("vernamveil._vernamveil._HAS_C_MODULE", use_c_backend)
+                    if use_c_backend is not None
+                    else nullcontext()
+                )
+                with context, context2:
                     fx = generate_default_fx(vectorise=vectorise)
                     cypher = VernamVeil(fx, **cypher_kwargs)
                     test_func(cypher, vectorise)
