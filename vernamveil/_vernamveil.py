@@ -534,7 +534,7 @@ class VernamVeil(_Cypher):
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            # Split the data by taking the last HMAC_LENGTH bytes
+            # Split the data by taking the last bytes
             encrypted_data, expected_tag = (
                 cyphertext[: -self._HMAC_LENGTH],
                 cyphertext[-self._HMAC_LENGTH :],
