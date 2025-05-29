@@ -241,8 +241,8 @@ def generate_keyed_hash_fx(
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
     if hash_name not in ("blake2b", "blake3", "sha256"):
         raise ValueError("hash_name must be either 'blake2b', 'blake3' or 'sha256'.")
-    if hash_name == "blake3" and not vectorise and blake3 is None:
-        raise ValueError("blake3 is required for non-vectorised mode but is not installed.")
+    if hash_name == "blake3" and not _HAS_C_MODULE:
+        raise ValueError("blake3 requires the C extension.")
     if not isinstance(vectorise, bool):
         raise TypeError("vectorise must be a boolean.")
 
@@ -292,9 +292,9 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
 """
         if hash_name == "blake3":
             function_code += f"""
-    hasher = blake3(key=seed)
+    hasher = blake3(key=seed, length={block_size})
     hasher.update(i.to_bytes(8, "big"))
-    return hasher.digest(length={block_size})
+    return hasher.digest()
 """
         else:
             function_code += f"""

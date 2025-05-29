@@ -208,15 +208,14 @@ def hash_numpy(
         method(*args)
     else:
         i_bytes = i.view(np.uint8)
-        kwargs = {"length": hash_size} if hash_name == "blake3" else {}
         for idx, j in enumerate(range(0, len(i_bytes), 8)):
             if hash_name == "blake3":
-                hasher = method(key=seed)
+                hasher = method(key=seed, length=hash_size)
             else:
                 hasher = method()
                 if seed is not None:
                     hasher.update(seed)
             hasher.update(i_bytes.data[j : j + 8])
-            out[idx, :] = np.frombuffer(hasher.digest(**kwargs), dtype=np.uint8)
+            out[idx, :] = np.frombuffer(hasher.digest(), dtype=np.uint8)
 
     return out

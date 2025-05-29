@@ -30,10 +30,9 @@ class TestHashUtils(unittest.TestCase):
     def test_hash_numpy_correctness(self):
         """Check that hash_numpy output matches expected hash values for a range of inputs, for both fold types."""
         checks = [False]
+        hashes = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             checks.append(True)
-        hashes = ["blake2b", "sha256"]
-        if blake3 is not None:
             hashes.append("blake3")
         for has_c in checks:
             for hash_name in hashes:
@@ -48,7 +47,7 @@ class TestHashUtils(unittest.TestCase):
                             f"_HAS_C_MODULE={has_c}, hash_name={hash_name}, fold_type={fold_type}"
                         )
                         with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
-                            seed = secrets.token_bytes(32 if hash_name == "blake3" else 64)
+                            seed = secrets.token_bytes()
                             i = np.arange(1, 1000, dtype=np.uint64)
 
                             output = fold_bytes_to_uint64(
@@ -81,11 +80,10 @@ class TestHashUtils(unittest.TestCase):
     def test_hash_numpy_no_seed(self):
         """Check that hash_numpy works with no seed (seed=None), for both fold types."""
         checks = [False]
+        hashes = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             checks.append(True)
-        hashes = ["blake2b", "sha256"]
-        if blake3 is not None:
-            hashes.append("blake3")
+            hashes.append(F"blake3")
         for has_c in checks:
             for hash_name in hashes:
                 if hash_name == "blake3" and not has_c:

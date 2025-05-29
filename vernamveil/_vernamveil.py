@@ -112,7 +112,7 @@ class VernamVeil(_Cypher):
         )
 
     @classmethod
-    def get_initial_seed(cls, num_bytes: int = 32) -> bytes:
+    def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
         """Generate a cryptographically secure initial random seed.
 
         This method uses the `secrets` module to generate a random sequence of bytes
@@ -120,7 +120,7 @@ class VernamVeil(_Cypher):
 
         Args:
             num_bytes (int): The number of bytes to generate for the seed.
-                Defaults to 32 bytes if not provided.
+                Defaults to 64 bytes if not provided.
 
         Returns:
             bytes: A random byte string of the specified length.
