@@ -56,7 +56,7 @@ class blake3:
             length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
 
         Returns:
-            bytearray: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
+            bytes: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
 
         Raises:
             RuntimeError: If the C-backed BLAKE3 module is not available.

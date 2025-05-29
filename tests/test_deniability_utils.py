@@ -159,7 +159,7 @@ class TestDeniabilityUtils(unittest.TestCase):
         """Test deniability works when the real_fx is OTPFX."""
         block_size = 64
         real_fx = OTPFX(
-            [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(10)],
+            [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)],
             block_size,
             False,
         )
