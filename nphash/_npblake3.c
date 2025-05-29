@@ -124,26 +124,28 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             for (i = 0; i < new_nodes; ++i) {
                 const int left_index = 2 * i;
                 const int right_index = left_index + 1;
+                const cv_node_t *const left_node = &cvs[left_index];
 
                 if (right_index < num_nodes) {
                     // Merge left/right children
+                    const cv_node_t *const right_node = &cvs[right_index];
 
                     // Create a block of BLAKE3_OUT_DOUBLE_LEN bytes from two CVs
                     uint8_t block[BLAKE3_OUT_DOUBLE_LEN];
-                    memcpy(block, cvs[left_index].cv, BLAKE3_OUT_LEN);
-                    memcpy(block + BLAKE3_OUT_LEN, cvs[right_index].cv, BLAKE3_OUT_LEN);
+                    memcpy(block, left_node->cv, BLAKE3_OUT_LEN);
+                    memcpy(block + BLAKE3_OUT_LEN, right_node->cv, BLAKE3_OUT_LEN);
 
                     // Hash the combined block
                     blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
 
                     // Set the chunk index and number of blocks
-                    cvs[i].chunk_index = cvs[left_index].chunk_index;
-                    cvs[i].num_blocks = cvs[left_index].num_blocks + cvs[right_index].num_blocks;
+                    cvs[i].chunk_index = left_node->chunk_index;
+                    cvs[i].num_blocks = left_node->num_blocks + right_node->num_blocks;
                 } else {
                     // Odd node: promote as-is
-                    memcpy(cvs[i].cv, cvs[left_index].cv, BLAKE3_OUT_LEN);
-                    cvs[i].chunk_index = cvs[left_index].chunk_index;
-                    cvs[i].num_blocks = cvs[left_index].num_blocks;
+                    memcpy(cvs[i].cv, left_node->cv, BLAKE3_OUT_LEN);
+                    cvs[i].chunk_index = left_node->chunk_index;
+                    cvs[i].num_blocks = left_node->num_blocks;
                 }
             }
             num_nodes = new_nodes;
