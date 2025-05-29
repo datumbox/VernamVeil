@@ -34,7 +34,7 @@ class blake3:
 
         Args:
             data (bytes): Initial data to hash. Defaults to an empty byte string.
-            key (bytes | None): Optional key for keyed hashing. If None, no key is used.
+            key (bytes, optional): Optional key for keyed hashing. If None, no key is used.
             length (int): Desired output length in bytes. Default is 32 bytes.
         """
         self._key = key
