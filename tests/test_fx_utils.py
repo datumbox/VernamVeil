@@ -19,7 +19,7 @@ class TestFxUtils(unittest.TestCase):
 
     def setUp(self):
         """Set up common test parameters."""
-        self.seed = b"0" * 32
+        self.seed = b"testseed"
         self.num_samples = 1000
 
     def test_generate_default_fx_scalar(self):
@@ -176,7 +176,7 @@ class TestFxUtils(unittest.TestCase):
         try:
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
-            self.assertTrue(isinstance(fx_loaded(1, b"t" * 32), bytes))
+            self.assertTrue(isinstance(fx_loaded(1, bytes()), bytes))
         finally:
             tmp_path.unlink()
 

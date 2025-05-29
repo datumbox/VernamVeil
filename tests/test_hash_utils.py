@@ -47,7 +47,7 @@ class TestHashUtils(unittest.TestCase):
                             f"_HAS_C_MODULE={has_c}, hash_name={hash_name}, fold_type={fold_type}"
                         )
                         with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
-                            seed = secrets.token_bytes()
+                            seed = secrets.token_bytes(64)
                             i = np.arange(1, 1000, dtype=np.uint64)
 
                             output = fold_bytes_to_uint64(
@@ -83,7 +83,7 @@ class TestHashUtils(unittest.TestCase):
         hashes = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             checks.append(True)
-            hashes.append(F"blake3")
+            hashes.append(f"blake3")
         for has_c in checks:
             for hash_name in hashes:
                 if hash_name == "blake3" and not has_c:

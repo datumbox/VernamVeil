@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from vernamveil._cypher import _HAS_NUMPY, _Bytes, _Integer, np
-from vernamveil._hash_utils import _HAS_C_MODULE, blake3
+from vernamveil._hash_utils import _HAS_C_MODULE
 
 __all__ = [
     "FX",
@@ -232,7 +232,7 @@ def generate_keyed_hash_fx(
 
     Raises:
         ValueError: If `hash_name` is not "blake2b", "blake3" or "sha256".
-        ValueError: If `hash_name` is "blake3" but `vectorise` is False and blake3 is not installed.
+        ValueError: If `hash_name` is "blake3" but the C extension is not available.
         ValueError: If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.
         TypeError: If `vectorise` is not a boolean.
         ValueError: If `vectorise` is True but numpy is not installed.

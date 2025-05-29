@@ -99,7 +99,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         code = code if code is not None else self.fx_code
         return self._write_file("fx.py", code.encode(), mode="wb")
 
-    def _create_seed(self, content=b"my_32bytes_seed_my_32bytes_seed_"):
+    def _create_seed(self, content=b"myseed"):
         """Create a seed.bin file with given content."""
         return self._write_file("seed.bin", content)
 
@@ -459,7 +459,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             fx_path = self._create_fx(
                 code=OTPFX(keystream, block_size=block_size, vectorise=False).source_code
             )
-            seed_path = self._create_seed(content=b"my_32bytes_seed_my_32bytes_seed_")
+            seed_path = self._create_seed(content=b"long_and_unsecure_seed")
             stderr = StringIO()
             with patch("sys.stderr", stderr):
                 self._encode(
