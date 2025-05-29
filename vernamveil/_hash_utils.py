@@ -25,7 +25,11 @@ __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 class blake3:
     """A hashlib-style BLAKE3 hash object using the C backend (single-shot only)."""
 
-    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32):
+    DEFAULT_DIGEST_SIZE = 32
+
+    def __init__(
+        self, data: bytes = b"", *, key: bytes | None = None, length: int = DEFAULT_DIGEST_SIZE
+    ):
         """Initialise a BLAKE3 hash object.
 
         Args:
@@ -45,7 +49,7 @@ class blake3:
         """
         self._data.extend(data)
 
-    def digest(self, *, length: int | None = None) -> bytearray:
+    def digest(self, *, length: int | None = None) -> bytes:
         """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
 
         Args:
@@ -73,7 +77,7 @@ class blake3:
             ffi.from_buffer(out),
             length,
         )
-        return out
+        return bytes(out)  # TODO: consider returning a memoryview or byterarray for efficiency
 
     def hexdigest(self, *, length: int | None = None) -> str:
         """Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.

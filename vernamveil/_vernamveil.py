@@ -86,15 +86,15 @@ class VernamVeil(_Cypher):
         self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
 
-        # Hash configuration
+        # Constants
         if _HAS_C_MODULE:
-            self._hasher: Any = blake3
-            self._hash_name: Literal["blake2b", "blake3", "sha256"] = "blake3"
-            self._HASH_LENGTH = 32
+            self._HASH_METHOD: Any = blake3
+            self._SIV_LENGTH = blake3.DEFAULT_DIGEST_SIZE
         else:
-            self._hasher = hashlib.blake2b
-            self._hash_name = "blake2b"
-            self._HASH_LENGTH = 64
+            self._HASH_METHOD = hashlib.blake2b
+            self._SIV_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
+        self._HASH_NAME: Literal["blake2b", "blake3", "sha256"] = self._HASH_METHOD.__name__
+        self._HMAC_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
 
     def __str__(self) -> str:
         """Return a string representation of the VernamVeil instance.
@@ -156,11 +156,9 @@ class VernamVeil(_Cypher):
         """
         n = len(msg_list)
         if use_hmac:
-            hasher: hmac.HMAC | hashlib.blake2b | blake3 = hmac.new(
-                key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
-            )
+            hasher = hmac.new(key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b")
         else:
-            hasher = self._hasher(msg_list[0] if n > 0 else b"", key=key)
+            hasher = self._HASH_METHOD(msg_list[0] if n > 0 else b"", key=key)
         for i in range(1, n):
             hasher.update(msg_list[i])
         return hasher.digest()
@@ -187,9 +185,7 @@ class VernamVeil(_Cypher):
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes = fold_bytes_to_uint64(
-                hash_numpy(i_arr, seed, self._hash_name, hash_size=self._HASH_LENGTH)
-            )
+            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, self._HASH_NAME))
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"
@@ -528,17 +524,21 @@ class VernamVeil(_Cypher):
         # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
         if self._siv_seed_initialisation:
-            # Split the data by taking the first HASH_LENGTH bytes
-            HASH_LENGTH = self._HASH_LENGTH
-            encrypted_siv_hash, cyphertext = cyphertext[:HASH_LENGTH], cyphertext[HASH_LENGTH:]
+            # Split the data by taking the first bytes
+            encrypted_siv_hash, cyphertext = (
+                cyphertext[: self._SIV_LENGTH],
+                cyphertext[self._SIV_LENGTH :],
+            )
             # Decrypt the SIV hash (throw away) and evolve the seed with it
             _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             # Split the data by taking the last HMAC_LENGTH bytes
-            HMAC_LENGTH = 64
-            encrypted_data, expected_tag = cyphertext[:-HMAC_LENGTH], cyphertext[-HMAC_LENGTH:]
+            encrypted_data, expected_tag = (
+                cyphertext[: -self._HMAC_LENGTH],
+                cyphertext[-self._HMAC_LENGTH :],
+            )
 
             # Produce a unique seed for Authenticated Encryption
             auth_seed = self._hash(seed, [b"auth"])
