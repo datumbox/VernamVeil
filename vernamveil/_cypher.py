@@ -114,8 +114,8 @@ class _Cypher(ABC):
 
         Args:
             mode (Literal["encode", "decode"]): Operation mode ("encode" for encryption, "decode" for decryption).
-            input_file (str | Path | IO[bytes]): Path or file-like object for input.
-            output_file (str | Path | IO[bytes]): Path or file-like object for output.
+            input_file (str or Path or IO[bytes]): Path or file-like object for input.
+            output_file (str or Path or IO[bytes]): Path or file-like object for output.
             seed (bytes): Initial seed for processing.
             buffer_size (int): Bytes to read at a time. Defaults to `1024 * 1024` (1MB).
             read_queue_size (int): Maximum number of data blocks buffered in the

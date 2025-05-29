@@ -420,7 +420,7 @@ def load_fx_from_file(path: str | Path) -> FX:
     files from untrusted sources, as it can run arbitrary code on your system.
 
     Args:
-        path (str | Path): Path to the Python file containing fx.
+        path (str or Path): Path to the Python file containing fx.
 
     Returns:
         FX: The loaded fx function.
