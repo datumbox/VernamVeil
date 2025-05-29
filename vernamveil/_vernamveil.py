@@ -8,7 +8,7 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator, Literal
+from typing import Any, Iterator, Literal, cast
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
@@ -147,7 +147,7 @@ class VernamVeil(_Cypher):
         n = len(msg_list)
         if use_hmac:
             hasher: hmac.HMAC | hashlib.blake2b = hmac.new(
-                key, msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
+                cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
             )
         elif blake3 is not None:
             hasher = blake3.blake3(
