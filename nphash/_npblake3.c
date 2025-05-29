@@ -118,7 +118,15 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             cvs[i].num_blocks = 1;
         }
 
-        // Tree reduction (combine CVs)
+        // Allocate a second buffer for tree reduction to combine CVs
+        cv_node_t* next_cvs = (cv_node_t*)malloc(num_chunks * sizeof(cv_node_t));
+        if (!next_cvs) {
+            free(cvs);
+            blake3_hash_bytes(data, datalen, key, seeded, out, hash_size);
+            return;
+        }
+        cv_node_t* read_buf = cvs;
+        cv_node_t* write_buf = next_cvs;
         int num_nodes = num_chunks;
         while (num_nodes > 1) {
             const int new_nodes = (num_nodes + 1) / 2;
@@ -126,11 +134,11 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             for (i = 0; i < new_nodes; ++i) {
                 const int left_index = 2 * i;
                 const int right_index = left_index + 1;
-                const cv_node_t *const left_node = &cvs[left_index];
+                const cv_node_t *const left_node = &read_buf[left_index];
 
                 if (right_index < num_nodes) {
                     // Merge left/right children
-                    const cv_node_t *const right_node = &cvs[right_index];
+                    const cv_node_t *const right_node = &read_buf[right_index];
 
                     // Create a block of BLAKE3_OUT_DOUBLE_LEN bytes from two CVs
                     uint8_t block[BLAKE3_OUT_DOUBLE_LEN];
@@ -138,26 +146,33 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
                     memcpy(block + BLAKE3_OUT_LEN, right_node->cv, BLAKE3_OUT_LEN);
 
                     // Hash the combined block
-                    blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
+                    blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, write_buf[i].cv, BLAKE3_OUT_LEN);
 
                     // Set the chunk index and number of blocks
-                    cvs[i].chunk_index = left_node->chunk_index;
-                    cvs[i].num_blocks = left_node->num_blocks + right_node->num_blocks;
+                    write_buf[i].chunk_index = left_node->chunk_index;
+                    write_buf[i].num_blocks = left_node->num_blocks + right_node->num_blocks;
                 } else {
                     // Odd node: promote as-is
-                    memcpy(cvs[i].cv, left_node->cv, BLAKE3_OUT_LEN);
-                    cvs[i].chunk_index = left_node->chunk_index;
-                    cvs[i].num_blocks = left_node->num_blocks;
+                    memcpy(write_buf[i].cv, left_node->cv, BLAKE3_OUT_LEN);
+                    write_buf[i].chunk_index = left_node->chunk_index;
+                    write_buf[i].num_blocks = left_node->num_blocks;
                 }
             }
+            // Swap buffers
+            cv_node_t* tmp = read_buf;
+            read_buf = write_buf;
+            write_buf = tmp;
             num_nodes = new_nodes;
         }
 
         // Prepare to finalise with the root CV
-        final_data = cvs[0].cv;
+        final_data = read_buf[0].cv;
         final_len = BLAKE3_OUT_LEN;
+
+        // Free the temporary buffers
+        free(cvs);
+        free(next_cvs);
     }
-    free(cvs);
     #endif
 
     // Finalise hash
