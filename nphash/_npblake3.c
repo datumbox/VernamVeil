@@ -12,12 +12,13 @@
 #define MIN_PARALLEL_SIZE (2 * CHUNK_SIZE)  // Minimum size to enable parallel tree hashing
 #define MAX_CHUNKS 256  // Maximum number of chunks to process in parallel
 #define BLAKE3_OUT_DOUBLE_LEN (2 * BLAKE3_OUT_LEN)  // Double the output length for combining CVs
+#define MIN(a, b) ((a) < (b) ? (a) : (b))  // Macro to find the minimum of two values
 #endif
 
 #define BLOCK_SIZE 8  // Each input element is a uint64 block
 
 // Inline helper to prepare a BLAKE3 key from a seed (up to 32 bytes, zero-padded if shorter)
-static inline void prepare_blake3_key(bool seeded, const char* restrict seed, const size_t seedlen, uint8_t key[BLAKE3_KEY_LEN]) {
+static inline void prepare_blake3_key(const bool seeded, const char* restrict seed, const size_t seedlen, uint8_t key[BLAKE3_KEY_LEN]) {
     if (seeded) {
         const size_t copylen = seedlen < BLAKE3_KEY_LEN ? seedlen : BLAKE3_KEY_LEN;
         memcpy(key, seed, copylen);
@@ -25,7 +26,7 @@ static inline void prepare_blake3_key(bool seeded, const char* restrict seed, co
 }
 
 // Inline helper to hash data with BLAKE3, with or without a key, and output variable-length hash
-static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const uint8_t key[BLAKE3_KEY_LEN], bool seeded, uint8_t* out, size_t hash_size) {
+static inline void blake3_hash_bytes(const uint8_t* restrict data, const size_t datalen, const uint8_t* restrict key, const bool seeded, uint8_t* restrict out, const size_t hash_size) {
     // Initialise the BLAKE3 hasher
     blake3_hasher hasher;
     if (seeded) {
@@ -85,8 +86,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
     // Calculate the number of chunks based on the input data length
     const int datalen_int = (int)datalen;
-    int num_chunks = (datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE;
-    if (num_chunks > MAX_CHUNKS) num_chunks = MAX_CHUNKS;
+    const int num_chunks = MIN((datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE, MAX_CHUNKS);
 
     // Define a structure to hold the chaining values (CVs) for each chunk
     typedef struct {
@@ -105,7 +105,8 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
         for (i = 0; i < num_chunks; ++i) {
             // Calculate the offset and length for this chunk
             const int offset = i * CHUNK_SIZE;
-            const int len = ((offset + CHUNK_SIZE <= datalen_int) ? CHUNK_SIZE : (datalen_int - offset));
+            const int end = MIN(offset + CHUNK_SIZE, datalen_int);
+            const int len = end - offset;
 
             // Hash the chunk
             blake3_hash_bytes(data + offset, len, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
