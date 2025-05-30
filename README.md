@@ -252,7 +252,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
 fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
-### 🏁️ A cryptographically strong and Fast Hash BLAKE3b `fx` (only available with C-acceleration)
+### 🏁️ A cryptographically strong and Fast Hash BLAKE3 `fx` (only available with C-acceleration)
 
 ```python
 import numpy as np
@@ -260,7 +260,6 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # The secure default `fx` of the VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using blake3.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.

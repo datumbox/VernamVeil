@@ -83,14 +83,14 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     #ifdef _OPENMP
     // =================================================================================================
     // NOTE: The following parallel tree hashing implementation is NOT a faithful reproduction of the
-    // official BLAKE3 specification. It is a manual construction that attempts to parallelise hashing
-    // by chunking the input and reducing chaining values (CVs) in a binary tree fashion. However,
-    // several critical aspects of the BLAKE3 tree hashing algorithm are not adhered to here:
-    //
-    // This is due to the fact that the official BLAKE3 C library does not expose low-level APIs
-    // for direct manipulation of chunk counters, flags (CHUNK_START, CHUNK_END, PARENT, ROOT),
-    // or for initialising a hasher with an arbitrary chaining value and flags. As such, it is not
-    // possible to implement a fully compliant manual tree hash using only the public API.
+    // official BLAKE3 specification. This is due to the fact that the official BLAKE3 C library does
+    // not expose low-level APIs for direct manipulation of chunk counters, flags (CHUNK_START,
+    // CHUNK_END, PARENT, ROOT), or for initialising a hasher with an arbitrary chaining value and flags.
+    // As such, it is not possible to implement a fully compliant manual tree hash using only the public API.
+
+    // This manual construction parallelises hashing by chunking the input and reducing chaining values (CVs)
+    // in a binary tree fashion. However, the following aspects of the BLAKE3 tree hashing algorithm are not
+    // adhered to here:
     //
     // 1. Domain Separation for Chunks:
     //    - Each chunk is hashed as an independent message using the standard BLAKE3 hash function.
