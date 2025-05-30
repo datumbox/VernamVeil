@@ -12,7 +12,7 @@ from typing import Any, Iterator, Literal, cast
 
 from vernamveil._cypher import _Cypher, np
 from vernamveil._fx_utils import FX
-from vernamveil._hash_utils import _HAS_C_MODULE, blake3, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
 
 __all__ = ["VernamVeil"]
 
@@ -87,9 +87,9 @@ class VernamVeil(_Cypher):
         self._auth_encrypt = auth_encrypt
 
         # Constants
-        if _HAS_C_MODULE:
-            self._HASH_METHOD: Any = blake3
-            self._SIV_LENGTH = blake3.DEFAULT_DIGEST_SIZE
+        if blake3 is not None:
+            self._HASH_METHOD: Any = blake3.blake3
+            self._SIV_LENGTH = self._HASH_METHOD.digest_size
         else:
             self._HASH_METHOD = hashlib.blake2b
             self._SIV_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
@@ -112,7 +112,7 @@ class VernamVeil(_Cypher):
         )
 
     @classmethod
-    def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
+    def get_initial_seed(cls, num_bytes: int = 32) -> bytes:
         """Generate a cryptographically secure initial random seed.
 
         This method uses the `secrets` module to generate a random sequence of bytes
@@ -120,7 +120,7 @@ class VernamVeil(_Cypher):
 
         Args:
             num_bytes (int): The number of bytes to generate for the seed.
-                Defaults to 64 bytes if not provided.
+                Defaults to 32 bytes if not provided.
 
         Returns:
             bytes: A random byte string of the specified length.
