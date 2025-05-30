@@ -30,18 +30,26 @@ class TestVernamVeil(unittest.TestCase):
             if _HAS_C_MODULE:
                 modes.append(("vectorised_with_extension", True, True))
 
-        for mode, vectorise, use_c_backend in modes:
-            with self.subTest(mode=mode, **cypher_kwargs):
-                print(f"mode={mode}, {cypher_kwargs}")
-                context = (
-                    patch("vernamveil._hash_utils._HAS_C_MODULE", use_c_backend)
-                    if use_c_backend is not None
-                    else nullcontext()
-                )
-                with context:
-                    fx = generate_default_fx(vectorise=vectorise)
-                    cypher = VernamVeil(fx, **cypher_kwargs)
-                    test_func(cypher, vectorise)
+        hash_names = ["blake2b", "sha256"]
+        if _HAS_C_MODULE:
+            hash_names.append("blake3")
+
+        for hash_name in hash_names:
+            for mode, vectorise, use_c_backend in modes:
+                if hash_name == "blake3" and not use_c_backend:
+                    # Skip blake3 if C extension is not available
+                    continue
+                with self.subTest(mode=mode, hash_name=hash_name, **cypher_kwargs):
+                    print(f"mode={mode}, hash_name={hash_name}, {cypher_kwargs}")
+                    context = (
+                        patch("vernamveil._hash_utils._HAS_C_MODULE", use_c_backend)
+                        if use_c_backend is not None
+                        else nullcontext()
+                    )
+                    with context:
+                        fx = generate_default_fx(vectorise=vectorise)
+                        cypher = VernamVeil(fx, hash_name=hash_name, **cypher_kwargs)
+                        test_func(cypher, vectorise)
 
     def test_single_message_encryption(self):
         """Test that a single message can be encrypted and decrypted correctly."""
