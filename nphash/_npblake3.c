@@ -87,10 +87,10 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     // not expose low-level APIs for direct manipulation of chunk counters, flags (CHUNK_START,
     // CHUNK_END, PARENT, ROOT), or for initialising a hasher with an arbitrary chaining value and flags.
     // As such, it is not possible to implement a fully compliant manual tree hash using only the public API.
-
+    //
     // This manual construction parallelises hashing by chunking the input and reducing chaining values (CVs)
-    // in a binary tree fashion. However, the following aspects of the BLAKE3 tree hashing algorithm are not
-    // adhered to here:
+    // in a binary tree fashion, similar to the official implementation. However, the following aspects of the
+    // BLAKE3 tree hashing algorithm are not adhered to here:
     //
     // 1. Domain Separation for Chunks:
     //    - Each chunk is hashed as an independent message using the standard BLAKE3 hash function.
@@ -125,7 +125,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     typedef struct {
         uint8_t cv[BLAKE3_OUT_LEN];
         uint64_t chunk_index;
-        size_t num_blocks;
+        // size_t num_blocks;
     } cv_node_t;
     cv_node_t* cvs = NULL;
     if (num_chunks > 1) {
@@ -152,7 +152,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
             // Set the chunk index and number of blocks
             cvs[i].chunk_index = i;
-            cvs[i].num_blocks = 1;
+            // cvs[i].num_blocks = 1;
         }
 
         // Two buffers (ping-pong buffers) are required here to ensure that each reduction round
@@ -175,6 +175,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
                     if (left_index >= num_nodes) continue;  // Ensure we do not read out of bounds
                     const size_t right_index = left_index + 1;
                     const cv_node_t *const left_node = &read_buf[left_index];
+                    cv_node_t *const out_node = &write_buf[i];
 
                     if (right_index < num_nodes) {
                         // Merge left/right children
@@ -186,16 +187,16 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
                         memcpy(block + BLAKE3_OUT_LEN, right_node->cv, BLAKE3_OUT_LEN);
 
                         // Hash the combined block
-                        blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, write_buf[i].cv, BLAKE3_OUT_LEN);
+                        blake3_hash_bytes(block, BLAKE3_OUT_DOUBLE_LEN, key, seeded, out_node->cv, BLAKE3_OUT_LEN);
 
                         // Set the chunk index and number of blocks
-                        write_buf[i].chunk_index = left_node->chunk_index;
-                        write_buf[i].num_blocks = left_node->num_blocks + right_node->num_blocks;
+                        out_node->chunk_index = left_node->chunk_index;
+                        // out_node->num_blocks = left_node->num_blocks + right_node->num_blocks;
                     } else {
                         // Odd node: promote as-is
-                        memcpy(write_buf[i].cv, left_node->cv, BLAKE3_OUT_LEN);
-                        write_buf[i].chunk_index = left_node->chunk_index;
-                        write_buf[i].num_blocks = left_node->num_blocks;
+                        memcpy(out_node->cv, left_node->cv, BLAKE3_OUT_LEN);
+                        out_node->chunk_index = left_node->chunk_index;
+                        // out_node->num_blocks = left_node->num_blocks;
                     }
                 }
                 // Swap buffers for the next iteration
@@ -207,7 +208,8 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
             // Set final_data before freeing any buffer
             // WARNING: The final root CV is re-hashed as a message to produce the output.
-            // The BLAKE3 specification requires initialising the hasher with the root CV and
+            // The BLAKE3 specification requires initialising the hasher with the root CV and the ROOT flag set,
+            // then generating the output using the XOF mechanism. This implementation does not follow that procedure.
             memcpy(final_cv, read_buf[0].cv, BLAKE3_OUT_LEN);
             final_data = final_cv;
             final_len = BLAKE3_OUT_LEN;
@@ -217,6 +219,6 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     free(cvs);
     #endif
 
-    // Finalise hash
+    // Finalise hash and produce an output of variable length
     blake3_hash_bytes(final_data, final_len, key, seeded, out, hash_size);
 }
