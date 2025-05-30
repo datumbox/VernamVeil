@@ -165,7 +165,8 @@ def hash_numpy(
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes are prepended to the index. If None, hashes only the index.
-        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). Defaults to "blake2b".
+        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). The blake3 is only available
+            if the C extension is installed. Defaults to "blake2b".
         hash_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
             and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 

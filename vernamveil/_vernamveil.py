@@ -55,7 +55,7 @@ class VernamVeil(_Cypher):
                 resist seed reuse. Defaults to True.
             auth_encrypt (bool): Enables authenticated encryption with integrity check. Defaults to True.
             hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256") for keyed hashing
-                and HMAC. Defaults to "blake2b".
+                and HMAC. The blake3 is only available if the C extension is installed.  Defaults to "blake2b".
 
         Raises:
             ValueError: If `chunk_size` is less than 8.
