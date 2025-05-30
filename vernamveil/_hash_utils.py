@@ -45,18 +45,18 @@ class blake3:
         """Update the hash object with additional data.
 
         Args:
-            data (bytes | memoryview): Data to add to the hash. Can be a bytes object or a memoryview.
+            data (bytes or memoryview): Data to add to the hash. Can be a bytes object or a memoryview.
         """
         self._data.extend(data)
 
-    def digest(self, *, length: int | None = None) -> bytes:
+    def digest(self, *, length: int | None = None) -> bytearray:
         """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
 
         Args:
             length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
 
         Returns:
-            bytes: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
+            bytearray: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
 
         Raises:
             RuntimeError: If the C-backed BLAKE3 module is not available.
@@ -77,7 +77,7 @@ class blake3:
             ffi.from_buffer(out),
             length,
         )
-        return bytes(out)  # TODO: consider returning a memoryview or byterarray for efficiency
+        return out
 
     def hexdigest(self, *, length: int | None = None) -> str:
         """Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.
