@@ -60,9 +60,9 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_end_to_end_deniability_disk_io(self):
         """End-to-end test: store/load all artifacts and verify deniability."""
-        chunk_size = 32
+        chunk_size = 64
         delimiter_size = 8
-        padding_range = (5, 25)
+        padding_range = (5, 20)
         decoy_ratio = 0.1
 
         real_fx = generate_default_fx(vectorise=False)
@@ -166,9 +166,9 @@ class TestDeniabilityUtils(unittest.TestCase):
         try:
             decoy_out, decoy_message = self._run_deniability_test(
                 real_fx=real_fx,
-                chunk_size=32,
+                chunk_size=64,
                 delimiter_size=8,
-                padding_range=(5, 25),
+                padding_range=(5, 20),
                 decoy_ratio=0.1,
             )
             self.assertEqual(decoy_out, decoy_message)
