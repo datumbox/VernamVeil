@@ -23,19 +23,10 @@ __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 class blake3:
     """A hashlib-style BLAKE3 hash object using the C backend (single-shot only).
 
-    Attributes:
-        digest_size (int): The size of the hash output in bytes set to 32.
-        block_size (int): The size of the internal block used for hashing set to 64.
-        key_size (int): The size of the key used for keyed hashing set to 32.
+    This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
     """
 
-    digest_size = 32
-    block_size = 64
-    key_size = 32
-
-    def __init__(
-        self, data: bytes = b"", *, key: bytes | None = None, length: int = digest_size
-    ) -> None:
+    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:
@@ -46,6 +37,33 @@ class blake3:
         self._key = key
         self._length = length
         self._data = bytearray(data)
+
+    @property
+    def digest_size(self) -> int:
+        """The size of the hash output in bytes.
+
+        Returns:
+            int: 32 bytes by default, can be set during initialisation.
+        """
+        return self._length
+
+    @property
+    def block_size(self) -> int:
+        """The size of the internal block used for hashing.
+
+        Returns:
+            int: 64 bytes, which is the standard block size for BLAKE3.
+        """
+        return 64
+
+    @property
+    def key_size(self) -> int:
+        """The size of the key used for keyed hashing.
+
+        Returns:
+            int: 32 bytes, which is the standard key size for BLAKE3.
+        """
+        return 32
 
     def copy(self) -> "blake3":
         """Return a copy of the current blake3 hash object.
