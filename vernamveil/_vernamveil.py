@@ -86,6 +86,12 @@ class VernamVeil(_Cypher):
         self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
 
+        # Constants
+        self._HASH_METHOD = hashlib.blake2b
+        self._SIV_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
+        self._HASH_NAME = self._HASH_METHOD.__name__
+        self._HMAC_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
+
     def __str__(self) -> str:
         """Return a string representation of the VernamVeil instance.
 
@@ -144,17 +150,17 @@ class VernamVeil(_Cypher):
         Returns:
             bytes: The resulting hash digest.
         """
+        n = len(msg_list)
+        hasher: hmac.HMAC | hashlib.blake2b
         if use_hmac:
-            n = len(msg_list)
-            hm = hmac.new(cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod="blake2b")
-            for i in range(1, n):
-                hm.update(msg_list[i])
-            return hm.digest()
+            hasher = hmac.new(
+                cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod="blake2b"
+            )
         else:
-            hasher = hashlib.blake2b(key=key)
-            for m in msg_list:
-                hasher.update(m)
-            return hasher.digest()
+            hasher = self._HASH_METHOD(msg_list[0] if n > 0 else b"", key=key)
+        for i in range(1, n):
+            hasher.update(msg_list[i])
+        return hasher.digest()
 
     def _determine_shuffled_indices(
         self, seed: bytes, real_count: int, total_count: int
@@ -514,20 +520,24 @@ class VernamVeil(_Cypher):
         if not isinstance(cyphertext, memoryview):
             cyphertext = memoryview(cyphertext)
 
-        HASH_LENGTH = 64
-
         # SIV seed initialisation: Decrypt and consume the synthetic IV (SIV) to reconstruct the evolved seed.
         # This ensures the keystream remains unique and prevents deterministic decryption on the first block.
         if self._siv_seed_initialisation:
-            # Split the data by taking the first HASH_LENGTH bytes
-            encrypted_siv_hash, cyphertext = cyphertext[:HASH_LENGTH], cyphertext[HASH_LENGTH:]
+            # Split the data by taking the first bytes
+            encrypted_siv_hash, cyphertext = (
+                cyphertext[: self._SIV_LENGTH],
+                cyphertext[self._SIV_LENGTH :],
+            )
             # Decrypt the SIV hash (throw away) and evolve the seed with it
             _, seed = self._xor_with_key(encrypted_siv_hash, seed, False)
 
         # Authenticated Encryption
         if self._auth_encrypt:
-            # Split the data by taking the last HASH_LENGTH bytes
-            encrypted_data, expected_tag = cyphertext[:-HASH_LENGTH], cyphertext[-HASH_LENGTH:]
+            # Split the data by taking the last bytes
+            encrypted_data, expected_tag = (
+                cyphertext[: -self._HMAC_LENGTH],
+                cyphertext[-self._HMAC_LENGTH :],
+            )
 
             # Produce a unique seed for Authenticated Encryption
             auth_seed = self._hash(seed, [b"auth"])
