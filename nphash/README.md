@@ -82,10 +82,10 @@ from vernamveil._hash_utils import _HAS_C_MODULE
 After building, you can use the extension from Python code:
 
 ```python
-from vernamveil import hash_numpy, blake3
-# hash_numpy will use the C extension if available, otherwise a pure NumPy fallback.
-# All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
+from vernamveil import blake3, hash_numpy
 # The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.
+# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback.
+# All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
 ```
 
 If the C extension is not built or importable, `hash_numpy` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
