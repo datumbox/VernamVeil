@@ -177,6 +177,7 @@ def hash_numpy(
     Raises:
         ValueError: If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.
         ValueError: If a hash algorithm is not supported.
+        ValueError: If `hash_name` is "blake3" but the C extension is not available.
     """
     if hash_name == "blake2b":
         if hash_size is None:
@@ -198,8 +199,7 @@ def hash_numpy(
             ffi = _npblake3ffi.ffi
             method = _npblake3ffi.lib.numpy_blake3
         else:
-            ffi = None
-            method = blake3
+            raise ValueError("blake3 requires the C extension.")
     elif hash_name == "sha256":
         if hash_size is None:
             hash_size = 32

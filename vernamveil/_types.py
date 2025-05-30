@@ -2,7 +2,7 @@
 
 from typing import Any, Literal
 
-# Type aliases for integer and byte types, with numpy support if available
+# Vectorisation types and imports
 np: Any
 _Integer: Any
 _Bytes: Any
@@ -19,11 +19,8 @@ except ImportError:
     _Bytes = bytes
     _HAS_NUMPY = False
 
-# Literal types for fold_type and hash_name
-_FoldType = Literal["full", "view"]
-_HashType = Literal["blake2b", "blake3", "sha256"]
-
-# C module availability (set by _hash_utils, but centralised here)
+# C module types and imports
+_HashType: Any
 _npblake2bffi: Any
 _npblake3ffi: Any
 _npsha256ffi: Any
@@ -31,9 +28,14 @@ try:
     from nphash import _npblake2bffi, _npblake3ffi, _npsha256ffi
 
     _HAS_C_MODULE = True
+    _HashType = Literal["blake2b", "blake3", "sha256"]
 except ImportError:
     _npblake2bffi = None
     _npblake3ffi = None
     _npsha256ffi = None
 
     _HAS_C_MODULE = False
+    _HashType = Literal["blake2b", "sha256"]
+
+# Literal type fo fold types
+_FoldType = Literal["full", "view"]
