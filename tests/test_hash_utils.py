@@ -3,8 +3,8 @@ import secrets
 import unittest
 from unittest.mock import patch
 
-from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._hash_utils import _HAS_C_MODULE, blake3, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
 
 try:
     import numpy as np

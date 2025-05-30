@@ -4,20 +4,18 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
-from typing import Literal
 
-try:
-    from nphash import _npblake2bffi, _npblake3ffi, _npsha256ffi
-
-    _HAS_C_MODULE = True
-except ImportError:
-    _HAS_C_MODULE = False
-
-try:
-    import numpy as np
-except ImportError:
-    pass
-
+from vernamveil._types import (
+    _HAS_C_MODULE,
+)
+from vernamveil._types import _FoldType as FoldType
+from vernamveil._types import _HashType as HashType
+from vernamveil._types import (
+    _npblake2bffi,
+    _npblake3ffi,
+    _npsha256ffi,
+)
+from vernamveil._types import np as np
 
 __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 
@@ -25,11 +23,9 @@ __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 class blake3:
     """A hashlib-style BLAKE3 hash object using the C backend (single-shot only)."""
 
-    DEFAULT_DIGEST_SIZE = 32
+    digest_size = 32
 
-    def __init__(
-        self, data: bytes = b"", *, key: bytes | None = None, length: int = DEFAULT_DIGEST_SIZE
-    ):
+    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = digest_size):
         """Initialise a BLAKE3 hash object.
 
         Args:
@@ -40,6 +36,18 @@ class blake3:
         self._key = key
         self._length = length
         self._data = bytearray(data)
+
+    def copy(self) -> "blake3":
+        """Return a copy of the current blake3 hash object.
+
+        Returns:
+            blake3: A new blake3 object with the same state as the current one.
+        """
+        new_obj = blake3()
+        new_obj._key = self._key
+        new_obj._length = self._length
+        new_obj._data = self._data.copy()
+        return new_obj
 
     def update(self, data: bytes | memoryview) -> None:
         """Update the hash object with additional data.
@@ -93,13 +101,13 @@ class blake3:
 
 def fold_bytes_to_uint64(
     hashes: "np.ndarray[tuple[int, int], np.dtype[np.uint8]]",
-    fold_type: Literal["full", "view"] = "view",
+    fold_type: FoldType = "view",
 ) -> "np.ndarray[tuple[int], np.dtype[np.uint64]]":
     """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
 
     Args:
         hashes (np.ndarray[tuple[int, int], np.dtype[np.uint8]]): 2D array of shape (n, H) where H >= 8.
-        fold_type (Literal["full", "view"] = "view"): Folding strategy.
+        fold_type (FoldType): Folding strategy.
             "view": Fastest; reinterprets the first 8 bytes as uint64.
             "full": Slower; folds all bytes in the row using bitwise operations.
             Default is "view".
@@ -135,7 +143,7 @@ def fold_bytes_to_uint64(
 def hash_numpy(
     i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
     seed: bytes | None = None,
-    hash_name: Literal["blake2b", "blake3", "sha256"] = "blake2b",
+    hash_name: HashType = "blake2b",
     hash_size: int | None = None,
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
     """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
@@ -149,7 +157,7 @@ def hash_numpy(
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes are prepended to the index. If None, hashes only the index.
-        hash_name (Literal["blake2b", "blake3", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
+        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). Defaults to "blake2b".
         hash_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
             and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 

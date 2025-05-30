@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
+from vernamveil._types import _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -81,7 +81,7 @@ class TestDeniabilityUtils(unittest.TestCase):
 
         decoy_message = (
             b"This message is totally real and not at all a decoy... "
-            b"There is nothing worth seeing here, move along!!!"
+            b"There is nothing worth seeing here, move along!!! "
         )
         try:
             plausible_fx, fake_seed = forge_plausible_fx(
