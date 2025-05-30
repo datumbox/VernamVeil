@@ -36,6 +36,3 @@ except ImportError:
 
     _HAS_C_MODULE = False
     _HashType = Literal["blake2b", "sha256"]
-
-# Literal type fo fold types
-_FoldType = Literal["full", "view"]

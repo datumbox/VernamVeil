@@ -4,11 +4,11 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
+from typing import Literal
 
 from vernamveil._types import (
     _HAS_C_MODULE,
 )
-from vernamveil._types import _FoldType as FoldType
 from vernamveil._types import _HashType as HashType
 from vernamveil._types import (
     _npblake2bffi,
@@ -109,13 +109,13 @@ class blake3:
 
 def fold_bytes_to_uint64(
     hashes: "np.ndarray[tuple[int, int], np.dtype[np.uint8]]",
-    fold_type: FoldType = "view",
+    fold_type: Literal["full", "view"] = "view",
 ) -> "np.ndarray[tuple[int], np.dtype[np.uint64]]":
     """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
 
     Args:
         hashes (np.ndarray[tuple[int, int], np.dtype[np.uint8]]): 2D array of shape (n, H) where H >= 8.
-        fold_type (FoldType): Folding strategy.
+        fold_type (Literal["full", "view"]): Folding strategy.
             "view": Fastest; reinterprets the first 8 bytes as uint64.
             "full": Slower; folds all bytes in the row using bitwise operations.
             Default is "view".
