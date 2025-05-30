@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "blake3.h"
 
@@ -72,6 +73,7 @@ void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* rest
 void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size) {
     // Input: byte array; each byte is hashed as a single byte block
     const bool seeded = seed != NULL && seedlen > 0;
+    uint8_t final_cv[BLAKE3_OUT_LEN]; // Move outside the reduction block
     const uint8_t *final_data = data;
     size_t final_len = datalen;
     int i;
@@ -131,7 +133,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
                 for (i = 0; i < (int)new_nodes; ++i) {
                     // For each node, combine the left and right children
                     const size_t left_index = 2 * (size_t)i;
-                    if (left_index >= num_nodes) continue; // Defensive: skip out-of-bounds
+                    if (left_index >= num_nodes) continue;  // Ensure we do not read out of bounds
                     const size_t right_index = left_index + 1;
                     const cv_node_t *const left_node = &read_buf[left_index];
 
@@ -164,8 +166,9 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
                 num_nodes = new_nodes;
             }
 
-            // Prepare to finalise with the root CV
-            final_data = read_buf[0].cv;
+            // Set final_data before freeing any buffer
+            memcpy(final_cv, read_buf[0].cv, BLAKE3_OUT_LEN);
+            final_data = final_cv;
             final_len = BLAKE3_OUT_LEN;
         }
         free(next_cvs);
