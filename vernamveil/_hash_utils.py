@@ -14,8 +14,8 @@ from vernamveil._types import (
     _npblake2bffi,
     _npblake3ffi,
     _npsha256ffi,
+    np,
 )
-from vernamveil._types import np as np
 
 __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 
