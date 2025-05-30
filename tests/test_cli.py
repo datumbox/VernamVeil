@@ -800,7 +800,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         with self._in_tempdir():
             # Generate a random keystream
             block_size = 64
-            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)]
+            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(150)]
 
             # Write OTPFX definition to fx.py
             fx_path = self._create_fx(
