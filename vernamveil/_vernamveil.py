@@ -8,12 +8,14 @@ import hmac
 import math
 import secrets
 import time
-from typing import Any, Iterator, Literal, Sequence, cast
+from functools import partial
+from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
 from vernamveil._cypher import _Cypher
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
-from vernamveil._types import _HAS_C_MODULE, np
+from vernamveil._types import _HashType as HashType
+from vernamveil._types import np
 
 __all__ = ["VernamVeil"]
 
@@ -36,6 +38,7 @@ class VernamVeil(_Cypher):
         decoy_ratio: float = 0.1,
         siv_seed_initialisation: bool = True,
         auth_encrypt: bool = True,
+        hash_name: HashType = "blake2b",
     ):
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
@@ -51,6 +54,8 @@ class VernamVeil(_Cypher):
             siv_seed_initialisation (bool): Enables synthetic IV seed initialisation based on the message to
                 resist seed reuse. Defaults to True.
             auth_encrypt (bool): Enables authenticated encryption with integrity check. Defaults to True.
+            hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256") for keyed hashing
+                and HMAC. Defaults to "blake2b".
 
         Raises:
             ValueError: If `chunk_size` is less than 8.
@@ -59,6 +64,7 @@ class VernamVeil(_Cypher):
             ValueError: If `padding_range` values are negative.
             ValueError: If `padding_range` values are not in ascending order.
             ValueError: If `decoy_ratio` is negative.
+            ValueError: If `hash_name` is not "blake2b", "blake3" or "sha256".
         """
         # Validate input
         if chunk_size < 8:
@@ -77,6 +83,8 @@ class VernamVeil(_Cypher):
             raise ValueError("padding_range values must be in ascending order.")
         if decoy_ratio < 0:
             raise ValueError("decoy_ratio must not be negative.")
+        if hash_name not in ("blake2b", "blake3", "sha256"):
+            raise ValueError("hash_name must be either 'blake2b', 'blake3' or 'sha256'.")
 
         # Initialise instance variables
         self._fx = fx
@@ -86,13 +94,13 @@ class VernamVeil(_Cypher):
         self._decoy_ratio = decoy_ratio
         self._siv_seed_initialisation = siv_seed_initialisation
         self._auth_encrypt = auth_encrypt
+        self._hash_name = hash_name
 
         # Constants
-        if _HAS_C_MODULE:
-            self._HASH_METHOD: Any = blake3
+        if hash_name == "blake3":
+            self._HASH_METHOD: Callable[..., Any] = blake3
         else:
-            self._HASH_METHOD = hashlib.blake2b
-
+            self._HASH_METHOD = partial(hashlib.new, hash_name)
         self._HASH_LENGTH = self._HASH_METHOD().digest_size
 
     def __str__(self) -> str:
@@ -107,7 +115,8 @@ class VernamVeil(_Cypher):
             f"padding_range={self._padding_range}, "
             f"decoy_ratio={self._decoy_ratio}, "
             f"siv_seed_initialisation={self._siv_seed_initialisation}, "
-            f"auth_encrypt={self._auth_encrypt})"
+            f"auth_encrypt={self._auth_encrypt},"
+            f"hash_name={self._hash_name})"
         )
 
     @classmethod
@@ -154,10 +163,9 @@ class VernamVeil(_Cypher):
             bytes: The resulting hash digest.
         """
         n = len(msg_list)
-        if use_hmac:
-            hasher = hmac.new(
-                cast(bytes, key), msg=msg_list[0] if n > 0 else None, digestmod=self._HASH_METHOD
-            )
+        key = cast(bytes, key)
+        if use_hmac or self._hash_name == "sha256":  # sha256 does not support key argument
+            hasher = hmac.new(key, msg=msg_list[0] if n > 0 else None, digestmod=self._HASH_METHOD)
         else:
             hasher = self._HASH_METHOD(msg_list[0] if n > 0 else b"", key=key)
         for i in range(1, n):
@@ -186,7 +194,7 @@ class VernamVeil(_Cypher):
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
             i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, self._HASH_METHOD.__name__))
+            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, self._hash_name))
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"

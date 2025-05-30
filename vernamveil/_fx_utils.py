@@ -12,7 +12,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Callable
 
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, _Bytes, _HashType, _Integer, np
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, _Bytes
+from vernamveil._types import _HashType as HashType
+from vernamveil._types import _Integer, np
 
 __all__ = [
     "FX",
@@ -206,7 +208,7 @@ class OTPFX(FX):
 
 
 def generate_keyed_hash_fx(
-    hash_name: _HashType = "blake2b",
+    hash_name: HashType = "blake2b",
     vectorise: bool = False,
     block_size: int | None = None,
 ) -> FX:
@@ -220,7 +222,7 @@ def generate_keyed_hash_fx(
         have fixed lengths.
 
     Args:
-        hash_name (_HashType): Hash function to use ("blake2b", "blake3" or "sha256"). Defaults to "blake2b".
+        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
         block_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
             and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
