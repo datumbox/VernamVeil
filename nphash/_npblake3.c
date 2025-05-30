@@ -146,13 +146,14 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             const size_t offset = (size_t)i * CHUNK_SIZE;
             const size_t end = MIN(offset + CHUNK_SIZE, datalen);
             const size_t len = end - offset;
+            cv_node_t *const out_node = &cvs[i];
 
             // Hash the chunk
-            blake3_hash_bytes(data + offset, len, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
+            blake3_hash_bytes(data + offset, len, key, seeded, out_node->cv, BLAKE3_OUT_LEN);
 
             // Set the chunk index and number of blocks
-            cvs[i].chunk_index = i;
-            // cvs[i].num_blocks = 1;
+            out_node->chunk_index = i;
+            // out_node->num_blocks = 1;
         }
 
         // Two buffers (ping-pong buffers) are required here to ensure that each reduction round
@@ -209,7 +210,7 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             // Set final_data before freeing any buffer
             // WARNING: The final root CV is re-hashed as a message to produce the output.
             // The BLAKE3 specification requires initialising the hasher with the root CV and the ROOT flag set,
-            // then generating the output using the XOF mechanism. This implementation does not follow that procedure.
+            // then generating the output using the XOF mechanism. This implementation does NOT follow this procedure.
             memcpy(final_cv, read_buf[0].cv, BLAKE3_OUT_LEN);
             final_data = final_cv;
             final_len = BLAKE3_OUT_LEN;
