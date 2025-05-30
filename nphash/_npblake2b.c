@@ -46,7 +46,7 @@ void numpy_blake2b(const uint64_t* restrict arr, const size_t n, const char* res
                 }
                 ok &= EVP_DigestUpdate(ctx, arr8[i], BLOCK_SIZE) == 1;
                 if (ok) {
-                    // Finalize the hash and write it to the output buffer
+                    // Finalise the hash and write it to the output buffer
                     EVP_DigestFinal_ex(ctx, &out[i * HASH_SIZE], NULL);
                 }
             }

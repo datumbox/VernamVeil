@@ -153,7 +153,7 @@ class OTPFX(FX):
     """
 
     def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool):
-        """Initializes the OTPFX instance.
+        """Initialises the OTPFX instance.
 
         Args:
             keystream (list[bytes]): A list of bytes representing the keystream, split in equal block_size bytes.
