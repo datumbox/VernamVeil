@@ -81,6 +81,38 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     prepare_blake3_key(seeded, seed, seedlen, key);
 
     #ifdef _OPENMP
+    // =================================================================================================
+    // NOTE: The following parallel tree hashing implementation is NOT a faithful reproduction of the
+    // official BLAKE3 specification. It is a manual construction that attempts to parallelise hashing
+    // by chunking the input and reducing chaining values (CVs) in a binary tree fashion. However,
+    // several critical aspects of the BLAKE3 tree hashing algorithm are not adhered to here:
+    //
+    // This is due to the fact that the official BLAKE3 C library does not expose low-level APIs
+    // for direct manipulation of chunk counters, flags (CHUNK_START, CHUNK_END, PARENT, ROOT),
+    // or for initialising a hasher with an arbitrary chaining value and flags. As such, it is not
+    // possible to implement a fully compliant manual tree hash using only the public API.
+    //
+    // 1. Domain Separation for Chunks:
+    //    - Each chunk is hashed as an independent message using the standard BLAKE3 hash function.
+    //    - The official BLAKE3 specification requires that each chunk be processed with a specific
+    //      chunk counter and appropriate flags (CHUNK_START, CHUNK_END) to ensure domain separation
+    //      and correct tree structure. This implementation does NOT set these parameters, and thus
+    //      the chunk hashes do not match those produced by the reference implementation.
+    //
+    // 2. Parent Node Compression:
+    //    - Parent nodes in the reduction tree are formed by concatenating two child CVs and hashing
+    //      them as a regular message. The BLAKE3 specification requires that parent nodes be
+    //      compressed using a dedicated parent node compression function, with the PARENT flag set.
+    //      This implementation does NOT use the required parent node compression logic or flags.
+    //
+    // 3. Root Finalisation and Output:
+    //    - The final root CV is re-hashed as a message to produce the output. In the BLAKE3
+    //      specification, the root CV should be used to initialise the hasher's internal state,
+    //      with the ROOT flag set, and the output should be generated using the XOF mechanism.
+    //      This implementation does NOT follow this procedure, so the output will not match the
+    //      official BLAKE3 output for the same input.
+    // =================================================================================================
+
     // Attempt to chunk and parallelise with OpenMP to use multiple CPU cores
 
     // Final chaining value (CV) for the output hash
@@ -105,6 +137,9 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
         // Parallel tree hashing path
 
         // Estimate the CVs for each chunk
+        // WARNING: This chunk is hashed as a standalone message, without setting the required
+        // chunk counter or CHUNK_START/CHUNK_END flags as per the BLAKE3 specification.
+        // As a result, the CVs produced here do not match those of the official BLAKE3 tree.
         #pragma omp parallel for schedule(static)
         for (i = 0; i < (int)num_chunks; ++i) {
             // Calculate the offset and length for this chunk
@@ -124,6 +159,9 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
         // reads from one buffer and writes to the other.
         cv_node_t* next_cvs = (cv_node_t*)malloc(num_chunks * sizeof(cv_node_t));
         if (next_cvs) {
+            // WARNING: This parent node is formed by hashing the concatenated child CVs
+            // as a regular message. The BLAKE3 specification requires a dedicated parent
+            // node compression with the PARENT flag, which is NOT performed here.
             // Perform tree reduction to combine CVs
             cv_node_t* read_buf = cvs;
             cv_node_t* write_buf = next_cvs;
@@ -168,6 +206,8 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             }
 
             // Set final_data before freeing any buffer
+            // WARNING: The final root CV is re-hashed as a message to produce the output.
+            // The BLAKE3 specification requires initialising the hasher with the root CV and
             memcpy(final_cv, read_buf[0].cv, BLAKE3_OUT_LEN);
             final_data = final_cv;
             final_len = BLAKE3_OUT_LEN;
