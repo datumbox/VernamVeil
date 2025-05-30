@@ -252,6 +252,26 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
 fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
+### 🏁️ A cryptographically strong and Fast Hash BLAKE3b `fx` (only available with C-acceleration)
+
+```python
+import numpy as np
+from vernamveil import FX, hash_numpy
+
+
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    # The secure default `fx` of the VernamVeil cypher.
+    # Implements a standard keyed hash-based pseudorandom function (PRF) using blake3.
+    # The output is deterministically derived from the input index `i` and the secret `seed`.
+    # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
+
+    # Hash using blake3
+    return hash_numpy(i, seed, "blake3", hash_size=1024)  # requires the C module
+
+
+fx = FX(keystream_fn, block_size=1024, vectorise=True)
+```
+
 ---
 
 ## 🎲 One-Time Pad (OTP) Mode
@@ -308,7 +328,7 @@ VernamVeil includes helper tools to make working with key stream functions easie
 
 - `OTPFX`: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`. 
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
-- `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default `fx` for the VernamVeil cypher.
+- `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default `fx` for the VernamVeil cypher. The BLAKE3 option is only available with the C extension.
 - `generate_polynomial_fx`: Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (BLAKE2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
 - `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. It uses `importlib` internally to import the `fx`. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
@@ -456,7 +476,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 1.9x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, a fx using `generate_keyed_hash_fx` and `blake3` as the make hasher) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 1.9x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -471,7 +491,7 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx` with BLAKE3)
+### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx` using BLAKE3)
 
 **Encoding:**
 ```bash
