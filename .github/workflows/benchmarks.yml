@@ -61,14 +61,14 @@ jobs:
               rm -f fx.py seed.bin output.enc output.dec
 
               start_enc=$(date +%s%N)
-              vernamveil encode --infile input.bin --outfile output.enc --verbosity error
+              vernamveil encode --infile input.bin --outfile output.enc --hash-name blake3 --verbosity error
               end_enc=$(date +%s%N)
               enc_time=$((end_enc - start_enc))
               enc_time_s=$(awk "BEGIN {printf \"%.3f\", $enc_time / 1000000000}")
               total_enc=$((total_enc + enc_time))
 
               start_dec=$(date +%s%N)
-              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin --verbosity error
+              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin --hash-name blake3 --verbosity error
               end_dec=$(date +%s%N)
               dec_time=$((end_dec - start_dec))
               dec_time_s=$(awk "BEGIN {printf \"%.3f\", $dec_time / 1000000000}")

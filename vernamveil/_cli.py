@@ -47,13 +47,13 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         help="Buffer size in bytes for reading blocks (default: 1048576, i.e., 1MB).",
     )
     p.add_argument(
-        "--chunk-size", type=int, default=512, help="Chunk size for VernamVeil (default: 512)."
+        "--chunk-size", type=int, default=8192, help="Chunk size for VernamVeil (default: 8192)."
     )
     p.add_argument(
         "--delimiter-size",
         type=int,
-        default=10,
-        help="Delimiter size for VernamVeil (default: 10).",
+        default=16,
+        help="Delimiter size for VernamVeil (default: 16).",
     )
     p.add_argument(
         "--padding-range",
