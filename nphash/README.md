@@ -1,10 +1,12 @@
 # Building the `nphash` C Library with `build.py`
 
-This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations.
+This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations. We also provide a `blake3` class, which offers a hashlib-style BLAKE3 hash object using the C backend. **The `blake3` implementation is only available when the C extension is built.**
 
 The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
 > **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
+
+> **Note:** The `build.py` script will automatically download the required BLAKE3 C source files from the [official BLAKE3 repository](https://github.com/BLAKE3-team/BLAKE3) if they are not already present locally.
 
 ## Prerequisites
 
@@ -80,9 +82,10 @@ from vernamveil._hash_utils import _HAS_C_MODULE
 After building, you can use the extension from Python code:
 
 ```python
-from vernamveil import hash_numpy
+from vernamveil import hash_numpy, blake3
 # hash_numpy will use the C extension if available, otherwise a pure NumPy fallback.
 # All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
+# The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.
 ```
 
 If the C extension is not built or importable, `hash_numpy` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
