@@ -214,9 +214,9 @@ def main(args: list[str] | None = None) -> None:
             )
             sys.exit(1)
         fx_obj = generate_default_fx(
-            vectorise=parsed_args.vectorise,
             hash_name=parsed_args.hash_name,
-            block_size=1024 if parsed_args.hash_name == "blake" else None,
+            vectorise=parsed_args.vectorise,
+            block_size=1024 if parsed_args.hash_name == "blake3" else None,
         )
         fx_py.write_text(fx_obj.source_code)
         _vprint(

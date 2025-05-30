@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 from vernamveil._cli import main
 from vernamveil._fx_utils import OTPFX
-from vernamveil._vernamveil import VernamVeil
 from vernamveil._types import _HAS_C_MODULE
+from vernamveil._vernamveil import VernamVeil
 
 
 class _UnclosableBytesIO(BytesIO):
@@ -835,7 +835,13 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
                     fx_file = self.temp_dir_path / "fx.py"
                     seed_file = self.temp_dir_path / "seed.bin"
                     self._encode(infile, encfile, extra_args=["--hash-name", hash_name])
-                    self._decode(encfile, decfile, fx_file="fx.py", seed_file="seed.bin", extra_args=["--hash-name", hash_name])
+                    self._decode(
+                        encfile,
+                        decfile,
+                        fx_file="fx.py",
+                        seed_file="seed.bin",
+                        extra_args=["--hash-name", hash_name],
+                    )
                     self._assert_decoded_matches_input(infile, decfile)
                     fx_file.unlink()
                     seed_file.unlink()

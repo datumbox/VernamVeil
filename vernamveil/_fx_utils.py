@@ -367,7 +367,7 @@ def make_keystream_fn():
 
     def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
+        # followed by a cryptographically secure keyed hash (BLAKE2b) output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
@@ -377,7 +377,7 @@ def make_keystream_fn():
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
 
-        # Hash using Blake2b
+        # Hash using BLAKE2b
         return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return keystream_fn
@@ -394,7 +394,7 @@ def make_keystream_fn():
 
     def keystream_fn(i: int, seed: bytes) -> bytes:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
+        # followed by a cryptographically secure keyed hash (BLAKE2b) output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
@@ -405,7 +405,7 @@ def make_keystream_fn():
             result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-        # Hash using Blake2b
+        # Hash using BLAKE2b
         return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
 
     return keystream_fn

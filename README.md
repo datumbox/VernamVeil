@@ -185,7 +185,7 @@ from vernamveil import FX
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure keyed hash (Blake2b) output.
+    # followed by a cryptographically secure keyed hash (BLAKE2b) output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = [24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
@@ -197,7 +197,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
         result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
         current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-    # Hash using Blake2b
+    # Hash using BLAKE2b
     return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
 
 
@@ -213,7 +213,7 @@ from vernamveil import FX, hash_numpy
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure keyed hash (Blake2b) output.
+    # followed by a cryptographically secure keyed hash (BLAKE2b) output.
     # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
     # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
     weights = np.array([24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426], dtype=np.uint64)
@@ -225,14 +225,14 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Weighted sum (polynomial evaluation)
     result = np.dot(powers, weights)
 
-    # Hash using Blake2b
+    # Hash using BLAKE2b
     return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
 fx = FX(keystream_fn, block_size=64, vectorise=True)
 ```
 
-### 🛡️ A cryptographically strong Keyed Hash Blake2b `fx` (vectorised & C-accelerated)
+### 🛡️ A cryptographically strong Keyed Hash BLAKE2b `fx` (vectorised & C-accelerated)
 
 ```python
 import numpy as np
@@ -402,7 +402,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 
 > ⚠️ **Warning: CLI Parameter Consistency**
 >
-> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation` and `--auth-encrypt`) as you did during encoding.
+> When decoding, you **must** use the exact same parameters (such as `--chunk-size`, `--delimiter-size`, `--padding-range`, `--decoy-ratio`, `--siv-seed-initialisation`, `--auth-encrypt` and `--hash-name`) as you did during encoding.
 >
 > For example, the following will **fail** with a `Authentication failed: MAC tag mismatch.` error because the `--chunk-size` parameter differs between encoding and decoding:
 >
@@ -456,7 +456,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 3x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, and a fx using `generate_keyed_hash_fx`) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 1.9x slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, a fx using `generate_keyed_hash_fx` and `blake3` as the make hasher) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -471,19 +471,19 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx`)
+### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx` with BLAKE3)
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 9.841s_
+_Time: 5.728s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 8.408s_
+_Time: 4.822s_
 
 ### 🐇 AES-256-CBC (OpenSSL)
 
@@ -503,7 +503,7 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 9.8 s       | 8.4 s       |
+| VernamVeil   | 5.7 s       | 4.8 s       |
 | AES-256-CBC  | 3.0 s       | 2.6 s       |
 
 ---
