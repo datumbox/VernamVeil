@@ -93,7 +93,7 @@ class VernamVeil(_Cypher):
         else:
             self._HASH_METHOD = hashlib.blake2b
             self._SIV_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
-        self._HASH_NAME: Literal["blake2b", "blake3", "sha256"] = self._HASH_METHOD.__name__
+        self._HASH_NAME = self._HASH_METHOD.__name__
         self._HMAC_LENGTH = hashlib.blake2b.MAX_DIGEST_SIZE
 
     def __str__(self) -> str:
