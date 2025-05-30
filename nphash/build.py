@@ -207,10 +207,10 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
-    # Add third_party to include_dirs
-    third_party_dir = Path(__file__).parent.parent / "third_party" / "blake3"
-    if third_party_dir.exists():
-        include_dirs.append(third_party_dir)
+    # Add blake3_dir to include_dirs
+    blake3_dir = Path(__file__).parent.parent / "third_party" / "blake3"
+    if blake3_dir.exists():
+        include_dirs.append(blake3_dir)
 
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
@@ -227,10 +227,7 @@ def main() -> None:
     c_source_blake3 = (
         _get_c_source(parent_dir / "_npblake3.c")
         + "\n"
-        + "\n".join(
-            _get_c_source(f)
-            for f in sorted((parent_dir.parent / "third_party" / "blake3").glob("*"))
-        )
+        + "\n".join(_get_c_source(f) for f in sorted(blake3_dir.glob("*")))
     )
 
     extra_compile_args.append("-DBLAKE3_NO_AVX2")
