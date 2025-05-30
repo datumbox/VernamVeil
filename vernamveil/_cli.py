@@ -82,6 +82,13 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         help="Enable authenticated encryption (default: True).",
     )
     p.add_argument(
+        "--hash-name",
+        type=str,
+        default="blake2b",
+        choices=["blake2b", "blake3", "sha256"] if _HAS_C_MODULE else ["blake2b", "sha256"],
+        help="Hashing algorithm for the cypher and fx generation (default: blake2b).",
+    )
+    p.add_argument(
         "--verbosity",
         choices=["info", "warning", "error", "none"],
         default="warning",
@@ -206,7 +213,11 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
-        fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
+        fx_obj = generate_default_fx(
+            vectorise=parsed_args.vectorise,
+            hash_name=parsed_args.hash_name,
+            block_size=1024 if parsed_args.hash_name == "blake" else None,
+        )
         fx_py.write_text(fx_obj.source_code)
         _vprint(
             f"Warning: Generated a fx-file in {fx_py.resolve()}. "
@@ -311,6 +322,7 @@ def main(args: list[str] | None = None) -> None:
         decoy_ratio=parsed_args.decoy_ratio,
         siv_seed_initialisation=parsed_args.siv_seed_initialisation,
         auth_encrypt=parsed_args.auth_encrypt,
+        hash_name=parsed_args.hash_name,
     )
 
     # Define progress callback if verbosity is "info"
