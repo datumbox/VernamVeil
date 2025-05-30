@@ -39,7 +39,7 @@ class VernamVeil(_Cypher):
         siv_seed_initialisation: bool = True,
         auth_encrypt: bool = True,
         hash_name: HashType = "blake2b",
-    ):
+    ) -> None:
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
         Args:

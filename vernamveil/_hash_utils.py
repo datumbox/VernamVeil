@@ -33,7 +33,9 @@ class blake3:
     block_size = 64
     key_size = 32
 
-    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = digest_size):
+    def __init__(
+        self, data: bytes = b"", *, key: bytes | None = None, length: int = digest_size
+    ) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:

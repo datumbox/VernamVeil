@@ -17,6 +17,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import urllib.request
 from pathlib import Path
 
 from cffi import FFI
@@ -111,6 +112,37 @@ def _print_build_summary(
     print(f"  Extra link args: {extra_link_args}")
     print(f"  Include dirs: {include_dirs}")
     print(f"  Library dirs: {library_dirs}")
+
+
+def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
+    """Ensure BLAKE3 sources are present in blake3_dir, downloading from GitHub if missing.
+
+    Args:
+        blake3_dir (Path): Directory to store BLAKE3 sources.
+        version (str): BLAKE3 version to download (e.g., '1.8.2').
+
+    Raises:
+        RuntimeError: If download fails or files cannot be written.
+    """
+    blake3_files = [
+        "blake3.c",
+        "blake3.h",
+        "blake3_dispatch.c",
+        "blake3_impl.h",
+        "blake3_portable.c",
+    ]
+    base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
+    blake3_dir.mkdir(parents=True, exist_ok=True)
+    for fname in blake3_files:
+        fpath = blake3_dir / fname
+        if not fpath.exists():
+            url = base_url + fname
+            try:
+                print(f"Downloading {fname} from {url} to {fpath} ...")
+                with urllib.request.urlopen(url) as resp, open(fpath, "wb") as out_f:
+                    out_f.write(resp.read())
+            except Exception as e:
+                raise RuntimeError(f"Failed to download {fname} from {url}: {e}")
 
 
 def main() -> None:
@@ -209,6 +241,7 @@ def main() -> None:
 
     # Add blake3_dir to include_dirs
     blake3_dir = Path(__file__).parent.parent / "third_party" / "blake3"
+    _download_blake3_sources(blake3_dir, version="1.8.2")
     if blake3_dir.exists():
         include_dirs.append(blake3_dir)
 
