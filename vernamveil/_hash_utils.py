@@ -23,7 +23,7 @@ __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 class blake3:
     """A hashlib-style BLAKE3 hash object using the C backend (single-shot only).
 
-    Atributes:
+    Attributes:
         digest_size (int): The size of the hash output in bytes set to 32.
         block_size (int): The size of the internal block used for hashing set to 64.
         key_size (int): The size of the key used for keyed hashing set to 32.
