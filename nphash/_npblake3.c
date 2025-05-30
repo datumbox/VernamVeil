@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "blake3.h"
 
@@ -73,7 +72,6 @@ void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* rest
 void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size) {
     // Input: byte array; each byte is hashed as a single byte block
     const bool seeded = seed != NULL && seedlen > 0;
-    uint8_t final_cv[BLAKE3_OUT_LEN]; // Move outside the reduction block
     const uint8_t *final_data = data;
     size_t final_len = datalen;
     int i;
@@ -84,6 +82,9 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
     #ifdef _OPENMP
     // Attempt to chunk and parallelise with OpenMP to use multiple CPU cores
+
+    // Final chaining value (CV) for the output hash
+    uint8_t final_cv[BLAKE3_OUT_LEN];
 
     // Calculate the number of chunks based on the input data length
     const size_t num_chunks = (datalen + CHUNK_SIZE - 1) / CHUNK_SIZE;
