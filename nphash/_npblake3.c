@@ -84,14 +84,13 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     // Attempt to chunk and parallelise with OpenMP to use multiple CPU cores
 
     // Calculate the number of chunks based on the input data length
-    const int datalen_int = (int)datalen;
-    const int num_chunks = (datalen_int + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    const size_t num_chunks = (datalen + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
     // Define a structure to hold the chaining values (CVs) for each chunk
     typedef struct {
         uint8_t cv[BLAKE3_OUT_LEN];
         uint64_t chunk_index;
-        int num_blocks;
+        size_t num_blocks;
     } cv_node_t;
     cv_node_t* cvs = NULL;
     if (num_chunks > 1) {
@@ -104,11 +103,11 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
 
         // Estimate the CVs for each chunk
         #pragma omp parallel for schedule(static)
-        for (i = 0; i < num_chunks; ++i) {
+        for (i = 0; i < (int)num_chunks; ++i) {
             // Calculate the offset and length for this chunk
-            const int offset = i * CHUNK_SIZE;
-            const int end = MIN(offset + CHUNK_SIZE, datalen_int);
-            const int len = end - offset;
+            const size_t offset = (size_t)i * CHUNK_SIZE;
+            const size_t end = MIN(offset + CHUNK_SIZE, datalen);
+            const size_t len = end - offset;
 
             // Hash the chunk
             blake3_hash_bytes(data + offset, len, key, seeded, cvs[i].cv, BLAKE3_OUT_LEN);
@@ -125,14 +124,15 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
             // Perform tree reduction to combine CVs
             cv_node_t* read_buf = cvs;
             cv_node_t* write_buf = next_cvs;
-            int num_nodes = num_chunks;
+            size_t num_nodes = num_chunks;
             while (num_nodes > 1) {
-                const int new_nodes = (num_nodes + 1) / 2;
+                const size_t new_nodes = (num_nodes + 1) / 2;
                 #pragma omp parallel for schedule(static)
-                for (i = 0; i < new_nodes; ++i) {
+                for (i = 0; i < (int)new_nodes; ++i) {
                     // For each node, combine the left and right children
-                    const int left_index = 2 * i;
-                    const int right_index = left_index + 1;
+                    const size_t left_index = 2 * (size_t)i;
+                    if (left_index >= num_nodes) continue; // Defensive: skip out-of-bounds
+                    const size_t right_index = left_index + 1;
                     const cv_node_t *const left_node = &read_buf[left_index];
 
                     if (right_index < num_nodes) {
@@ -176,6 +176,3 @@ void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char
     // Finalise hash
     blake3_hash_bytes(final_data, final_len, key, seeded, out, hash_size);
 }
-
-
-
