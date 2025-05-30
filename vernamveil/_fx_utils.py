@@ -10,10 +10,11 @@ import tempfile
 import warnings
 from collections import Counter
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable
 
-from vernamveil._cypher import _HAS_NUMPY, _Bytes, _Integer, np
-from vernamveil._hash_utils import _HAS_C_MODULE
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, _Bytes
+from vernamveil._types import _HashType as HashType
+from vernamveil._types import _Integer, np
 
 __all__ = [
     "FX",
@@ -151,8 +152,8 @@ class OTPFX(FX):
 
     """
 
-    def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool):
-        """Initializes the OTPFX instance.
+    def __init__(self, keystream: list[bytes], block_size: int, vectorise: bool) -> None:
+        """Initialises the OTPFX instance.
 
         Args:
             keystream (list[bytes]): A list of bytes representing the keystream, split in equal block_size bytes.
@@ -207,10 +208,11 @@ class OTPFX(FX):
 
 
 def generate_keyed_hash_fx(
-    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+    hash_name: HashType = "blake2b",
     vectorise: bool = False,
+    block_size: int | None = None,
 ) -> FX:
-    """Generate a standard keyed hash-based pseudorandom function (PRF) using Blake2b or SHA256.
+    """Generate a standard keyed hash-based pseudorandom function (PRF) using BLAKE2b, BLAKE3 or SHA256.
 
     This is the recommended secure default `fx` for the VernamVeil cypher.
 
@@ -220,23 +222,44 @@ def generate_keyed_hash_fx(
         have fixed lengths.
 
     Args:
-        hash_name (Literal["blake2b", "sha256"]): Hash function to use ("blake2b" or "sha256"). Defaults to "blake2b".
+        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). The blake3 is only
+            available if the C extension is installed. Defaults to "blake2b".
         vectorise (bool): If True, uses numpy arrays as input for vectorised operations. Defaults to False.
+        block_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
+            and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 
     Returns:
         FX: A callable that returns pseudo-random bytes from a keyed hash-based function.
 
     Raises:
-        ValueError: If `hash_name` is not "blake2b" or "sha256".
+        ValueError: If `hash_name` is not "blake2b", "blake3" or "sha256".
+        ValueError: If `hash_name` is "blake3" but the C extension is not available.
+        ValueError: If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.
         TypeError: If `vectorise` is not a boolean.
         ValueError: If `vectorise` is True but numpy is not installed.
     """
     if vectorise and np is None:
         raise ValueError("NumPy is required for vectorised mode but is not installed.")
-    if hash_name not in ("blake2b", "sha256"):
-        raise ValueError("hash_name must be either 'blake2b' or 'sha256'.")
+    if hash_name not in ("blake2b", "blake3", "sha256"):
+        raise ValueError("hash_name must be either 'blake2b', 'blake3' or 'sha256'.")
+    if hash_name == "blake3" and not _HAS_C_MODULE:
+        raise ValueError("blake3 requires the C extension.")
     if not isinstance(vectorise, bool):
         raise TypeError("vectorise must be a boolean.")
+
+    if block_size is None:
+        if hash_name == "blake2b":
+            block_size = 64
+        elif hash_name == "blake3":
+            block_size = 32
+        elif hash_name == "sha256":
+            block_size = 32
+    elif hash_name == "blake2b" and block_size != 64:
+        raise ValueError("blake2b block_size must be 64 bytes.")
+    elif hash_name == "blake3" and block_size <= 0:
+        raise ValueError("blake3 block_size must be larger than 0 bytes.")
+    elif hash_name == "sha256" and block_size != 32:
+        raise ValueError("sha256 block_size must be 32 bytes.")
 
     # Dynamically generate the function code for scalar or vectorised keyed hash-based PRF
     if vectorise:
@@ -252,12 +275,12 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Hash using {hash_name}
-    return hash_numpy(i, seed, "{hash_name}")  # uses C module if available, else NumPy fallback
+    return hash_numpy(i, seed, "{hash_name}", hash_size={block_size})  # uses C module if available, else NumPy fallback
 """
     else:
         function_code = f"""
 import hashlib
-from vernamveil import FX
+from vernamveil import FX{", blake3" if hash_name == "blake3" else ""}
 
 
 def keystream_fn(i: int, seed: bytes) -> bytes:
@@ -267,7 +290,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Hash using {hash_name}
-    hasher = hashlib.{hash_name}(seed)
+    hasher = {f'blake3(key=seed, length={block_size})' if hash_name == 'blake3' else f'hashlib.{hash_name}(seed)'}
     hasher.update(i.to_bytes(8, "big"))
     return hasher.digest()
 """
@@ -275,7 +298,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
     function_code += f"""
 
 
-fx = FX(keystream_fn, block_size={64 if hash_name == "blake2b" else 32}, vectorise={vectorise})
+fx = FX(keystream_fn, block_size={block_size}, vectorise={vectorise})
 """
 
     # Load the fx function from source code
@@ -345,7 +368,7 @@ def make_keystream_fn():
 
     def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
+        # followed by a cryptographically secure keyed hash (BLAKE2b) output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
@@ -355,7 +378,7 @@ def make_keystream_fn():
         # Weighted sum (polynomial evaluation)
         result = np.dot(powers, weights)
 
-        # Hash using Blake2b
+        # Hash using BLAKE2b
         return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
     return keystream_fn
@@ -372,7 +395,7 @@ def make_keystream_fn():
 
     def keystream_fn(i: int, seed: bytes) -> bytes:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
-        # followed by a cryptographically secure keyed hash (Blake2b) output.
+        # followed by a cryptographically secure keyed hash (BLAKE2b) output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
         # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
 
@@ -383,7 +406,7 @@ def make_keystream_fn():
             result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
-        # Hash using Blake2b
+        # Hash using BLAKE2b
         return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
 
     return keystream_fn

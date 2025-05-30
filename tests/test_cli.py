@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from vernamveil._cli import main
 from vernamveil._fx_utils import OTPFX
+from vernamveil._types import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -799,7 +800,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         with self._in_tempdir():
             # Generate a random keystream
             block_size = 64
-            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)]
+            keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(150)]
 
             # Write OTPFX definition to fx.py
             fx_path = self._create_fx(
@@ -818,6 +819,32 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             self._encode(infile, encfile, fx_file=fx_path, seed_file=seed_path)
             self._decode(encfile, decfile, fx_file=fx_path, seed_file=seed_path)
             self._assert_decoded_matches_input(infile, decfile)
+
+    def test_encode_decode_with_all_hash_names(self):
+        """Test encode/decode roundtrip for all supported --hash-name values (auto fx/seed)."""
+        hash_names = ["blake2b", "sha256"]
+        if _HAS_C_MODULE:
+            hash_names.append("blake3")
+        with self._in_tempdir():
+            input_data = b"hash_name roundtrip test data"
+            infile = self._write_file("input.txt", input_data)
+            for hash_name in hash_names:
+                with self.subTest(hash_name=hash_name):
+                    encfile = self.temp_dir_path / f"output_{hash_name}.enc"
+                    decfile = self.temp_dir_path / f"output_{hash_name}.dec"
+                    fx_file = self.temp_dir_path / "fx.py"
+                    seed_file = self.temp_dir_path / "seed.bin"
+                    self._encode(infile, encfile, extra_args=["--hash-name", hash_name])
+                    self._decode(
+                        encfile,
+                        decfile,
+                        fx_file="fx.py",
+                        seed_file="seed.bin",
+                        extra_args=["--hash-name", hash_name],
+                    )
+                    self._assert_decoded_matches_input(infile, decfile)
+                    fx_file.unlink()
+                    seed_file.unlink()
 
 
 if __name__ == "__main__":

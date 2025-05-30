@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npblake2bffi and _npsha256ffi C extensions that provide fast, parallelised
+This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
 BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _npblake2bffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import platform
@@ -17,6 +17,7 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+import urllib.request
 from pathlib import Path
 
 from cffi import FFI
@@ -113,6 +114,37 @@ def _print_build_summary(
     print(f"  Library dirs: {library_dirs}")
 
 
+def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
+    """Ensure BLAKE3 sources are present in blake3_dir, downloading from GitHub if missing.
+
+    Args:
+        blake3_dir (Path): Directory to store BLAKE3 sources.
+        version (str): BLAKE3 version to download (e.g., '1.8.2').
+
+    Raises:
+        RuntimeError: If download fails or files cannot be written.
+    """
+    blake3_files = [
+        "blake3.c",
+        "blake3.h",
+        "blake3_dispatch.c",
+        "blake3_impl.h",
+        "blake3_portable.c",
+    ]
+    base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
+    blake3_dir.mkdir(parents=True, exist_ok=True)
+    for fname in blake3_files:
+        fpath = blake3_dir / fname
+        if not fpath.exists():
+            url = base_url + fname
+            try:
+                print(f"Downloading {fname} from {url} to {fpath} ...")
+                with urllib.request.urlopen(url) as resp, open(fpath, "wb") as out_f:
+                    out_f.write(resp.read())
+            except Exception as e:
+                raise RuntimeError(f"Failed to download {fname} from {url}: {e}")
+
+
 def main() -> None:
     """Main entry point for building the nphash CFFI extensions.
 
@@ -126,6 +158,14 @@ def main() -> None:
     ffibuilder_blake2b.cdef(
         """
         void numpy_blake2b(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
+        """
+    )
+
+    ffibuilder_blake3 = FFI()
+    ffibuilder_blake3.cdef(
+        """
+        void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
+        void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
         """
     )
 
@@ -199,6 +239,12 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
+    # Add blake3_dir to include_dirs
+    blake3_dir = Path(__file__).parent.parent / "third_party" / "blake3"
+    _download_blake3_sources(blake3_dir, version="1.8.2")
+    if blake3_dir.exists():
+        include_dirs.append(blake3_dir)
+
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
         if _supports_flag(compiler, flag):
@@ -211,6 +257,17 @@ def main() -> None:
     parent_dir = Path(__file__).parent
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
+    c_source_blake3 = (
+        _get_c_source(parent_dir / "_npblake3.c")
+        + "\n"
+        + "\n".join(_get_c_source(f) for f in sorted(blake3_dir.glob("*")))
+    )
+
+    extra_compile_args.append("-DBLAKE3_NO_AVX2")
+    extra_compile_args.append("-DBLAKE3_NO_AVX512")
+    extra_compile_args.append("-DBLAKE3_NO_SSE2")
+    extra_compile_args.append("-DBLAKE3_NO_SSE41")
+    extra_compile_args.append("-DBLAKE3_USE_NEON=0")
 
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
@@ -220,6 +277,16 @@ def main() -> None:
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
         c_source_blake2b,
+        libraries=libraries,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        include_dirs=include_paths,
+        library_dirs=library_paths,
+    )
+
+    ffibuilder_blake3.set_source(
+        "_npblake3ffi",
+        c_source_blake3,
         libraries=libraries,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
@@ -241,6 +308,7 @@ def main() -> None:
         libraries, extra_compile_args, extra_link_args, include_paths, library_paths
     )
     ffibuilder_blake2b.compile(verbose=True)
+    ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
 
 

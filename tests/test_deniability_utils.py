@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
+from vernamveil._types import _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -60,15 +60,20 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_end_to_end_deniability_disk_io(self):
         """End-to-end test: store/load all artifacts and verify deniability."""
+        chunk_size = 64
+        delimiter_size = 8
+        padding_range = (5, 20)
+        decoy_ratio = 0.1
+
         real_fx = generate_default_fx(vectorise=False)
         real_seed = VernamVeil.get_initial_seed()
         secret_message = b"Sensitive data: the launch code is 12345!"
         cypher = VernamVeil(
             real_fx,
-            chunk_size=33,
-            delimiter_size=9,
-            padding_range=(5, 15),
-            decoy_ratio=0.2,
+            chunk_size=chunk_size,
+            delimiter_size=delimiter_size,
+            padding_range=padding_range,
+            decoy_ratio=decoy_ratio,
             siv_seed_initialisation=True,
             auth_encrypt=True,
         )
@@ -76,10 +81,12 @@ class TestDeniabilityUtils(unittest.TestCase):
 
         decoy_message = (
             b"This message is totally real and not at all a decoy... "
-            b"There is nothing worth seeing here, move along!!!"
+            b"There is nothing worth seeing here, move along!!! "
         )
         try:
-            plausible_fx, fake_seed = forge_plausible_fx(cypher, cyphertext, decoy_message)
+            plausible_fx, fake_seed = forge_plausible_fx(
+                cypher, cyphertext, decoy_message, max_obfuscate_attempts=50000
+            )
         except ValueError as e:
             msg = str(e)
             if (
@@ -124,10 +131,10 @@ class TestDeniabilityUtils(unittest.TestCase):
             # Decrypt with real fx/seed
             real_cypher = VernamVeil(
                 loaded_real_fx,
-                chunk_size=33,
-                delimiter_size=9,
-                padding_range=(5, 15),
-                decoy_ratio=0.2,
+                chunk_size=chunk_size,
+                delimiter_size=delimiter_size,
+                padding_range=padding_range,
+                decoy_ratio=decoy_ratio,
                 siv_seed_initialisation=True,
                 auth_encrypt=True,
             )
@@ -136,10 +143,10 @@ class TestDeniabilityUtils(unittest.TestCase):
             # Decrypt with plausible fx/fake seed
             fake_cypher = VernamVeil(
                 loaded_plausible_fx,
-                chunk_size=33,
-                delimiter_size=9,
-                padding_range=(5, 15),
-                decoy_ratio=0.2,
+                chunk_size=chunk_size,
+                delimiter_size=delimiter_size,
+                padding_range=padding_range,
+                decoy_ratio=decoy_ratio,
                 siv_seed_initialisation=False,
                 auth_encrypt=False,
             )
@@ -150,14 +157,19 @@ class TestDeniabilityUtils(unittest.TestCase):
 
     def test_deniability_with_otpfx(self):
         """Test deniability works when the real_fx is OTPFX."""
-        real_fx = OTPFX([VernamVeil.get_initial_seed() for _ in range(10)], 64, vectorise=False)
+        block_size = 64
+        real_fx = OTPFX(
+            [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)],
+            block_size,
+            False,
+        )
         try:
             decoy_out, decoy_message = self._run_deniability_test(
                 real_fx=real_fx,
-                chunk_size=33,
-                delimiter_size=9,
-                padding_range=(5, 15),
-                decoy_ratio=0.2,
+                chunk_size=64,
+                delimiter_size=8,
+                padding_range=(5, 20),
+                decoy_ratio=0.1,
             )
             self.assertEqual(decoy_out, decoy_message)
         except ValueError as e:

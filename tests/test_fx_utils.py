@@ -4,8 +4,8 @@ import warnings
 from pathlib import Path
 from unittest.mock import patch
 
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import FX, OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
+from vernamveil._types import _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 try:
