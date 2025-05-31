@@ -220,7 +220,7 @@ def main() -> None:
         # For MSVC: /openmp, for MinGW: -fopenmp
         if "gcc" in compiler.lower():
             libraries_c = ["libssl", "libcrypto", "gomp"]
-            libraries_cpp = ["tbb", "stdc++", "gomp"]
+            libraries_cpp = ["tbb12", "stdc++", "gomp"]
             extra_compile_args = [
                 "-std=c99",
                 "-fopenmp",
@@ -233,7 +233,7 @@ def main() -> None:
         else:
             # MSVC
             libraries_c = ["libssl", "libcrypto"]
-            libraries_cpp = ["tbb"]
+            libraries_cpp = ["tbb12"]
             extra_compile_args = ["/openmp", "-O2"]
         # Check all possible OpenSSL install locations
         for prefix in [
@@ -246,6 +246,15 @@ def main() -> None:
                 include_dirs.append(prefix / "include")
                 library_dirs.append(prefix / "lib")
                 break
+
+        # Add vcpkg TBB include path if it exists
+        vcpkg_dir = Path(__file__).parent.parent / "vcpkg" / "installed" / "x64-windows"
+        vcpkg_tbb_include = vcpkg_dir / "include"
+        if vcpkg_tbb_include.exists():
+            include_dirs.append(vcpkg_tbb_include.resolve())
+        vcpkg_tbb_lib = vcpkg_dir / "lib"
+        if vcpkg_tbb_lib.exists():
+            library_dirs.append(vcpkg_tbb_lib.resolve())
     else:
         raise RuntimeError("Unsupported platform")
 
