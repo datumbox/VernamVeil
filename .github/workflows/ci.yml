@@ -42,10 +42,10 @@ jobs:
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
-              curl -L -o tbb.zip https://github.com/uxlfoundation/oneTBB/releases/download/v2022.1.0/oneapi-tbb-2022.1.0-win.zip
-              7z x tbb.zip -otbb
-              set "INCLUDE=%CD%\tbb\oneapi-tbb-2022.1.0\include;%INCLUDE%"
-              set "LIB=%CD%\tbb\oneapi-tbb-2022.1.0\lib\intel64\vc14;%LIB%"
+              git clone https://github.com/microsoft/vcpkg.git
+              .\vcpkg\bootstrap-vcpkg.bat
+              .\vcpkg\vcpkg.exe install tbb:x64-windows
+              copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
               choco install openssl --no-progress -y
               cd nphash
               python build.py
@@ -91,9 +91,9 @@ jobs:
         run: ${{ matrix.build-steps }}
         shell: bash
 
-      - name: Setup tmate session (for interactive SSH debugging)
-        if: matrix.os == 'windows-latest'
-        uses: mxschmitt/action-tmate@v3
+#      - name: Setup tmate session (for interactive SSH debugging)
+#        if: matrix.os == 'windows-latest'
+#        uses: mxschmitt/action-tmate@v3
 
       - name: Run tests
         run: python -m unittest discover -s tests/ -v
