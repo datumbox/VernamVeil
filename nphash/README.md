@@ -100,3 +100,8 @@ If the C extension is not built or importable, `hash_numpy` will transparently f
    export ARCHFLAGS=-arch arm64
    python build.py
    ```
+- **macOS users:** If you encounter an error like `[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate` when building or downloading sources, run the `Install Certificates.command` script that comes with your Python installation. For example, in your terminal:
+   ```bash
+   /Applications/Python\ <your-version>/Install\ Certificates.command
+   ```
+  Replace `<your-version>` with your installed Python version (e.g., `3.10`). This will install the required root certificates for SSL verification.
