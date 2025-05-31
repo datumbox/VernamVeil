@@ -29,10 +29,34 @@ jobs:
               cd ..
               python -m pip install .
 
+          - os: ubuntu-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev python3-dev
+              export NPBLAKE3_NO_TBB=1
+              cd nphash
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
+
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               brew install libomp openssl tbb
+              cd nphash
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
+
+          - os: macos-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              brew install libomp openssl
+              export NPBLAKE3_NO_TBB=1
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -53,7 +77,20 @@ jobs:
               cd ..
               python -m pip install .
 
-    name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
+          - os: windows-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              @echo on
+              choco install openssl --no-progress -y
+              set NPBLAKE3_NO_TBB=1
+              cd nphash
+              python build.py
+              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
+
+    name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}${{ matrix.postfix || '' }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code

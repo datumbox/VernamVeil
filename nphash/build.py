@@ -20,6 +20,7 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
+import argparse
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
@@ -117,12 +118,13 @@ def _print_build_summary(
     print(f"  Library dirs: {library_dirs}")
 
 
-def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
+def _download_blake3_sources(blake3_dir: Path, version: str, with_tbb: bool = True) -> None:
     """Ensure BLAKE3 sources are present in blake3_dir, downloading from GitHub if missing.
 
     Args:
         blake3_dir (Path): Directory to store BLAKE3 sources.
         version (str): BLAKE3 version to download (e.g., '1.8.2').
+        with_tbb (bool): Whether to include blake3_tbb.cpp (TBB support).
 
     Raises:
         RuntimeError: If download fails or files cannot be written.
@@ -133,8 +135,9 @@ def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
         "blake3_dispatch.c",
         "blake3_impl.h",
         "blake3_portable.c",
-        "blake3_tbb.cpp",
     ]
+    if with_tbb:
+        blake3_files.append("blake3_tbb.cpp")
     base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
     blake3_dir.mkdir(parents=True, exist_ok=True)
     for fname in blake3_files:
@@ -209,6 +212,13 @@ def main() -> None:
     Raises:
         RuntimeError: If the platform is unsupported.
     """
+    # Parse --no-tbb flag and env var
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3")
+    args, _ = parser.parse_known_args()
+    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip() not in ("", "0", "false", "False", "no", "No")
+    tbb_enabled = not (args.no_tbb or no_tbb_env)
+
     # FFI builders
     ffibuilder_blake2b = FFI()
     ffibuilder_blake2b.cdef(
@@ -310,7 +320,7 @@ def main() -> None:
 
     # Add blake3_dir to include_dirs
     blake3_dir = nphash_dir.parent / "third_party" / "blake3"
-    _download_blake3_sources(blake3_dir, version="1.8.2")
+    _download_blake3_sources(blake3_dir, version="1.8.2", with_tbb=tbb_enabled)
     if blake3_dir.exists():
         include_dirs.append(blake3_dir)
 
@@ -336,15 +346,20 @@ def main() -> None:
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
     blake3_compile_args.extend(
         [
-            "-DBLAKE3_USE_TBB",
             "-DBLAKE3_NO_SSE2",
             "-DBLAKE3_NO_SSE41",
             "-DBLAKE3_NO_AVX2",
             "-DBLAKE3_NO_AVX512",
             "-DBLAKE3_USE_NEON=0",
-            "-DTBB_USE_EXCEPTIONS=0",
         ]
     )
+    if tbb_enabled:
+        blake3_compile_args.extend(
+            [
+                "-DBLAKE3_USE_TBB",
+                "-DTBB_USE_EXCEPTIONS=0",
+            ]
+        )
 
     # Add extension build
     ffibuilder_blake2b.set_source(
@@ -363,9 +378,9 @@ def main() -> None:
         sources=[
             # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
             os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
-            *[os.path.relpath(f, nphash_dir) for f in sorted(blake3_dir.glob("*.c*"))],
+            *[os.path.relpath(f, nphash_dir) for f in sorted(blake3_dir.glob("*.c*" if tbb_enabled else "*.c"))],
         ],
-        libraries=libraries_cpp,
+        libraries=libraries_cpp if tbb_enabled else libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
@@ -383,16 +398,19 @@ def main() -> None:
     )
 
     _print_build_summary(
-        libraries_c + libraries_cpp,
+        libraries_c + (libraries_cpp if tbb_enabled else []),
         extra_compile_args,
         extra_link_args,
         include_paths,
         library_paths,
     )
-    # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
-    # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
-    # Using setattr avoids mypy errors and keeps the patch local to this build process.
-    setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
+
+    if tbb_enabled:
+        # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
+        # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
+        # Using setattr avoids mypy errors and keeps the patch local to this build process.
+        setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
+
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
