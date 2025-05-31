@@ -124,7 +124,7 @@ def _download_blake3_sources(blake3_dir: Path, version: str, with_tbb: bool = Tr
     Args:
         blake3_dir (Path): Directory to store BLAKE3 sources.
         version (str): BLAKE3 version to download (e.g., '1.8.2').
-        with_tbb (bool): Whether to include blake3_tbb.cpp (TBB support).
+        with_tbb (bool): Whether to include blake3_tbb.cpp (TBB support). Defaults to True.
 
     Raises:
         RuntimeError: If download fails or files cannot be written.
