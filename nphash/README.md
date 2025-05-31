@@ -42,10 +42,27 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    brew install libomp openssl tbb
    ```
    
-   On Windows (with Chocolatey):
+   On Windows (with Chocolatey and vcpkg):
+   
+   1. Install OpenSSL with Chocolatey:
    ```bash
-   choco install openssl tbb
+   choco install openssl
    ```
+   2. Install tbb with [vcpkg](https://github.com/microsoft/vcpkg):
+      ```bash
+      git clone https://github.com/microsoft/vcpkg.git
+      .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      .\vcpkg\vcpkg.exe install tbb:x64-windows
+      ```
+   3. Copy the TBB DLLs to your build directory (if needed):
+      ```bash
+      copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+      ```
+   4. Set the environment variables for include and lib paths (for the current session):
+      ```bash
+      set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
+      set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
+      ```
 
 2. **Install Python dependencies**
 
