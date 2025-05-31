@@ -45,10 +45,10 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    On Windows (with Chocolatey and vcpkg):
    
    1. Install OpenSSL with Chocolatey:
-   ```bash
-   choco install openssl
-   ```
-   2. Install tbb with [vcpkg](https://github.com/microsoft/vcpkg):
+      ```bash
+      choco install openssl
+      ```
+   2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
       .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
@@ -87,6 +87,22 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    ```bash
    pip install .
    ```
+
+## Disabling TBB (Threading Building Blocks) for BLAKE3
+
+By default, the build uses [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multithreaded BLAKE3 hashing if possible. If you encounter issues installing TBB or want a simpler build (at the cost of single-threaded BLAKE3), you can disable TBB support:
+
+- **Using an environment variable:**
+  ```bash
+  export NPBLAKE3_NO_TBB=1
+  python build.py
+  ```
+- **Or using a command-line flag:**
+  ```bash
+  python build.py --no-tbb
+  ```
+
+If either is set, the build will not require TBB or C++ support, and will not use `blake3_tbb.cpp`. This is useful for platforms where TBB is difficult to install. **Note:** Disabling TBB is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
 
 ## Usage
 

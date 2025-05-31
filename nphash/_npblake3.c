@@ -33,9 +33,14 @@ static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const 
         blake3_hasher_init(&hasher);
     }
     // Hash the data
+#ifdef BLAKE3_USE_TBB
     if (parallel) {
         blake3_hasher_update_tbb(&hasher, data, datalen);
     } else {
+#else
+    {
+        // If not using TBB, use the standard update function
+#endif
         blake3_hasher_update(&hasher, data, datalen);
     }
     // Finalise the hash and write it to the output buffer (arbitrary length)

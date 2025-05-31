@@ -22,12 +22,20 @@ jobs:
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
-              sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev libtbb-dev python3-dev
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
-              cd ..
-              python -m pip install .
+
+          - os: ubuntu-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
+              cd nphash
+              export NPBLAKE3_NO_TBB=1
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -36,8 +44,16 @@ jobs:
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
-              cd ..
-              python -m pip install .
+
+          - os: macos-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              brew install libomp openssl
+              cd nphash
+              export NPBLAKE3_NO_TBB=1
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -50,10 +66,19 @@ jobs:
               cd nphash
               python build.py
               dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
-              cd ..
-              python -m pip install .
 
-    name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
+          - os: windows-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            build-steps: |
+              @echo on
+              choco install openssl --no-progress -y
+              cd nphash
+              set NPBLAKE3_NO_TBB=1
+              python build.py
+              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
+    name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}${{ matrix.postfix || '' }}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -79,7 +104,7 @@ jobs:
             ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
 
       - name: Install Python dependencies and library
-        run: python -m pip install .[${{ join(matrix.pip-dependencies, ',') }}]
+        run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
 
       - name: Build/package steps (non-Windows)
         if: matrix.build-steps != '' && matrix.os != 'windows-latest'
@@ -87,14 +112,14 @@ jobs:
         shell: bash
 
       - name: Cache vcpkg and TBB (Windows only)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi'
+        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.postfix != '_notbb'
         uses: actions/cache@v4
         with:
           path: vcpkg
           key: vcpkg_windows-latest_dev_numpy_cffi
 
       - name: vcpkg + TBB setup (Windows only)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi'
+        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.postfix != '_notbb'
         run: |
           if not exist vcpkg (
             git clone https://github.com/microsoft/vcpkg.git
