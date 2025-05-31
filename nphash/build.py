@@ -278,6 +278,7 @@ def main() -> None:
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
 
     # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
+    # This avoids errors related to C++11 features in C code.
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
     blake3_compile_args.extend(
         [
