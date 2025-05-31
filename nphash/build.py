@@ -1,7 +1,7 @@
 """Build script for the nphash CFFI extension.
 
 This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
-BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
+BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
