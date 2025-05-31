@@ -22,7 +22,7 @@ jobs:
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
-              sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev libtbb-dev python3-dev
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -112,14 +112,14 @@ jobs:
         shell: bash
 
       - name: Cache vcpkg and TBB (Windows only)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi'
+        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.postfix != '_notbb'
         uses: actions/cache@v4
         with:
           path: vcpkg
           key: vcpkg_windows-latest_dev_numpy_cffi
 
       - name: vcpkg + TBB setup (Windows only)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi'
+        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.postfix != '_notbb'
         run: |
           if not exist vcpkg (
             git clone https://github.com/microsoft/vcpkg.git
