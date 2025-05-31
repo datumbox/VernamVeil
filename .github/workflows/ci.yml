@@ -46,7 +46,9 @@ jobs:
               git clone https://github.com/microsoft/vcpkg.git
               cd vcpkg
               .\bootstrap-vcpkg.bat -disableMetrics
+              IF %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
               .\vcpkg.exe install tbb:x64-windows
+              IF %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
               copy .\installed\x64-windows\bin\tbb*.dll ..\nphash\
               cd ..
               choco install openssl --no-progress -y
