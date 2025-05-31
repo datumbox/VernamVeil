@@ -1,15 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include "_npblake3.h"
 
-#ifdef __cplusplus
-#define _Atomic
-#endif
-
-// Define BLAKE3_USE_TBB before including blake3.h to enable the threaded API
-#define BLAKE3_USE_TBB 1
 #include "blake3.h"
 
 #ifdef _OPENMP
@@ -30,6 +23,7 @@ static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seed
 // Inline helper to hash data with BLAKE3, with or without a key, and output variable-length hash
 // If parallel, uses blake3_hasher_update_tbb for multithreading
 static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const uint8_t* key, bool seeded, uint8_t* out, size_t hash_size, bool parallel) {
+    // Initialise the BLAKE3 hasher
     blake3_hasher hasher;
     if (seeded) {
         // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
