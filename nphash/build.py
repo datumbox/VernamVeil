@@ -10,6 +10,7 @@ Usage:
 This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
+import argparse
 import distutils
 import os
 import platform
@@ -20,7 +21,6 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
-import argparse
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
@@ -214,10 +214,19 @@ def main() -> None:
     """
     # Parse --no-tbb flag and env var
     parser = argparse.ArgumentParser()
-    parser.add_argument("--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3")
+    parser.add_argument(
+        "--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3"
+    )
     args, _ = parser.parse_known_args()
-    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip() not in ("", "0", "false", "False", "no", "No")
-    tbb_enabled = not (args.no_tbb or no_tbb_env)
+    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip() not in {
+        "",
+        "0",
+        "false",
+        "False",
+        "no",
+        "No",
+    }
+    tbb_enabled = not args.no_tbb and not no_tbb_env
 
     # FFI builders
     ffibuilder_blake2b = FFI()
@@ -378,7 +387,10 @@ def main() -> None:
         sources=[
             # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
             os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
-            *[os.path.relpath(f, nphash_dir) for f in sorted(blake3_dir.glob("*.c*" if tbb_enabled else "*.c"))],
+            *[
+                os.path.relpath(f, nphash_dir)
+                for f in sorted(blake3_dir.glob("*.c*" if tbb_enabled else "*.c"))
+            ],
         ],
         libraries=libraries_cpp if tbb_enabled else libraries_c,
         extra_compile_args=blake3_compile_args,
