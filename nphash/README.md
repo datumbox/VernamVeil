@@ -45,9 +45,9 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    On Windows (with Chocolatey and vcpkg):
    
    1. Install OpenSSL with Chocolatey:
-   ```bash
-   choco install openssl
-   ```
+      ```bash
+      choco install openssl
+      ```
    2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
