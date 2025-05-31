@@ -1,7 +1,7 @@
 """Build script for the nphash CFFI extension.
 
 This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
-BLAKE2b and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
+BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
@@ -10,6 +10,8 @@ Usage:
 This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
+import distutils
+import os
 import platform
 import shlex
 import shutil
@@ -18,6 +20,7 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
+from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
 from cffi import FFI
@@ -130,6 +133,7 @@ def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
         "blake3_dispatch.c",
         "blake3_impl.h",
         "blake3_portable.c",
+        "blake3_tbb.cpp",
     ]
     base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
     blake3_dir.mkdir(parents=True, exist_ok=True)
@@ -143,6 +147,58 @@ def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
                     out_f.write(resp.read())
             except Exception as e:
                 raise RuntimeError(f"Failed to download {fname} from {url}: {e}")
+
+
+class _build_ext_with_cpp11(_build_ext):
+    """Custom build_ext command that ensures C++11 support for .cpp files.
+
+    This class overrides the default build_ext command to add the -std=c++11 flag
+    when compiling C++ source files. This is necessary for compatibility with
+    modern C++ features used in the BLAKE3 implementation.
+    """
+
+    def build_extensions(self) -> None:
+        """Build the C/C++ extensions, ensuring C++11 support for .cpp files.
+
+        This method overrides the default build_extensions method to modify the
+        compilation process for C++ files. It adds the -std=c++11 flag to the
+        compilation arguments if it is not already present. This is necessary to
+        ensure compatibility with C++11 features used in the BLAKE3 implementation.
+        """
+        # Save original compile method
+        orig_compile = self.compiler._compile
+
+        def custom_compile(
+            obj: str,
+            src: str,
+            ext: str,
+            cc_args: list[str],
+            extra_postargs: list[str],
+            pp_opts: list[str],
+        ) -> object:
+            """Custom compile function to add -std=c++11 for .cpp files only.
+
+            Args:
+                obj (str): Object file to generate.
+                src (str): Source file to compile.
+                ext (str): Extension of the source file.
+                cc_args (list[str]): Compiler arguments.
+                extra_postargs (list[str]): Extra compiler arguments.
+                pp_opts (list[str]): Preprocessor options.
+
+            Returns:
+                The result of the original compile call (usually None, but may be implementation-dependent).
+            """
+            # If compiling a .cpp file, add -std=c++11 if not present
+            if src.endswith(".cpp") and "-std=c++11" not in extra_postargs:
+                extra_postargs = list(extra_postargs) + ["-std=c++11"]
+            return orig_compile(obj, src, ext, cc_args, extra_postargs, pp_opts)
+
+        self.compiler._compile = custom_compile
+        try:
+            super().build_extensions()
+        finally:
+            self.compiler._compile = orig_compile
 
 
 def main() -> None:
@@ -164,8 +220,8 @@ def main() -> None:
     ffibuilder_blake3 = FFI()
     ffibuilder_blake3.cdef(
         """
-        void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
-        void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
+        void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
+        void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
         """
     )
 
@@ -177,7 +233,8 @@ def main() -> None:
     )
 
     # Platform-specific build options
-    libraries = []
+    libraries_c = []
+    libraries_cpp = []
     extra_compile_args = []
     extra_link_args: list[str] = []
     include_dirs: list[Path] = []
@@ -185,7 +242,8 @@ def main() -> None:
 
     compiler = _detect_compiler()
     if sys.platform.startswith("linux"):
-        libraries = ["ssl", "crypto", "gomp"]
+        libraries_c = ["ssl", "crypto", "gomp"]
+        libraries_cpp = ["tbb", "stdc++", "gomp"]
         extra_compile_args = [
             "-std=c99",
             "-fopenmp",
@@ -196,7 +254,8 @@ def main() -> None:
         ]
         extra_link_args = ["-fopenmp"]
     elif sys.platform == "darwin":
-        libraries = ["ssl", "crypto"]
+        libraries_c = ["ssl", "crypto"]
+        libraries_cpp = ["tbb", "c++"]
         extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3"]
         extra_link_args = ["-lomp"]
         # Add include/library dirs for both OpenSSL and libomp
@@ -205,6 +264,8 @@ def main() -> None:
             Path("/usr/local/opt/openssl"),
             Path("/opt/homebrew/opt/libomp"),
             Path("/usr/local/opt/libomp"),
+            Path("/opt/homebrew/opt/tbb"),
+            Path("/usr/local/opt/tbb"),
         ]:
             if prefix.exists():
                 include_dirs.append(prefix / "include")
@@ -212,7 +273,8 @@ def main() -> None:
     elif sys.platform == "win32":
         # For MSVC: /openmp, for MinGW: -fopenmp
         if "gcc" in compiler.lower():
-            libraries = ["libssl", "libcrypto", "gomp"]
+            libraries_c = ["libssl", "libcrypto", "gomp"]
+            libraries_cpp = ["tbb12", "stdc++", "gomp"]
             extra_compile_args = [
                 "-std=c99",
                 "-fopenmp",
@@ -224,13 +286,15 @@ def main() -> None:
             extra_link_args = ["-fopenmp"]
         else:
             # MSVC
-            libraries = ["libssl", "libcrypto"]
+            libraries_c = ["libssl", "libcrypto"]
+            libraries_cpp = ["tbb12"]
             extra_compile_args = ["/openmp", "-O2"]
         # Check all possible OpenSSL install locations
         for prefix in [
             Path(r"C:\Program Files\OpenSSL"),
             Path(r"C:\Program Files\OpenSSL-Win64"),
             Path(r"C:\Program Files\OpenSSL-Win32"),
+            Path(r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\tbb"),
         ]:
             if prefix.exists():
                 include_dirs.append(prefix / "include")
@@ -239,8 +303,13 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
+    # Add nphash directory to include_dirs so _npblake3.h is found
+    nphash_dir = Path(__file__).parent
+    if nphash_dir not in include_dirs:
+        include_dirs.append(nphash_dir)
+
     # Add blake3_dir to include_dirs
-    blake3_dir = Path(__file__).parent.parent / "third_party" / "blake3"
+    blake3_dir = nphash_dir.parent / "third_party" / "blake3"
     _download_blake3_sources(blake3_dir, version="1.8.2")
     if blake3_dir.exists():
         include_dirs.append(blake3_dir)
@@ -253,31 +322,35 @@ def main() -> None:
             else:
                 extra_compile_args.append(flag)
 
+    # Dependencies
+    include_paths = [str(p) for p in include_dirs]
+    library_paths = [str(p) for p in library_dirs]
+
     # Add C source
     parent_dir = Path(__file__).parent
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
-    c_source_blake3 = (
-        _get_c_source(parent_dir / "_npblake3.c")
-        + "\n"
-        + "\n".join(_get_c_source(f) for f in sorted(blake3_dir.glob("*")))
+
+    # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
+    # This avoids errors related to C++11 features in C code.
+    blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
+    blake3_compile_args.extend(
+        [
+            "-DBLAKE3_USE_TBB",
+            "-DBLAKE3_NO_SSE2",
+            "-DBLAKE3_NO_SSE41",
+            "-DBLAKE3_NO_AVX2",
+            "-DBLAKE3_NO_AVX512",
+            "-DBLAKE3_USE_NEON=0",
+            "-DTBB_USE_EXCEPTIONS=0",
+        ]
     )
-
-    extra_compile_args.append("-DBLAKE3_NO_AVX2")
-    extra_compile_args.append("-DBLAKE3_NO_AVX512")
-    extra_compile_args.append("-DBLAKE3_NO_SSE2")
-    extra_compile_args.append("-DBLAKE3_NO_SSE41")
-    extra_compile_args.append("-DBLAKE3_USE_NEON=0")
-
-    # Dependencies
-    include_paths = [str(p) for p in include_dirs]
-    library_paths = [str(p) for p in library_dirs]
 
     # Add extension build
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
         c_source_blake2b,
-        libraries=libraries,
+        libraries=libraries_c,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
@@ -286,9 +359,14 @@ def main() -> None:
 
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
-        c_source_blake3,
-        libraries=libraries,
-        extra_compile_args=extra_compile_args,
+        '#include "_npblake3.h"\n',
+        sources=[
+            # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
+            os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
+            *[os.path.relpath(f, nphash_dir) for f in sorted(blake3_dir.glob("*.c*"))],
+        ],
+        libraries=libraries_cpp,
+        extra_compile_args=blake3_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
@@ -297,7 +375,7 @@ def main() -> None:
     ffibuilder_sha256.set_source(
         "_npsha256ffi",
         c_source_sha256,
-        libraries=libraries,
+        libraries=libraries_c,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
@@ -305,8 +383,16 @@ def main() -> None:
     )
 
     _print_build_summary(
-        libraries, extra_compile_args, extra_link_args, include_paths, library_paths
+        libraries_c + libraries_cpp,
+        extra_compile_args,
+        extra_link_args,
+        include_paths,
+        library_paths,
     )
+    # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
+    # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
+    # Using setattr avoids mypy errors and keeps the patch local to this build process.
+    setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)

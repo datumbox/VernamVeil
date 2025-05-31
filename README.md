@@ -169,7 +169,7 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 - **Avoid Data-Dependent Branching or Timing**: Do not introduce data-dependent branching or timing in your `fx`, as this can lead to side-channel attacks.
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
 
-**Recommended approach:**  
+**Recommended approach:**
 Apply a unique transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each `fx` instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure keyed hash method or HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.
 
 **Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
@@ -316,7 +316,7 @@ decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
 
 **Note:** The keystream must be truly random, at least as long as the message, and never reused. Reusing a keystream completely breaks the security of OTP encryption.
 
-> **Warning:**  
+> **Warning:**
 > Do **not** use or test your `OTPFX` instance (e.g., by calling it or running sanity checks) before actual encryption or decryption. Any use will consume part of the keystream, which cannot be recovered, and will cause decryption to fail. Always use a fresh, unused `OTPFX` instance for each encryption/decryption operation or reset its `fx.position` to `0`.
 
 ---
@@ -325,7 +325,7 @@ decrypted_message = cypher.decrypt(encrypted_message, initial_seed)
 
 VernamVeil includes helper tools to make working with key stream functions easier:
 
-- `OTPFX`: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`. 
+- `OTPFX`: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`.
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
 - `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default `fx` for the VernamVeil cypher. The BLAKE3 option is only available with the C extension.
 - `generate_polynomial_fx`: Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (BLAKE2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
@@ -451,7 +451,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 - **Compact Implementation**: The core cypher implementation (`_vernamveil.py`) is about 200 lines of code, excluding comments, documentation and empty lines.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
-- **Optional C Module for Fast Hashing**: Includes an optional C module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b, BLAKE3 and SHA-256 keyed hashing for vectorised `fx` functions. See the [`nphash` README](nphash/README.md) for details.
+- **Optional C/C++ Module for Fast Hashing**: Includes an optional C/C++ module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b, BLAKE3 and SHA-256 keyed hashing for vectorised `fx` functions. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (e.g., gcc and g++) are required to build it. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
@@ -544,3 +544,4 @@ Contributions, bug reports, and feature requests are welcome! Please open an iss
 Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/).
 
 The code is licensed under the [Apache License, Version 2.0](https://github.com/datumbox/VernamVeil/blob/main/LICENSE).
+

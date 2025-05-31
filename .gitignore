@@ -8,6 +8,7 @@ __pycache__/
 build/
 dist/
 docs-html/
+nphash/*.o
 nphash/_npblake2bffi*
 nphash/_npblake3ffi*
 nphash/_npsha256ffi*

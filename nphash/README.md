@@ -2,11 +2,11 @@
 
 This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations. We also provide a `blake3` class, which offers a hashlib-style BLAKE3 hash object using the C backend. **The `blake3` implementation is only available when the C extension is built.**
 
-The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
+The C and C++ code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
 > **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
 
-> **Note:** The `build.py` script will automatically download the required BLAKE3 C source files from the [official BLAKE3 repository](https://github.com/BLAKE3-team/BLAKE3) if they are not already present locally.
+> **Note:** The `build.py` script will automatically download the required BLAKE3 C and C++ source files from the [official BLAKE3 repository](https://github.com/BLAKE3-team/BLAKE3) if they are not already present locally.
 
 ## Prerequisites
 
@@ -14,9 +14,10 @@ Before building, ensure you have the following dependencies installed:
 
 - **Python 3.10 or later**
 - **pip** (Python package manager)
-- **gcc** (GNU Compiler Collection)
-- **OpenMP** (usually included with gcc)
+- **gcc/g++** (GNU Compiler Collection, including C++ support)
+- **OpenMP** (usually included with gcc/g++)
 - **OpenSSL development libraries**
+- **TBB (Threading Building Blocks) development libraries**
 - **cffi** and **numpy** Python packages
 
 Supported platforms: Linux, macOS, and Windows (with suitable build tools).
@@ -28,23 +29,40 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    On Ubuntu/Debian:  
    ```bash
    sudo apt-get update
-   sudo apt-get install build-essential libssl-dev python3-dev
+   sudo apt-get install build-essential g++ libssl-dev libtbb-dev python3-dev
    ```
 
    On Fedora:  
    ```bash
-   sudo dnf install gcc openssl-devel python3-devel
+   sudo dnf install gcc gcc-c++ openssl-devel python3-devel tbb-devel
    ```
 
    On Mac (with Homebrew):
    ```bash
-   brew install libomp openssl
+   brew install libomp openssl tbb
    ```
    
-   On Windows (with Chocolatey):
+   On Windows (with Chocolatey and vcpkg):
+   
+   1. Install OpenSSL with Chocolatey:
    ```bash
    choco install openssl
    ```
+   2. Install tbb with [vcpkg](https://github.com/microsoft/vcpkg):
+      ```bash
+      git clone https://github.com/microsoft/vcpkg.git
+      .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      .\vcpkg\vcpkg.exe install tbb:x64-windows
+      ```
+   3. Copy the TBB DLLs to your build directory (if needed):
+      ```bash
+      copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+      ```
+   4. Set the environment variables for include and lib paths (for the current session):
+      ```bash
+      set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
+      set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
+      ```
 
 2. **Install Python dependencies**
 
