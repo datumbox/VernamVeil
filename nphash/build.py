@@ -277,18 +277,18 @@ def main() -> None:
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
 
     # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
-    blake3_compile_args = [
-        arg for arg in extra_compile_args if not arg.startswith("-std=")
-    ]
-    blake3_compile_args.extend([
-        "-DBLAKE3_USE_TBB",
-        "-DBLAKE3_NO_SSE2",
-        "-DBLAKE3_NO_SSE41",
-        "-DBLAKE3_NO_AVX2",
-        "-DBLAKE3_NO_AVX512",
-        "-DBLAKE3_USE_NEON=0",
-        "-DTBB_USE_EXCEPTIONS=0",
-    ])
+    blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
+    blake3_compile_args.extend(
+        [
+            "-DBLAKE3_USE_TBB",
+            "-DBLAKE3_NO_SSE2",
+            "-DBLAKE3_NO_SSE41",
+            "-DBLAKE3_NO_AVX2",
+            "-DBLAKE3_NO_AVX512",
+            "-DBLAKE3_USE_NEON=0",
+            "-DTBB_USE_EXCEPTIONS=0",
+        ]
+    )
 
     # Add extension build
     ffibuilder_blake2b.set_source(
@@ -329,7 +329,11 @@ def main() -> None:
     )
 
     _print_build_summary(
-        libraries_c + libraries_cpp, extra_compile_args, extra_link_args, include_paths, library_paths
+        libraries_c + libraries_cpp,
+        extra_compile_args,
+        extra_link_args,
+        include_paths,
+        library_paths,
     )
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
