@@ -85,10 +85,15 @@ jobs:
 #        if: matrix.os == 'windows-latest'
 #        uses: mxschmitt/action-tmate@v3
 
-      - name: Build/package steps
-        if: matrix.build-steps != ''
+      - name: Build/package steps (Windows)
+        if: matrix.build-steps != '' && matrix.os == 'windows-latest'
         run: ${{ matrix.build-steps }}
-        shell: ${{ matrix.os == 'windows-latest' && 'cmd' || 'bash' }}
+        shell: cmd
+
+      - name: Build/package steps (non-Windows)
+        if: matrix.build-steps != '' && matrix.os != 'windows-latest'
+        run: ${{ matrix.build-steps }}
+        shell: bash
 
       - name: Run tests
         run: python -m unittest discover -s tests/ -v
