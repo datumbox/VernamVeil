@@ -10,6 +10,7 @@ Usage:
 This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
+import distutils
 import os
 import platform
 import shlex
@@ -19,6 +20,7 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
+from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
 from cffi import FFI
@@ -145,6 +147,58 @@ def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
                     out_f.write(resp.read())
             except Exception as e:
                 raise RuntimeError(f"Failed to download {fname} from {url}: {e}")
+
+
+class _build_ext_with_cpp11(_build_ext):
+    """Custom build_ext command that ensures C++11 support for .cpp files.
+
+    This class overrides the default build_ext command to add the -std=c++11 flag
+    when compiling C++ source files. This is necessary for compatibility with
+    modern C++ features used in the BLAKE3 implementation.
+    """
+
+    def build_extensions(self) -> None:
+        """Build the C/C++ extensions, ensuring C++11 support for .cpp files.
+
+        This method overrides the default build_extensions method to modify the
+        compilation process for C++ files. It adds the -std=c++11 flag to the
+        compilation arguments if it is not already present. This is necessary to
+        ensure compatibility with C++11 features used in the BLAKE3 implementation.
+        """
+        # Save original compile method
+        orig_compile = self.compiler._compile
+
+        def custom_compile(
+            obj: str,
+            src: str,
+            ext: str,
+            cc_args: list[str],
+            extra_postargs: list[str],
+            pp_opts: list[str],
+        ) -> object:
+            """Custom compile function to add -std=c++11 for .cpp files only.
+
+            Args:
+                obj (str): Object file to generate.
+                src (str): Source file to compile.
+                ext (str): Extension of the source file.
+                cc_args (list[str]): Compiler arguments.
+                extra_postargs (list[str]): Extra compiler arguments.
+                pp_opts (list[str]): Preprocessor options.
+
+            Returns:
+                The result of the original compile call (usually None, but may be implementation-dependent).
+            """
+            # If compiling a .cpp file, add -std=c++11 if not present
+            if src.endswith(".cpp") and "-std=c++11" not in extra_postargs:
+                extra_postargs = list(extra_postargs) + ["-std=c++11"]
+            return orig_compile(obj, src, ext, cc_args, extra_postargs, pp_opts)
+
+        self.compiler._compile = custom_compile
+        try:
+            super().build_extensions()
+        finally:
+            self.compiler._compile = orig_compile
 
 
 def main() -> None:
@@ -335,6 +389,10 @@ def main() -> None:
         include_paths,
         library_paths,
     )
+    # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
+    # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
+    # Using setattr avoids mypy errors and keeps the patch local to this build process.
+    setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
