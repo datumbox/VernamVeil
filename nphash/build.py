@@ -290,7 +290,17 @@ def main() -> None:
         "-DTBB_USE_EXCEPTIONS=0",
     ])
 
-    # Use CFFI to build the BLAKE3 extension from sources directly
+    # Add extension build
+    ffibuilder_blake2b.set_source(
+        "_npblake2bffi",
+        c_source_blake2b,
+        libraries=libraries_c,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        include_dirs=include_paths,
+        library_dirs=library_paths,
+    )
+
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
         '#include "_npblake3.h"\n',
@@ -303,17 +313,6 @@ def main() -> None:
         ],
         libraries=libraries_cpp,
         extra_compile_args=blake3_compile_args,
-        extra_link_args=extra_link_args,
-        include_dirs=include_paths,
-        library_dirs=library_paths,
-    )
-
-    # Add extension build
-    ffibuilder_blake2b.set_source(
-        "_npblake2bffi",
-        c_source_blake2b,
-        libraries=libraries_c,
-        extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
