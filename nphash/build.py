@@ -130,6 +130,7 @@ def _download_blake3_sources(blake3_dir: Path, version: str) -> None:
         "blake3_dispatch.c",
         "blake3_impl.h",
         "blake3_portable.c",
+        "blake3_tbb.cpp",
     ]
     base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
     blake3_dir.mkdir(parents=True, exist_ok=True)
@@ -164,8 +165,8 @@ def main() -> None:
     ffibuilder_blake3 = FFI()
     ffibuilder_blake3.cdef(
         """
-        void numpy_blake3(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
-        void bytes_blake3(const uint8_t* restrict data, const size_t datalen, const char* restrict seed, const size_t seedlen, uint8_t* restrict out, const size_t hash_size);
+        void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
+        void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
         """
     )
 
@@ -185,7 +186,7 @@ def main() -> None:
 
     compiler = _detect_compiler()
     if sys.platform.startswith("linux"):
-        libraries = ["ssl", "crypto", "gomp"]
+        libraries = ["ssl", "crypto", "gomp", "tbb"]
         extra_compile_args = [
             "-std=c99",
             "-fopenmp",
@@ -196,7 +197,7 @@ def main() -> None:
         ]
         extra_link_args = ["-fopenmp"]
     elif sys.platform == "darwin":
-        libraries = ["ssl", "crypto"]
+        libraries = ["ssl", "crypto", "tbb"]
         extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3"]
         extra_link_args = ["-lomp"]
         # Add include/library dirs for both OpenSSL and libomp
@@ -205,6 +206,8 @@ def main() -> None:
             Path("/usr/local/opt/openssl"),
             Path("/opt/homebrew/opt/libomp"),
             Path("/usr/local/opt/libomp"),
+            Path("/opt/homebrew/opt/tbb"),
+            Path("/usr/local/opt/tbb"),
         ]:
             if prefix.exists():
                 include_dirs.append(prefix / "include")
@@ -212,7 +215,7 @@ def main() -> None:
     elif sys.platform == "win32":
         # For MSVC: /openmp, for MinGW: -fopenmp
         if "gcc" in compiler.lower():
-            libraries = ["libssl", "libcrypto", "gomp"]
+            libraries = ["libssl", "libcrypto", "gomp", "tbb"]
             extra_compile_args = [
                 "-std=c99",
                 "-fopenmp",
@@ -224,13 +227,14 @@ def main() -> None:
             extra_link_args = ["-fopenmp"]
         else:
             # MSVC
-            libraries = ["libssl", "libcrypto"]
+            libraries = ["libssl", "libcrypto", "tbb"]
             extra_compile_args = ["/openmp", "-O2"]
         # Check all possible OpenSSL install locations
         for prefix in [
             Path(r"C:\Program Files\OpenSSL"),
             Path(r"C:\Program Files\OpenSSL-Win64"),
             Path(r"C:\Program Files\OpenSSL-Win32"),
+            Path(r"C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\tbb"),
         ]:
             if prefix.exists():
                 include_dirs.append(prefix / "include")
@@ -245,6 +249,11 @@ def main() -> None:
     if blake3_dir.exists():
         include_dirs.append(blake3_dir)
 
+    # Add nphash directory to include_dirs so _npblake3.h is found
+    nphash_dir = Path(__file__).parent
+    if nphash_dir not in include_dirs:
+        include_dirs.append(nphash_dir)
+
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
         if _supports_flag(compiler, flag):
@@ -253,40 +262,48 @@ def main() -> None:
             else:
                 extra_compile_args.append(flag)
 
-    # Add C source
-    parent_dir = Path(__file__).parent
-    c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
-    c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
-    c_source_blake3 = (
-        _get_c_source(parent_dir / "_npblake3.c")
-        + "\n"
-        + "\n".join(_get_c_source(f) for f in sorted(blake3_dir.glob("*")))
-    )
-
-    extra_compile_args.append("-DBLAKE3_NO_AVX2")
-    extra_compile_args.append("-DBLAKE3_NO_AVX512")
-    extra_compile_args.append("-DBLAKE3_NO_SSE2")
-    extra_compile_args.append("-DBLAKE3_NO_SSE41")
-    extra_compile_args.append("-DBLAKE3_USE_NEON=0")
-
     # Dependencies
     include_paths = [str(p) for p in include_dirs]
     library_paths = [str(p) for p in library_dirs]
 
-    # Add extension build
-    ffibuilder_blake2b.set_source(
-        "_npblake2bffi",
-        c_source_blake2b,
-        libraries=libraries,
-        extra_compile_args=extra_compile_args,
+    # Add C source
+    parent_dir = Path(__file__).parent
+    c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
+    c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
+
+    # Prepare compile args for BLAKE3: remove '-std=c99', add '-std=c++11' and '-DTBB_USE_EXCEPTIONS=0'
+    blake3_compile_args = [arg for arg in extra_compile_args if arg != '-std=c99']
+    blake3_compile_args += ['-std=c++11', '-DTBB_USE_EXCEPTIONS=0', '-DBLAKE3_USE_TBB']
+    blake3_compile_args += [
+        '-DBLAKE3_NO_SSE2',
+        '-DBLAKE3_NO_SSE41',
+        '-DBLAKE3_NO_AVX2',
+        '-DBLAKE3_NO_AVX512',
+        '-DBLAKE3_USE_NEON=0',
+    ]
+
+    # Use CFFI to build the BLAKE3 extension from sources directly, WITHOUT any SIMD/acceleration files
+    ffibuilder_blake3.set_source(
+        "_npblake3ffi",
+        '#include "_npblake3.h"\n',
+        sources=[
+            str(parent_dir / "_npblake3.c"),
+            str(blake3_dir / "blake3.c"),
+            str(blake3_dir / "blake3_dispatch.c"),
+            str(blake3_dir / "blake3_portable.c"),
+            str(blake3_dir / "blake3_tbb.cpp"),
+        ],
+        libraries=["tbb", "stdc++"],
+        extra_compile_args=blake3_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
     )
 
-    ffibuilder_blake3.set_source(
-        "_npblake3ffi",
-        c_source_blake3,
+    # Add extension build
+    ffibuilder_blake2b.set_source(
+        "_npblake2bffi",
+        c_source_blake2b,
         libraries=libraries,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,

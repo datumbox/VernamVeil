@@ -17,6 +17,7 @@ Before building, ensure you have the following dependencies installed:
 - **gcc** (GNU Compiler Collection)
 - **OpenMP** (usually included with gcc)
 - **OpenSSL development libraries**
+- **TBB (Threading Building Blocks) development libraries**
 - **cffi** and **numpy** Python packages
 
 Supported platforms: Linux, macOS, and Windows (with suitable build tools).
@@ -28,22 +29,22 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    On Ubuntu/Debian:  
    ```bash
    sudo apt-get update
-   sudo apt-get install build-essential libssl-dev python3-dev
+   sudo apt-get install build-essential g++ libssl-dev libtbb-dev python3-dev
    ```
 
    On Fedora:  
    ```bash
-   sudo dnf install gcc openssl-devel python3-devel
+   sudo dnf install gcc gcc-c++ openssl-devel python3-devel tbb-devel
    ```
 
    On Mac (with Homebrew):
    ```bash
-   brew install libomp openssl
+   brew install libomp openssl tbb
    ```
    
    On Windows (with Chocolatey):
    ```bash
-   choco install openssl
+   choco install openssl tbb
    ```
 
 2. **Install Python dependencies**
