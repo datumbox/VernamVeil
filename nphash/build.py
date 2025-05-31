@@ -18,6 +18,7 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
+import os
 from pathlib import Path
 
 from cffi import FFI
@@ -248,16 +249,16 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
-    # Add blake3_dir to include_dirs
-    blake3_dir = Path(__file__).parent.parent / "third_party" / "blake3"
-    _download_blake3_sources(blake3_dir, version="1.8.2")
-    if blake3_dir.exists():
-        include_dirs.append(blake3_dir)
-
     # Add nphash directory to include_dirs so _npblake3.h is found
     nphash_dir = Path(__file__).parent
     if nphash_dir not in include_dirs:
         include_dirs.append(nphash_dir)
+
+    # Add blake3_dir to include_dirs
+    blake3_dir = nphash_dir.parent / "third_party" / "blake3"
+    _download_blake3_sources(blake3_dir, version="1.8.2")
+    if blake3_dir.exists():
+        include_dirs.append(blake3_dir)
 
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
@@ -305,11 +306,12 @@ def main() -> None:
         "_npblake3ffi",
         '#include "_npblake3.h"\n',
         sources=[
-            str(parent_dir / "_npblake3.c"),
-            str(blake3_dir / "blake3.c"),
-            str(blake3_dir / "blake3_dispatch.c"),
-            str(blake3_dir / "blake3_portable.c"),
-            str(blake3_dir / "blake3_tbb.cpp"),
+            # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
+            os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
+            os.path.relpath(blake3_dir / "blake3.c", nphash_dir),
+            os.path.relpath(blake3_dir / "blake3_dispatch.c", nphash_dir),
+            os.path.relpath(blake3_dir / "blake3_portable.c", nphash_dir),
+            os.path.relpath(blake3_dir / "blake3_tbb.cpp", nphash_dir),
         ],
         libraries=libraries_cpp,
         extra_compile_args=blake3_compile_args,
