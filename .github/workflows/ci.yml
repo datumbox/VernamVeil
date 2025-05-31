@@ -43,16 +43,16 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               @echo on
-              git clone https://github.com/microsoft/vcpkg.git ^
-              && .\vcpkg\bootstrap-vcpkg.bat --disable-metrics ^
-              && .\vcpkg\vcpkg.exe install tbb:x64-windows ^
-              && copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\ ^
-              && choco install openssl --no-progress -y ^
-              && cd nphash ^
-              && python build.py ^
-              && dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.* ^
-              && cd .. ^
-              && python -m pip install .
+              git clone https://github.com/microsoft/vcpkg.git
+              .\vcpkg\bootstrap-vcpkg.bat --disable-metrics
+              .\vcpkg\vcpkg.exe install tbb:x64-windows
+              copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+              choco install openssl --no-progress -y
+              cd nphash
+              python build.py
+              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              cd ..
+              python -m pip install .
 
     name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
     runs-on: ${{ matrix.os }}
