@@ -33,7 +33,6 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               brew install libomp openssl tbb
-              export CXXFLAGS="-std=c++11"
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
