@@ -271,15 +271,18 @@ def main() -> None:
     c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
     c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
 
-    # Prepare compile args for BLAKE3: remove '-std=c99', add '-std=c++11' and '-DTBB_USE_EXCEPTIONS=0'
-    blake3_compile_args = [arg for arg in extra_compile_args if arg != '-std=c99']
-    blake3_compile_args += ['-std=c++11', '-DTBB_USE_EXCEPTIONS=0', '-DBLAKE3_USE_TBB']
+    # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
+    blake3_compile_args = [
+        arg for arg in extra_compile_args if not arg.startswith('-std=')
+    ]
     blake3_compile_args += [
+        '-DBLAKE3_USE_TBB',
         '-DBLAKE3_NO_SSE2',
         '-DBLAKE3_NO_SSE41',
         '-DBLAKE3_NO_AVX2',
         '-DBLAKE3_NO_AVX512',
         '-DBLAKE3_USE_NEON=0',
+        '-DTBB_USE_EXCEPTIONS=0',
     ]
 
     # Use CFFI to build the BLAKE3 extension from sources directly, WITHOUT any SIMD/acceleration files
