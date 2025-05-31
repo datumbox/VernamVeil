@@ -246,15 +246,6 @@ def main() -> None:
                 include_dirs.append(prefix / "include")
                 library_dirs.append(prefix / "lib")
                 break
-
-        # Add vcpkg TBB include path if it exists
-        vcpkg_dir = Path(__file__).parent.parent / "vcpkg" / "installed" / "x64-windows"
-        vcpkg_tbb_include = vcpkg_dir / "include"
-        if vcpkg_tbb_include.exists():
-            include_dirs.append(vcpkg_tbb_include.resolve())
-        vcpkg_tbb_lib = vcpkg_dir / "lib"
-        if vcpkg_tbb_lib.exists():
-            library_dirs.append(vcpkg_tbb_lib.resolve())
     else:
         raise RuntimeError("Unsupported platform")
 

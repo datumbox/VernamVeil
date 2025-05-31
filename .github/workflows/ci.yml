@@ -47,6 +47,8 @@ jobs:
               .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
               .\vcpkg\vcpkg.exe install tbb:x64-windows
               copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+              set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
+              set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
               cd ..
               choco install openssl --no-progress -y
               cd nphash
