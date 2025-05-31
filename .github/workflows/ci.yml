@@ -42,6 +42,7 @@ jobs:
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
+              @echo on
               git clone https://github.com/microsoft/vcpkg.git
               .\vcpkg\bootstrap-vcpkg.bat
               .\vcpkg\vcpkg.exe install tbb:x64-windows
