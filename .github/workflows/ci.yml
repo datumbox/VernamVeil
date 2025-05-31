@@ -43,23 +43,16 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               @echo on
-              git clone https://github.com/microsoft/vcpkg.git
-              if errorlevel 1 echo "git clone failed" & exit /b %errorlevel%
-              .\vcpkg\bootstrap-vcpkg.bat
-              if errorlevel 1 echo "bootstrap-vcpkg.bat failed" & exit /b %errorlevel%
-              .\vcpkg\vcpkg.exe install tbb:x64-windows
-              if errorlevel 1 echo "vcpkg install failed" & exit /b %errorlevel%
-              copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
-              if errorlevel 1 echo "copy DLLs failed" & exit /b %errorlevel%
-              choco install openssl --no-progress -y
-              if errorlevel 1 echo "choco install failed" & exit /b %errorlevel%
-              cd nphash
-              python build.py
-              if errorlevel 1 echo "build.py failed" & exit /b %errorlevel%
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
-              cd ..
-              python -m pip install .
-              if errorlevel 1 echo "pip install failed" & exit /b %errorlevel%
+              git clone https://github.com/microsoft/vcpkg.git ^
+              && .\vcpkg\bootstrap-vcpkg.bat --disable-metrics ^
+              && .\vcpkg\vcpkg.exe install tbb:x64-windows ^
+              && copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\ ^
+              && choco install openssl --no-progress -y ^
+              && cd nphash ^
+              && python build.py ^
+              && dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.* ^
+              && cd .. ^
+              && python -m pip install .
 
     name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}
     runs-on: ${{ matrix.os }}
