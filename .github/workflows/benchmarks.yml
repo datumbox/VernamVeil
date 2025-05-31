@@ -27,7 +27,7 @@ jobs:
       - name: Set benchmark sizes
         id: benchvars
         run: |
-          echo "SIZES=25 100 500" >> $GITHUB_ENV
+          echo "SIZES=25 100 250" >> $GITHUB_ENV
 
       - name: Install system dependencies and build C modules
         run: |
