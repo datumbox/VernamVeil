@@ -10,6 +10,7 @@ Usage:
 This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
+import os
 import platform
 import shlex
 import shutil
@@ -18,7 +19,6 @@ import sys
 import sysconfig
 import tempfile
 import urllib.request
-import os
 from pathlib import Path
 
 from cffi import FFI
@@ -308,10 +308,7 @@ def main() -> None:
         sources=[
             # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
             os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
-            os.path.relpath(blake3_dir / "blake3.c", nphash_dir),
-            os.path.relpath(blake3_dir / "blake3_dispatch.c", nphash_dir),
-            os.path.relpath(blake3_dir / "blake3_portable.c", nphash_dir),
-            os.path.relpath(blake3_dir / "blake3_tbb.cpp", nphash_dir),
+            *[os.path.relpath(f, nphash_dir) for f in sorted(blake3_dir.glob("*.c*"))],
         ],
         libraries=libraries_cpp,
         extra_compile_args=blake3_compile_args,
