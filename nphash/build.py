@@ -303,12 +303,23 @@ def main() -> None:
                 "-funroll-loops",
             ]
             extra_link_args = ["-fopenmp"]
+            # Add common MSYS2 MinGW-w64 include and lib paths for TBB and OpenSSL
+            for prefix in [
+                Path(r"C:/msys64/mingw64"),
+                Path(r"C:/msys2/mingw64"),
+            ]:
+                include_dir = prefix / "include"
+                lib_dir = prefix / "lib"
+                if include_dir.exists() and lib_dir.exists():
+                    include_dirs.append(include_dir)
+                    library_dirs.append(lib_dir)
+                    break
         else:
             # MSVC
             libraries_c = ["libssl", "libcrypto"]
             libraries_cpp = ["tbb12"]
             extra_compile_args = ["/openmp", "-O2"]
-        # Check all possible OpenSSL install locations
+        # Check all possible Dependecy install locations
         for prefix in [
             Path(r"C:\Program Files\OpenSSL"),
             Path(r"C:\Program Files\OpenSSL-Win64"),
