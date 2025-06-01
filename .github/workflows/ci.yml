@@ -135,7 +135,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg_windows-latest_dev_numpy_cffi_msvc_notbb
+          key: vcpkg_windows-latest_dev_numpy_cffi_msvc
 
       - name: Install Python dependencies and library
         run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
