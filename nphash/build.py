@@ -384,6 +384,13 @@ def main() -> None:
     else:
         blake3_simd_defines.append("-DBLAKE3_USE_NEON=0")
 
+    # Check for AVX512VL support if AVX512F is supported
+    avx512_flags = []
+    if "-mavx512f" in blake3_simd_flags:
+        avx512_flags.append("-mavx512f")
+        if _supports_flag(compiler, "-mavx512vl"):
+            avx512_flags.append("-mavx512vl")
+
     # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
     # This avoids errors related to C++11 features in C code.
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
@@ -410,13 +417,6 @@ def main() -> None:
         ("blake3_avx512.c", "-mavx512f"),
         ("blake3_neon.c", "-mfpu=neon"),
     ]
-
-    # Check for AVX512VL support if AVX512F is supported
-    avx512_flags = []
-    if "-mavx512f" in blake3_simd_flags:
-        avx512_flags.append("-mavx512f")
-        if _supports_flag(compiler, "-mavx512vl"):
-            avx512_flags.append("-mavx512vl")
 
     simd_objects = []
     for fname, flag in simd_files_flags:
