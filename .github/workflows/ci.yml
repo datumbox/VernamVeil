@@ -59,6 +59,7 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             compiler: gcc
             build-steps: |
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-libomp mingw-w64-x86_64-tbb
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -81,6 +82,7 @@ jobs:
             postfix: '_notbb'
             compiler: gcc
             build-steps: |
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-libomp
               cd nphash
               export NPBLAKE3_NO_TBB=1
               python build.py
@@ -122,26 +124,6 @@ jobs:
           key: ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
           restore-keys: |
             ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
-
-      - name: Set up MinGW (GCC on Windows)
-        if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-make
-            mingw-w64-x86_64-tbb
-            mingw-w64-x86_64-openssl
-
-      - name: Setup tmate session (for interactive SSH debugging)
-        if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc' && matrix.postfix != '_notbb'
-        uses: mxschmitt/action-tmate@v3
-
-      - name: Set up MSVC (MSVC on Windows)
-        if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
-        uses: microsoft/setup-msbuild@v2
 
       - name: Cache vcpkg and TBB (MSVC on Windows)
         if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
