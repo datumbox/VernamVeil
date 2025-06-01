@@ -59,8 +59,19 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             compiler: gcc
             build-steps: |
-              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-libomp mingw-w64-x86_64-tbb
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-tbb
               cd nphash
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
+          - os: windows-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_notbb'
+            compiler: gcc
+            build-steps: |
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl
+              cd nphash
+              export NPBLAKE3_NO_TBB=1
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
@@ -81,17 +92,6 @@ jobs:
               cd nphash
               python build.py
               dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
-
-          - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
-            postfix: '_notbb'
-            compiler: gcc
-            build-steps: |
-              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-libomp
-              cd nphash
-              export NPBLAKE3_NO_TBB=1
-              python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
