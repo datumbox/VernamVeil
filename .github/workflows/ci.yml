@@ -128,14 +128,14 @@ jobs:
             ${{ matrix.os }}-pip-${{ join(matrix.pip-dependencies, '_') }}
 
       - name: Cache vcpkg and TBB (MSVC on Windows)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
         uses: actions/cache@v4
         with:
           path: vcpkg
           key: vcpkg_windows-latest_dev_numpy_cffi_msvc
 
       - name: Set up MinGW (GCC on Windows)
-        if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -146,19 +146,19 @@ jobs:
             mingw-w64-x86_64-python
 
       - name: Install Python dependencies and library (GCC on Linux/macOS and MSVC on Windows)
-        if: !(matrix.os == 'windows-latest' && matrix.compiler == 'gcc')
+        if: ${{ !(matrix.os == 'windows-latest' && matrix.compiler == 'gcc') }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
 
-      - name: Install Python dependencies and library (MinGW on Windows)
+      - name: Install Python dependencies and library (GCC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
         shell: msys2 {0}
 
-      - name: Build/package steps (MinGW on Windows)
+      - name: Build/package steps (GCC on Windows)
         if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         run: ${{ matrix.build-steps }}
         shell: msys2 {0}
@@ -178,10 +178,10 @@ jobs:
 #        uses: mxschmitt/action-tmate@v3
 
       - name: Run tests
-        if: !(matrix.os == 'windows-latest' && matrix.compiler == 'gcc')
+        if: ${{ !(matrix.os == 'windows-latest' && matrix.compiler == 'gcc') }}
         run: python -m unittest discover -s tests/ -v
 
-      - name: Run tests (MinGW on Windows)
+      - name: Run tests (GCC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         run: python -m unittest discover -s tests/ -v
         shell: msys2 {0}
