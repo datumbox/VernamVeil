@@ -144,7 +144,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg_windows-latest_dev_numpy_cffi_${{ matrix.compiler }}
+          key: vcpkg_windows-latest_dev_numpy_cffi_msvc
 
       - name: vcpkg + TBB setup (MSVC on Windows)
         if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
@@ -165,7 +165,7 @@ jobs:
         shell: bash
 
       - name: Build/package steps (MSVC on Windows)
-        if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
+        if: matrix.build-steps != '' && matrix.compiler == 'msvc'
         run: ${{ matrix.build-steps }}
         shell: cmd
 
