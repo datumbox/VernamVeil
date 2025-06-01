@@ -158,7 +158,15 @@ jobs:
       - name: Install Python dependencies and library (GCC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         run: |
-          export SSL_CERT_FILE=/mingw64/ssl/certs/ca-bundle.crt
+          if [ -f /mingw64/ssl/certs/ca-bundle.crt ]; then
+            export SSL_CERT_FILE=/mingw64/ssl/certs/ca-bundle.crt
+          elif [ -f /etc/ssl/certs/ca-bundle.crt ]; then
+            export SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt
+          else
+            echo "CA bundle not found!" >&2
+            exit 1
+          fi
+          echo "Using SSL_CERT_FILE=$SSL_CERT_FILE"
           python -m pip install --upgrade pip
           python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
         shell: msys2 {0}
