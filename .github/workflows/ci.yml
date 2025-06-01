@@ -59,10 +59,9 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             compiler: gcc
             build-steps: |
-              @echo on
               cd nphash
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -82,11 +81,10 @@ jobs:
             postfix: '_notbb'
             compiler: gcc
             build-steps: |
-              @echo on
               cd nphash
-              set NPBLAKE3_NO_TBB=1
+              export NPBLAKE3_NO_TBB=1
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
