@@ -150,6 +150,7 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-make
             mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-distutils-extra
 
       - name: Build/package steps (GCC on Windows)
         if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
