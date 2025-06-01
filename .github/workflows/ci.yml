@@ -155,14 +155,16 @@ jobs:
           )
         shell: cmd
 
+      - name: Create dummy libpthread.dll.a for MinGW (GCC on Windows)
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
+        run: |
+          mkdir "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\x86_64-w64-mingw32\lib" 2>NUL
+          type nul > "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\x86_64-w64-mingw32\lib\libpthread.dll.a"
+        shell: cmd
+
       - name: Set up MinGW (GCC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc'
         uses: egor-tensin/setup-mingw@v2
-        with:
-          # Ignore Remove-Item libpthread.dll.a error (MinGW)
-          post-install: |
-            $ErrorActionPreference = 'SilentlyContinue'
-            Remove-Item "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\x86_64-w64-mingw32\lib\libpthread.dll.a" -ErrorAction SilentlyContinue
 
       - name: Set up MSVC (MSVC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
