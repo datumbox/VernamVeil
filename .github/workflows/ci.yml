@@ -144,7 +144,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg_windows-latest_dev_numpy_cffi_msvc
+          key: vcpkg_windows-latest_dev_numpy_cffi_msvc_notbb
 
       - name: vcpkg + TBB setup (MSVC on Windows)
         if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
