@@ -140,10 +140,15 @@ jobs:
       - name: Install Python dependencies and library
         run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
 
-      - name: Build/package steps (GCC on Linux/macOS)
-        if: matrix.build-steps != '' && matrix.os != 'windows-latest' && matrix.compiler != 'msvc'
-        run: ${{ matrix.build-steps }}
-        shell: bash
+      - name: Set up MinGW (GCC on Windows)
+        if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-make
 
       - name: Build/package steps (GCC on Windows)
         if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
@@ -154,6 +159,11 @@ jobs:
         if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
         run: ${{ matrix.build-steps }}
         shell: cmd
+
+      - name: Build/package steps (GCC on Linux/macOS)
+        if: matrix.build-steps != '' && matrix.os != 'windows-latest' && matrix.compiler != 'msvc'
+        run: ${{ matrix.build-steps }}
+        shell: bash
 
 #      - name: Setup tmate session (for interactive SSH debugging)
 #        if: matrix.os == 'windows-latest'
