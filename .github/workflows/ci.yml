@@ -69,6 +69,11 @@ jobs:
             compiler: msvc
             build-steps: |
               @echo on
+              if not exist vcpkg (
+                git clone https://github.com/microsoft/vcpkg.git
+                call .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+                call .\vcpkg\vcpkg.exe install tbb:x64-windows
+              )
               copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
               set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
@@ -131,16 +136,6 @@ jobs:
         with:
           path: vcpkg
           key: vcpkg_windows-latest_dev_numpy_cffi_msvc_notbb
-
-      - name: vcpkg + TBB setup (MSVC on Windows)
-        if: matrix.os == 'windows-latest' && join(matrix.pip-dependencies, '_') == 'dev_numpy_cffi' && matrix.compiler == 'msvc' && matrix.postfix != '_notbb'
-        run: |
-          if not exist vcpkg (
-            git clone https://github.com/microsoft/vcpkg.git
-            call .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-            call .\vcpkg\vcpkg.exe install tbb:x64-windows
-          )
-        shell: cmd
 
       - name: Install Python dependencies and library
         run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
