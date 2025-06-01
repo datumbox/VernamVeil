@@ -135,6 +135,10 @@ jobs:
             mingw-w64-x86_64-tbb
             mingw-w64-x86_64-openssl
 
+      - name: Setup tmate session (for interactive SSH debugging)
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'gcc' && matrix.postfix != '_notbb'
+        uses: mxschmitt/action-tmate@v3
+
       - name: Set up MSVC (MSVC on Windows)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
         uses: microsoft/setup-msbuild@v2
