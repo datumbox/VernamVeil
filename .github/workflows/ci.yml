@@ -59,7 +59,7 @@ jobs:
             pip-dependencies: [dev, numpy, cffi]
             compiler: gcc
             build-steps: |
-              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-tbb
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-python-distutils mingw-w64-x86_64-tbb
               cd nphash
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -69,7 +69,7 @@ jobs:
             postfix: '_notbb'
             compiler: gcc
             build-steps: |
-              pacman -Syu --noconfirm mingw-w64-x86_64-openssl
+              pacman -Syu --noconfirm mingw-w64-x86_64-openssl mingw-w64-x86_64-python-distutils
               cd nphash
               export NPBLAKE3_NO_TBB=1
               python build.py
@@ -150,7 +150,6 @@ jobs:
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-make
             mingw-w64-x86_64-python
-            mingw-w64-x86_64-python-distutils-extra
 
       - name: Build/package steps (GCC on Windows)
         if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
