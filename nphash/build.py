@@ -310,6 +310,7 @@ def main() -> None:
             ]:
                 include_dir = prefix / "include"
                 lib_dir = prefix / "lib"
+                if include_dir.exists() and lib_dir.exists():
                     include_dirs.append(include_dir)
                     library_dirs.append(lib_dir)
                     break
