@@ -144,7 +144,7 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-make
+            mingw-w64-x86_64-ninja
             mingw-w64-x86_64-python
             mingw-w64-x86_64-python-pip
             mingw-w64-x86_64-ca-certificates
