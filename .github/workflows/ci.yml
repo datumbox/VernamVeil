@@ -140,13 +140,18 @@ jobs:
       - name: Install Python dependencies and library
         run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
 
-      - name: Build/package steps (GCC on Linux/macOS/Windows)
-        if: matrix.build-steps != '' && matrix.compiler != 'msvc'
+      - name: Build/package steps (GCC on Linux/macOS)
+        if: matrix.build-steps != '' && matrix.os != 'windows-latest' && matrix.compiler != 'msvc'
         run: ${{ matrix.build-steps }}
         shell: bash
 
+      - name: Build/package steps (GCC on Windows)
+        if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler != 'msvc'
+        run: ${{ matrix.build-steps }}
+        shell: msys2 {0}
+
       - name: Build/package steps (MSVC on Windows)
-        if: matrix.build-steps != '' && matrix.compiler == 'msvc'
+        if: matrix.build-steps != '' && matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
         run: ${{ matrix.build-steps }}
         shell: cmd
 
