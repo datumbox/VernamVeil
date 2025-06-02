@@ -127,18 +127,18 @@ def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
     if blake3_dir.exists() and any(blake3_dir.iterdir()):
         print(f"BLAKE3 sources already present at {blake3_dir.resolve()}. Skipping clone.")
         return
-    tmpdir = tempfile.mkdtemp()
-    repo_url = "https://github.com/BLAKE3-team/BLAKE3.git"
-    print(f"Cloning BLAKE3 {version} from {repo_url} to {tmpdir} ...")
-    subprocess.run(
-        ["git", "clone", "--depth", "1", "--branch", version, repo_url, tmpdir], check=True
-    )
-    src_dir = Path(tmpdir) / "c"
-    blake3_dir.mkdir(parents=True, exist_ok=True)
-    for f in src_dir.iterdir():
-        if f.is_file():
-            shutil.copy2(f, blake3_dir / f.name)
-    print(f"Copied BLAKE3 C sources to {blake3_dir.resolve()}")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_url = "https://github.com/BLAKE3-team/BLAKE3.git"
+        print(f"Cloning BLAKE3 {version} from {repo_url} to {tmpdir} ...")
+        subprocess.run(
+            ["git", "clone", "--depth", "1", "--branch", version, repo_url, tmpdir], check=True
+        )
+        src_dir = Path(tmpdir) / "c"
+        blake3_dir.mkdir(parents=True, exist_ok=True)
+        for f in src_dir.iterdir():
+            if f.is_file():
+                shutil.copy2(f, blake3_dir / f.name)
+        print(f"Copied BLAKE3 C sources to {blake3_dir.resolve()}")
 
 
 class _build_ext_with_cpp11(_build_ext):
