@@ -384,7 +384,9 @@ def main() -> None:
             return False
 
     avx512vl_supported = False
-    if is_arm and _add_simd_flag("-mfpu=neon", "-DBLAKE3_USE_NEON=0", "blake3_neon.c"):
+    if is_arm and sys.platform == "darwin":
+        # On Apple Silicon, don't require -mfpu=neon flag support as it is always available
+        _add_simd_flag("", "-DBLAKE3_USE_NEON=0", "blake3_neon.c")
         blake3_compile_args.append("-DBLAKE3_USE_NEON=1")
     elif is_x86:
         _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
