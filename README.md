@@ -475,7 +475,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 70% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 60% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -496,13 +496,13 @@ openssl rand -hex 16 > iv.hex
 ```bash
 vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 5.028s_
+_Time: 4.959s_
 
 **Decoding:**
 ```bash
 vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 4.501s_
+_Time: 4.304s_
 
 ### 🐇 AES-256-CBC (OpenSSL)
 
@@ -522,8 +522,8 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 5.0 s       | 4.5 s       |
-| AES-256-CBC  | 3.0 s       | 2.6 s       |
+| VernamVeil   | 4.959 s     | 4.304 s     |
+| AES-256-CBC  | 3.007 s     | 2.636 s     |
 
 ---
 
