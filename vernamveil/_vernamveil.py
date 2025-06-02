@@ -289,31 +289,55 @@ class VernamVeil(_Cypher):
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
-        # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray()
+        # Maximum size based on chunks and padding
         pad_min, pad_max = self._padding_range
         pad_width = pad_max - pad_min + 1
+        estimated_size = (
+            2 * total_count * (self._delimiter_size + pad_max)
+            + message_len
+            + decoy_count * self._chunk_size
+        )
+
+        # Build the noisy message by combining fake and shuffled real chunks
+        noisy_blocks = bytearray(estimated_size)
+        current_loc = 0
         for chunk_range in shuffled_chunk_ranges:
             if chunk_range is not None:
                 start, end = chunk_range
                 chunk: memoryview | bytes = message[start:end]
+                chunk_len = end - start
             else:
                 chunk = secrets.token_bytes(self._chunk_size)
+                chunk_len = self._chunk_size
 
             # Pre-pad
             pre_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if pre_pad_len > 0:
-                noisy_blocks.extend(secrets.token_bytes(pre_pad_len))
-            noisy_blocks.extend(delimiter)
+                next_loc = current_loc + pre_pad_len
+                noisy_blocks[current_loc:next_loc] = secrets.token_bytes(pre_pad_len)
+                current_loc = next_loc
+
+            next_loc = current_loc + self._delimiter_size
+            noisy_blocks[current_loc:next_loc] = delimiter
+            current_loc = next_loc
+
             # Actual data
-            noisy_blocks.extend(chunk)
+            next_loc = current_loc + chunk_len
+            noisy_blocks[current_loc:next_loc] = chunk
+            current_loc = next_loc
+
             # Post-pad
-            noisy_blocks.extend(delimiter)
+            next_loc = current_loc + self._delimiter_size
+            noisy_blocks[current_loc:next_loc] = delimiter
+            current_loc = next_loc
+
             post_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             if post_pad_len > 0:
-                noisy_blocks.extend(secrets.token_bytes(post_pad_len))
+                next_loc = current_loc + post_pad_len
+                noisy_blocks[current_loc:next_loc] = secrets.token_bytes(post_pad_len)
+                current_loc = next_loc
 
-        return memoryview(noisy_blocks)
+        return memoryview(noisy_blocks)[:current_loc]
 
     def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
         """Remove noise and extract real chunks from a shuffled noisy message.
@@ -367,12 +391,22 @@ class VernamVeil(_Cypher):
         # Estimate the shuffled real positions
         shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
 
+        # Calculate exact size from the chunk ranges
+        exact_size = sum(
+            end - start for start, end in (all_chunk_ranges[pos] for pos in shuffled_positions)
+        )
+
         # Reconstruct and unshuffle the message
-        message = bytearray()
+        message = bytearray(exact_size)
         view = memoryview(noisy)
+        current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
-            message.extend(view[start:end])
+            chunk_len = end - start
+
+            next_loc = current_loc + chunk_len
+            message[current_loc:next_loc] = view[start:end]
+            current_loc = next_loc
 
         return message
 
@@ -464,6 +498,9 @@ class VernamVeil(_Cypher):
                 message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
             )
 
+        # Store the output parts
+        output: list[bytes | bytearray] = []
+
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
         if self._siv_seed_initialisation:
@@ -473,12 +510,10 @@ class VernamVeil(_Cypher):
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
-            output = encrypted_siv_hash
+            output.append(encrypted_siv_hash)
 
             # Note: The SIV is not reused for MAC computation, ensuring separation
             # between seed evolution and authentication.
-        else:
-            output = bytearray()
 
         # Produce a unique seed for Authenticated Encryption
         auth_seed = self._hash(seed, [b"auth"]) if self._auth_encrypt else b""
@@ -501,15 +536,23 @@ class VernamVeil(_Cypher):
 
         # Encrypt the noisy message
         cyphertext, last_seed = self._xor_with_key(noisy, seed, True)
-        output.extend(cyphertext)
+        output.append(cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             # The tag is computed over the configuration of the cypher and the cyphertext.
             tag = self._hash(auth_seed, [str(self).encode(), cyphertext], use_hmac=True)
-            output.extend(tag)
+            output.append(tag)
 
-        return output, last_seed
+        # Concatenate all parts into a single bytearray
+        result = bytearray(sum(len(part) for part in output))
+        current_loc = 0
+        for part in output:
+            next_loc = current_loc + len(part)
+            result[current_loc:next_loc] = part
+            current_loc = next_loc
+
+        return result, last_seed
 
     def decode(
         self, cyphertext: bytes | bytearray | memoryview, seed: bytes
