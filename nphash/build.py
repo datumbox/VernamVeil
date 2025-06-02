@@ -252,6 +252,7 @@ def _compile_blake3_simd_objects(
     blake3_dir: Path,
     extra_compile_args: list[str],
     compiler: str,
+    asm_flags: set[str],
 ) -> list[str]:
     """Compile BLAKE3 SIMD source files to object files and return their paths.
 
@@ -260,12 +261,16 @@ def _compile_blake3_simd_objects(
         blake3_dir (Path): Path to the BLAKE3 source directory.
         extra_compile_args (list[str]): Base compile arguments.
         compiler (str): Compiler executable.
+        asm_flags (set[str]): SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
 
     Returns:
         list[str]: List of paths to compiled object files.
     """
     extra_objects = []
     for simd in supported_simd:
+        # Only compile the C file if the feature's flag is not implemented in assembly
+        if any(flag in asm_flags for flag in simd.flags):
+            continue
         src = blake3_dir / simd.filename
         if src.exists():
             obj = blake3_dir / (simd.filename + ".o")
@@ -275,6 +280,63 @@ def _compile_blake3_simd_objects(
             subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
             extra_objects.append(str(obj))
     return extra_objects
+
+
+def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[list[str], set[str]]:
+    """Detect and compile BLAKE3 assembly files for the current platform and compiler.
+
+    Args:
+        blake3_dir (Path): Path to the BLAKE3 source directory.
+        compiler (str): Compiler executable name.
+
+    Returns:
+        tuple[list[str], set[str]]: (asm_objects, asm_flags)
+            asm_objects: List of compiled object file paths.
+            asm_flags: Set of SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
+
+    Raises:
+        RuntimeError: If an unknown assembly file type is encountered.
+    """
+    asm_objects: list[str] = []
+    asm_flags: set[str] = set()
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_arm = "arm" in machine or "aarch64" in machine
+
+    def _add_asm_file(asm_path: Path, flag: str) -> None:
+        if asm_path.exists():
+            obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
+            print(f"Compiling assembly: {asm_path} -> {obj_path}")
+            suffix = asm_path.suffix.lower()
+            if suffix == ".s":
+                subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
+            elif suffix == ".asm":
+                subprocess.run(["ml64", "/c", str(asm_path), f"/Fo{obj_path}"], check=True)
+            else:
+                raise RuntimeError(f"Unknown assembly file type: {asm_path}")
+            asm_objects.append(str(obj_path))
+            asm_flags.add(flag)
+
+    if sys.platform == "win32":
+        if "gcc" in compiler.lower():
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_gnu.S", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_gnu.S", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_gnu.S", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_gnu.S", "-mavx512f")
+        else:
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_msvc.asm", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_msvc.asm", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_msvc.asm", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_msvc.asm", "-mavx512f")
+    elif sys.platform.startswith("linux") or sys.platform == "darwin":
+        if is_x86:
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_unix.S", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_unix.S", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_unix.S", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_unix.S", "-mavx512f")
+        elif is_arm:
+            pass
+    return asm_objects, asm_flags
 
 
 def main() -> None:
@@ -454,12 +516,17 @@ def main() -> None:
 
     # Detect SIMD support and Compile them to objects
     supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
+    asm_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
     extra_objects = _compile_blake3_simd_objects(
         supported_simd=supported_simd,
         blake3_dir=blake3_dir,
         extra_compile_args=extra_compile_args,
         compiler=compiler,
+        asm_flags=asm_flags,
     )
+
+    # Add assembly files if available
+    extra_objects += asm_objects
 
     # Add extension build
     ffibuilder_blake2b.set_source(
