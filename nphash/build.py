@@ -20,8 +20,10 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
+from collections import namedtuple
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
+from typing import List
 
 from cffi import FFI
 
@@ -196,44 +198,14 @@ class _build_ext_with_cpp11(_build_ext):
             self.compiler._compile = orig_compile
 
 
-def _compile_blake3_simd_objects(
-    supported_simd: list[tuple[str, str]],
-    blake3_dir: Path,
-    extra_compile_args: list[str],
-    compiler: str,
-    avx512vl_supported: bool,
-) -> list[str]:
-    """Compile BLAKE3 SIMD source files to object files and return their paths.
-
-    Args:
-        supported_simd (list[tuple[str, str]]): List of (flag, filename) for supported SIMD files.
-        blake3_dir (Path): Path to the BLAKE3 source directory.
-        extra_compile_args (list[str]): Base compile arguments.
-        compiler (str): Compiler executable.
-        avx512vl_supported (bool): Whether AVX512VL is supported (for AVX512F files).
-
-    Returns:
-        list[str]: List of paths to compiled object files.
-    """
-    extra_objects = []
-    for flag, fname in supported_simd:
-        src = blake3_dir / fname
-        if src.exists():
-            obj = blake3_dir / (fname + ".o")
-            compile_args = list(extra_compile_args)
-            compile_args += [flag]  # Only add SIMD flag for this file
-            if flag == "-mavx512f" and avx512vl_supported:
-                compile_args.append("-mavx512vl")
-            print(f"Compiling {src} with {compile_args} -> {obj}")
-            subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
-            extra_objects.append(str(obj))
-    return extra_objects
+# SimdFeature namedtuple to hold SIMD feature flags and source file names
+SimdFeature = namedtuple("SimdFeature", ["flags", "filename"])
 
 
 def _detect_blake3_simd_support(
     compiler: str,
     blake3_compile_args: list[str],
-) -> tuple[list[tuple[str, str]], bool]:
+) -> List[SimdFeature]:
     """Detect supported SIMD features for BLAKE3 and update compile args as needed.
 
     Args:
@@ -241,36 +213,68 @@ def _detect_blake3_simd_support(
         blake3_compile_args (list[str]): List of compile arguments to update with disables/enables.
 
     Returns:
-        tuple[list[tuple[str, str]], bool]:
-            - List of (flag, filename) for supported SIMD files.
-            - Whether AVX512VL is supported (for AVX512F files).
+        List[SimdFeature]: Each SimdFeature contains 'flags' (list of str) and 'filename' (str) for a SIMD file.
     """
-    supported_simd: list[tuple[str, str]] = []
+    supported_simd: List[SimdFeature] = []
     machine = platform.machine().lower()
     is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
     is_arm = "arm" in machine or "aarch64" in machine
 
-    def _add_simd_flag(flag: str, disable_option: str, src_file: str) -> bool:
-        if _supports_flag(compiler, flag):
-            supported_simd.append((flag, src_file))
+    def _add_simd_flag(flags: List[str], disable_option: str, src_file: str) -> bool:
+        # All flags in the list must be supported
+        if all(_supports_flag(compiler, flag) for flag in flags if flag):
+            supported_simd.append(SimdFeature(flags, src_file))
             return True
         else:
             blake3_compile_args.append(disable_option)
             return False
 
-    avx512vl_supported = False
     if is_arm and sys.platform == "darwin":
         # On Apple Silicon, don't require -mfpu=neon flag support as it is always available
-        _add_simd_flag("", "-DBLAKE3_USE_NEON=0", "blake3_neon.c")
+        _add_simd_flag([], "-DBLAKE3_USE_NEON=0", "blake3_neon.c")
         blake3_compile_args.append("-DBLAKE3_USE_NEON=1")
     elif is_x86:
-        _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
-        _add_simd_flag("-msse4.1", "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
-        _add_simd_flag("-mavx2", "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
-        if _add_simd_flag("-mavx512f", "-DBLAKE3_NO_AVX512", "blake3_avx512.c"):
-            # AVX512VL support (only relevant if AVX512F is present)
-            avx512vl_supported = _supports_flag(compiler, "-mavx512vl")
-    return supported_simd, avx512vl_supported
+        _add_simd_flag(["-msse2"], "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
+        _add_simd_flag(["-msse4.1"], "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
+        _add_simd_flag(["-mavx2"], "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
+        if _supports_flag(compiler, "-mavx512f"):
+            avx512_flags = ["-mavx512f"]
+            if _supports_flag(compiler, "-mavx512vl"):
+                avx512_flags.append("-mavx512vl")
+            supported_simd.append(SimdFeature(avx512_flags, "blake3_avx512.c"))
+        else:
+            blake3_compile_args.append("-DBLAKE3_NO_AVX512")
+    return supported_simd
+
+
+def _compile_blake3_simd_objects(
+    supported_simd: List[SimdFeature],
+    blake3_dir: Path,
+    extra_compile_args: list[str],
+    compiler: str,
+) -> list[str]:
+    """Compile BLAKE3 SIMD source files to object files and return their paths.
+
+    Args:
+        supported_simd (List[SimdFeature]): List of SimdFeature with 'flags' (list of str) and 'filename' (str).
+        blake3_dir (Path): Path to the BLAKE3 source directory.
+        extra_compile_args (list[str]): Base compile arguments.
+        compiler (str): Compiler executable.
+
+    Returns:
+        list[str]: List of paths to compiled object files.
+    """
+    extra_objects = []
+    for simd in supported_simd:
+        src = blake3_dir / simd.filename
+        if src.exists():
+            obj = blake3_dir / (simd.filename + ".o")
+            compile_args = list(extra_compile_args)
+            compile_args += simd.flags
+            print(f"Compiling {src} with {compile_args} -> {obj}")
+            subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
+            extra_objects.append(str(obj))
+    return extra_objects
 
 
 def main() -> None:
@@ -447,15 +451,14 @@ def main() -> None:
                 "-DTBB_USE_EXCEPTIONS=0",
             ]
         )
-    supported_simd, avx512vl_supported = _detect_blake3_simd_support(compiler, blake3_compile_args)
 
-    # Compile SIMD files to objects
+    # Detect SIMD support and Compile them to objects
+    supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
     extra_objects = _compile_blake3_simd_objects(
         supported_simd=supported_simd,
         blake3_dir=blake3_dir,
         extra_compile_args=extra_compile_args,
         compiler=compiler,
-        avx512vl_supported=avx512vl_supported,
     )
 
     # Add extension build
