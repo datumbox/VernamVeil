@@ -403,7 +403,7 @@ def main() -> None:
             ]
         )
 
-    # --- BLAKE3 SIMD object compilation and source selection ---
+    # Prepare sources for BLAKE3
     blake3_sources = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
     core_c_files = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
     for fname in core_c_files:
@@ -419,20 +419,19 @@ def main() -> None:
         ("blake3_neon.c", "-mfpu=neon"),
     ]
 
+    # Compile SIMD files to objects
     simd_objects = []
     for fname, flag in simd_files_flags:
         if flag in blake3_simd_flags:
             src = blake3_dir / fname
             obj = blake3_dir / (fname + ".o")
             if src.exists():
+                compile_args = list(extra_compile_args)
                 # For AVX512, use both -mavx512f and -mavx512vl if available
-                if fname == "blake3_avx512.c":
-                    compile_cmd = (
-                        [compiler, "-c", str(src)] + avx512_flags + ["-O3", "-o", str(obj)]
-                    )
-                else:
-                    compile_cmd = [compiler, "-c", str(src), flag, "-O3", "-o", str(obj)]
-                print(f"Compiling {src} with {compile_cmd[3:-2]} -> {obj}")
+                if fname == "blake3_avx512.c" and "-mavx512vl" in avx512_flags:
+                    compile_args += ["-mavx512vl"]
+                compile_cmd = [compiler, "-c", str(src)] + compile_args + ["-o", str(obj)]
+                print(f"Compiling {src} with {compile_args} -> {obj}")
                 subprocess.run(compile_cmd, check=True)
                 simd_objects.append(str(obj))
 
