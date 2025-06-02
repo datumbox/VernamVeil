@@ -498,6 +498,9 @@ class VernamVeil(_Cypher):
                 message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
             )
 
+        # Store the output parts
+        output: list[bytes | bytearray] = []
+
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
         if self._siv_seed_initialisation:
@@ -507,12 +510,10 @@ class VernamVeil(_Cypher):
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
             # Use the encrypted SIV hash bytearray as the output; this puts it in front
-            output = encrypted_siv_hash
+            output.append(encrypted_siv_hash)
 
             # Note: The SIV is not reused for MAC computation, ensuring separation
             # between seed evolution and authentication.
-        else:
-            output = bytearray()
 
         # Produce a unique seed for Authenticated Encryption
         auth_seed = self._hash(seed, [b"auth"]) if self._auth_encrypt else b""
@@ -535,15 +536,23 @@ class VernamVeil(_Cypher):
 
         # Encrypt the noisy message
         cyphertext, last_seed = self._xor_with_key(noisy, seed, True)
-        output.extend(cyphertext)
+        output.append(cyphertext)
 
         # Authenticated Encryption
         if self._auth_encrypt:
             # The tag is computed over the configuration of the cypher and the cyphertext.
             tag = self._hash(auth_seed, [str(self).encode(), cyphertext], use_hmac=True)
-            output.extend(tag)
+            output.append(tag)
 
-        return output, last_seed
+        # Concatenate all parts into a single bytearray
+        result = bytearray(sum(len(part) for part in output))
+        current_loc = 0
+        for part in output:
+            next_loc = current_loc + len(part)
+            result[current_loc:next_loc] = part
+            current_loc = next_loc
+
+        return result, last_seed
 
     def decode(
         self, cyphertext: bytes | bytearray | memoryview, seed: bytes
