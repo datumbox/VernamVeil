@@ -68,6 +68,8 @@ jobs:
               set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
               choco install openssl --no-progress -y
+              choco install visualstudio2022buildtools --no-progress -y
+              call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
               cd nphash
               python build.py
               dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -78,6 +80,8 @@ jobs:
             build-steps: |
               @echo on
               choco install openssl --no-progress -y
+              choco install visualstudio2022buildtools --no-progress -y
+              call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
               cd nphash
               set NPBLAKE3_NO_TBB=1
               python build.py
