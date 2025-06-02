@@ -252,7 +252,6 @@ def _compile_blake3_simd_objects(
     blake3_dir: Path,
     extra_compile_args: list[str],
     compiler: str,
-    asm_flags: set[str],
 ) -> list[str]:
     """Compile BLAKE3 SIMD source files to object files and return their paths.
 
@@ -261,16 +260,12 @@ def _compile_blake3_simd_objects(
         blake3_dir (Path): Path to the BLAKE3 source directory.
         extra_compile_args (list[str]): Base compile arguments.
         compiler (str): Compiler executable.
-        asm_flags (set[str]): SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
 
     Returns:
         list[str]: List of paths to compiled object files.
     """
     extra_objects = []
     for simd in supported_simd:
-        # Only compile the C file if the feature's flag is not implemented in assembly
-        if any(flag in asm_flags for flag in simd.flags):
-            continue
         src = blake3_dir / simd.filename
         if src.exists():
             obj = blake3_dir / (simd.filename + ".o")
@@ -293,9 +288,6 @@ def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[lis
         tuple[list[str], set[str]]: (asm_objects, asm_flags)
             asm_objects: List of compiled object file paths.
             asm_flags: Set of SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
-
-    Raises:
-        RuntimeError: If an unknown assembly file type is encountered.
     """
     asm_objects: list[str] = []
     asm_flags: set[str] = set()
@@ -503,7 +495,6 @@ def main() -> None:
         if (blake3_dir / fname).exists()
     ]
 
-    # BLAKE3 SIMD feature detection and flags
     # Do NOT specify -std=c99 or -std=c++11. This avoids errors related to C++11 features in C code.
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
     if tbb_enabled:
@@ -514,19 +505,16 @@ def main() -> None:
             ]
         )
 
-    # Detect SIMD support and Compile them to objects
+    # BLAKE3 hardware acceleration detection and compilation
+    extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
     supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
-    asm_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
-    extra_objects = _compile_blake3_simd_objects(
-        supported_simd=supported_simd,
+    filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
+    extra_objects += _compile_blake3_simd_objects(
+        supported_simd=filtered_simd,
         blake3_dir=blake3_dir,
         extra_compile_args=extra_compile_args,
         compiler=compiler,
-        asm_flags=asm_flags,
     )
-
-    # Add assembly files if available
-    extra_objects += asm_objects
 
     # Add extension build
     ffibuilder_blake2b.set_source(
