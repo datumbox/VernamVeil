@@ -207,13 +207,11 @@ def main() -> None:
         "--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3"
     )
     args = parser.parse_args()
-    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip() not in {
+    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip().lower() not in {
         "",
         "0",
         "false",
-        "False",
         "no",
-        "No",
     }
     tbb_enabled = not args.no_tbb and not no_tbb_env
 
