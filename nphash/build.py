@@ -20,7 +20,6 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
-import urllib.request
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
@@ -131,9 +130,9 @@ def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
     tmpdir = tempfile.mkdtemp()
     repo_url = "https://github.com/BLAKE3-team/BLAKE3.git"
     print(f"Cloning BLAKE3 {version} from {repo_url} to {tmpdir} ...")
-    subprocess.run([
-        "git", "clone", "--depth", "1", "--branch", version, repo_url, tmpdir
-    ], check=True)
+    subprocess.run(
+        ["git", "clone", "--depth", "1", "--branch", version, repo_url, tmpdir], check=True
+    )
     src_dir = Path(tmpdir) / "c"
     blake3_dir.mkdir(parents=True, exist_ok=True)
     for f in src_dir.iterdir():
@@ -397,10 +396,12 @@ def main() -> None:
     blake3_compile_args.extend(blake3_simd_flags)
     blake3_compile_args.extend(blake3_simd_defines)
     if tbb_enabled:
-        blake3_compile_args.extend([
-            "-DBLAKE3_USE_TBB",
-            "-DTBB_USE_EXCEPTIONS=0",
-        ])
+        blake3_compile_args.extend(
+            [
+                "-DBLAKE3_USE_TBB",
+                "-DTBB_USE_EXCEPTIONS=0",
+            ]
+        )
 
     # --- BLAKE3 SIMD object compilation and source selection ---
     blake3_sources = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
@@ -426,7 +427,9 @@ def main() -> None:
             if src.exists():
                 # For AVX512, use both -mavx512f and -mavx512vl if available
                 if fname == "blake3_avx512.c":
-                    compile_cmd = [compiler, "-c", str(src)] + avx512_flags + ["-O3", "-o", str(obj)]
+                    compile_cmd = (
+                        [compiler, "-c", str(src)] + avx512_flags + ["-O3", "-o", str(obj)]
+                    )
                 else:
                     compile_cmd = [compiler, "-c", str(src), flag, "-O3", "-o", str(obj)]
                 print(f"Compiling {src} with {compile_cmd[3:-2]} -> {obj}")
@@ -440,7 +443,9 @@ def main() -> None:
             blake3_sources.append(os.path.relpath(f, nphash_dir))
 
     # Remove SIMD flags from compile args for the main extension
-    blake3_compile_args_main = [arg for arg in blake3_compile_args if arg not in [flag for _, flag in simd_files_flags]]
+    blake3_compile_args_main = [
+        arg for arg in blake3_compile_args if arg not in [flag for _, flag in simd_files_flags]
+    ]
 
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
