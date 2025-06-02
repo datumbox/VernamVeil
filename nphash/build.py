@@ -20,7 +20,6 @@ import subprocess
 import sys
 import sysconfig
 import tempfile
-import urllib.request
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 
@@ -118,38 +117,28 @@ def _print_build_summary(
     print(f"  Library dirs: {library_dirs}")
 
 
-def _download_blake3_sources(blake3_dir: Path, version: str, with_tbb: bool = True) -> None:
-    """Ensure BLAKE3 sources are present in blake3_dir, downloading from GitHub if missing.
+def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
+    """Ensure BLAKE3 sources are present in blake3_dir by cloning the repo if missing.
 
     Args:
-        blake3_dir (Path): Directory to store BLAKE3 sources.
-        version (str): BLAKE3 version to download (e.g., '1.8.2').
-        with_tbb (bool): Whether to include blake3_tbb.cpp (TBB support). Defaults to True.
-
-    Raises:
-        RuntimeError: If download fails or files cannot be written.
+        blake3_dir (Path): Directory where BLAKE3 sources should be located.
+        version (str): Version tag to clone from the BLAKE3 repository.
     """
-    blake3_files = [
-        "blake3.c",
-        "blake3.h",
-        "blake3_dispatch.c",
-        "blake3_impl.h",
-        "blake3_portable.c",
-    ]
-    if with_tbb:
-        blake3_files.append("blake3_tbb.cpp")
-    base_url = f"https://raw.githubusercontent.com/BLAKE3-team/BLAKE3/refs/tags/{version}/c/"
-    blake3_dir.mkdir(parents=True, exist_ok=True)
-    for fname in blake3_files:
-        fpath = blake3_dir / fname
-        if not fpath.exists():
-            url = base_url + fname
-            try:
-                print(f"Downloading {fname} from {url} to {fpath} ...")
-                with urllib.request.urlopen(url) as resp, open(fpath, "wb") as out_f:
-                    out_f.write(resp.read())
-            except Exception as e:
-                raise RuntimeError(f"Failed to download {fname} from {url}: {e}")
+    if blake3_dir.exists() and any(blake3_dir.iterdir()):
+        print(f"BLAKE3 sources already present at {blake3_dir.resolve()}. Skipping clone.")
+        return
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_url = "https://github.com/BLAKE3-team/BLAKE3.git"
+        print(f"Cloning BLAKE3 {version} from {repo_url} to {tmpdir} ...")
+        subprocess.run(
+            ["git", "clone", "--depth", "1", "--branch", version, repo_url, tmpdir], check=True
+        )
+        src_dir = Path(tmpdir) / "c"
+        blake3_dir.mkdir(parents=True, exist_ok=True)
+        for f in src_dir.iterdir():
+            if f.is_file():
+                shutil.copy2(f, blake3_dir / f.name)
+        print(f"Copied BLAKE3 C sources to {blake3_dir.resolve()}")
 
 
 class _build_ext_with_cpp11(_build_ext):
@@ -340,7 +329,7 @@ def main() -> None:
 
     # Add blake3_dir to include_dirs
     blake3_dir = nphash_dir.parent / "third_party" / "blake3"
-    _download_blake3_sources(blake3_dir, version="1.8.2", with_tbb=tbb_enabled)
+    _ensure_blake3_sources(blake3_dir, version="1.8.2")
     if blake3_dir.exists():
         include_dirs.append(blake3_dir)
 
@@ -357,22 +346,22 @@ def main() -> None:
     library_paths = [str(p) for p in library_dirs]
 
     # Add C source
-    parent_dir = Path(__file__).parent
-    c_source_blake2b = _get_c_source(parent_dir / "_npblake2b.c")
-    c_source_sha256 = _get_c_source(parent_dir / "_npsha256.c")
+    c_source_blake2b = _get_c_source(nphash_dir / "_npblake2b.c")
+    c_source_sha256 = _get_c_source(nphash_dir / "_npsha256.c")
 
-    # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
-    # This avoids errors related to C++11 features in C code.
+    c_sources_blake3 = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
+    core_c_files = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
+    if tbb_enabled:
+        core_c_files.append("blake3_tbb.cpp")
+    c_sources_blake3 += [
+        os.path.relpath(blake3_dir / fname, nphash_dir)
+        for fname in core_c_files
+        if (blake3_dir / fname).exists()
+    ]
+
+    # BLAKE3 SIMD feature detection and flags
+    # Do NOT specify -std=c99 or -std=c++11. This avoids errors related to C++11 features in C code.
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
-    blake3_compile_args.extend(
-        [
-            "-DBLAKE3_NO_SSE2",
-            "-DBLAKE3_NO_SSE41",
-            "-DBLAKE3_NO_AVX2",
-            "-DBLAKE3_NO_AVX512",
-            "-DBLAKE3_USE_NEON=0",
-        ]
-    )
     if tbb_enabled:
         blake3_compile_args.extend(
             [
@@ -380,6 +369,43 @@ def main() -> None:
                 "-DTBB_USE_EXCEPTIONS=0",
             ]
         )
+    supported_simd = []
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_arm = "arm" in machine or "aarch64" in machine
+
+    def _add_simd_flag(flag: str, disable_option: str, src_file: str) -> bool:
+        if _supports_flag(compiler, flag):
+            supported_simd.append((flag, src_file))
+            return True
+        else:
+            blake3_compile_args.append(disable_option)
+            return False
+
+    avx512vl_supported = False
+    if is_arm and _add_simd_flag("-mfpu=neon", "-DBLAKE3_USE_NEON=0", "blake3_neon.c"):
+        blake3_compile_args.append("-DBLAKE3_USE_NEON=1")
+    elif is_x86:
+        _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
+        _add_simd_flag("-msse4.1", "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
+        _add_simd_flag("-mavx2", "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
+        if _add_simd_flag("-mavx512f", "-DBLAKE3_NO_AVX512", "blake3_avx512.c"):
+            # AVX512VL support (only relevant if AVX512F is present)
+            avx512vl_supported = _supports_flag(compiler, "-mavx512vl")
+
+    # Compile SIMD files to objects
+    simd_objects = []
+    for flag, fname in supported_simd:
+        src = blake3_dir / fname
+        if src.exists():
+            obj = blake3_dir / (fname + ".o")
+            compile_args = list(extra_compile_args)
+            compile_args += [flag]  # Only add SIMD flag for this file
+            if flag == "-mavx512f" and avx512vl_supported:
+                compile_args.append("-mavx512vl")
+            print(f"Compiling {src} with {compile_args} -> {obj}")
+            subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
+            simd_objects.append(str(obj))
 
     # Add extension build
     ffibuilder_blake2b.set_source(
@@ -395,19 +421,13 @@ def main() -> None:
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
         '#include "_npblake3.h"\n',
-        sources=[
-            # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
-            os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir),
-            *[
-                os.path.relpath(f, nphash_dir)
-                for f in sorted(blake3_dir.glob("*.c*" if tbb_enabled else "*.c"))
-            ],
-        ],
+        sources=c_sources_blake3,  # use relative paths to avoid issues with CFFI output structure
         libraries=libraries_cpp if tbb_enabled else libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
+        extra_objects=simd_objects,
     )
 
     ffibuilder_sha256.set_source(
