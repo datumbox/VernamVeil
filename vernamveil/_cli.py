@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import IO, Callable, cast
 
 from vernamveil import __version__
-from vernamveil._cypher import _HAS_NUMPY
 from vernamveil._fx_utils import OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
-from vernamveil._hash_utils import _HAS_C_MODULE
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 __all__ = [
@@ -48,13 +47,13 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         help="Buffer size in bytes for reading blocks (default: 1048576, i.e., 1MB).",
     )
     p.add_argument(
-        "--chunk-size", type=int, default=512, help="Chunk size for VernamVeil (default: 512)."
+        "--chunk-size", type=int, default=8192, help="Chunk size for VernamVeil (default: 8192)."
     )
     p.add_argument(
         "--delimiter-size",
         type=int,
-        default=10,
-        help="Delimiter size for VernamVeil (default: 10).",
+        default=16,
+        help="Delimiter size for VernamVeil (default: 16).",
     )
     p.add_argument(
         "--padding-range",
@@ -81,6 +80,13 @@ def _add_common_args(p: argparse.ArgumentParser) -> None:
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Enable authenticated encryption (default: True).",
+    )
+    p.add_argument(
+        "--hash-name",
+        type=str,
+        default="blake2b",
+        choices=["blake2b", "blake3", "sha256"] if _HAS_C_MODULE else ["blake2b", "sha256"],
+        help="Hashing algorithm for the cypher and fx generation (default: blake2b).",
     )
     p.add_argument(
         "--verbosity",
@@ -112,7 +118,7 @@ def _open_file(file: str | None, mode: str, std_stream: IO[bytes] | object) -> I
     """Opens a file in the specified binary mode or returns the provided standard stream if file is '-' or None.
 
     Args:
-        file (str | None): Path to the file or '-' for the standard stream.
+        file (str, optional): Path to the file or '-' for the standard stream.
         mode (str): File open mode, e.g., 'rb' or 'wb'.
         std_stream (object): Standard stream to use if file is '-' or None.
 
@@ -207,7 +213,11 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
-        fx_obj = generate_default_fx(vectorise=parsed_args.vectorise)
+        fx_obj = generate_default_fx(
+            hash_name=parsed_args.hash_name,
+            vectorise=parsed_args.vectorise,
+            block_size=1024 if parsed_args.hash_name == "blake3" else None,
+        )
         fx_py.write_text(fx_obj.source_code)
         _vprint(
             f"Warning: Generated a fx-file in {fx_py.resolve()}. "
@@ -312,6 +322,7 @@ def main(args: list[str] | None = None) -> None:
         decoy_ratio=parsed_args.decoy_ratio,
         siv_seed_initialisation=parsed_args.siv_seed_initialisation,
         auth_encrypt=parsed_args.auth_encrypt,
+        hash_name=parsed_args.hash_name,
     )
 
     # Define progress callback if verbosity is "info"

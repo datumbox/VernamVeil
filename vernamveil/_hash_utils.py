@@ -6,16 +6,125 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 import hashlib
 from typing import Literal
 
-try:
-    import numpy as np
+from vernamveil._types import (
+    _HAS_C_MODULE,
+)
+from vernamveil._types import _HashType as HashType
+from vernamveil._types import (
+    _npblake2bffi,
+    _npblake3ffi,
+    _npsha256ffi,
+    np,
+)
 
-    from nphash import _npblake2bffi, _npsha256ffi
+__all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 
-    _HAS_C_MODULE = True
-except ImportError:
-    _HAS_C_MODULE = False
 
-__all__ = ["fold_bytes_to_uint64", "hash_numpy"]
+class blake3:
+    """A hashlib-style BLAKE3 hash object using the C backend (single-shot only).
+
+    This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
+    """
+
+    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32) -> None:
+        """Initialise a BLAKE3 hash object.
+
+        Args:
+            data (bytes): Initial data to hash. Defaults to an empty byte string.
+            key (bytes, optional): Optional key for keyed hashing. If None, no key is used.
+            length (int): Desired output length in bytes. Default is 32 bytes.
+        """
+        self._key = key
+        self._length = length
+        self._data = bytearray(data)
+
+    @property
+    def digest_size(self) -> int:
+        """The size of the hash output in bytes.
+
+        Returns:
+            int: 32 bytes by default, can be set during initialisation.
+        """
+        return self._length
+
+    @property
+    def block_size(self) -> int:
+        """The size of the internal block used for hashing.
+
+        Returns:
+            int: 64 bytes, which is the standard block size for BLAKE3.
+        """
+        return 64
+
+    @property
+    def key_size(self) -> int:
+        """The size of the key used for keyed hashing.
+
+        Returns:
+            int: 32 bytes, which is the standard key size for BLAKE3.
+        """
+        return 32
+
+    def copy(self) -> "blake3":
+        """Return a copy of the current blake3 hash object.
+
+        Returns:
+            blake3: A new blake3 object with the same state as the current one.
+        """
+        new_obj = blake3()
+        new_obj._key = self._key
+        new_obj._length = self._length
+        new_obj._data = self._data.copy()
+        return new_obj
+
+    def update(self, data: bytes | memoryview) -> None:
+        """Update the hash object with additional data.
+
+        Args:
+            data (bytes or memoryview): Data to add to the hash. Can be a bytes object or a memoryview.
+        """
+        self._data.extend(data)
+
+    def digest(self, *, length: int | None = None) -> bytearray:
+        """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
+
+        Args:
+            length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
+
+        Returns:
+            bytearray: The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.
+
+        Raises:
+            RuntimeError: If the C-backed BLAKE3 module is not available.
+        """
+        if not _HAS_C_MODULE:
+            raise RuntimeError("C-backed BLAKE3 is not available.")
+
+        if length is None:
+            length = self._length
+
+        ffi = _npblake3ffi.ffi
+        out = bytearray(length)
+        _npblake3ffi.lib.bytes_blake3(
+            ffi.from_buffer(self._data),
+            len(self._data),
+            ffi.from_buffer(self._key) if self._key is not None else ffi.NULL,
+            len(self._key) if self._key is not None else 0,
+            ffi.from_buffer(out),
+            length,
+        )
+        return out
+
+    def hexdigest(self, *, length: int | None = None) -> str:
+        """Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.
+
+        Args:
+            length (int, optional): Desired output length in bytes. If None, uses the default length set during initialisation.
+
+        Returns:
+            str: The BLAKE3 hash digest of the accumulated data as a hexadecimal string.
+        """
+        return self.digest(length=length).hex()
 
 
 def fold_bytes_to_uint64(
@@ -26,7 +135,7 @@ def fold_bytes_to_uint64(
 
     Args:
         hashes (np.ndarray[tuple[int, int], np.dtype[np.uint8]]): 2D array of shape (n, H) where H >= 8.
-        fold_type (Literal["full", "view"] = "view"): Folding strategy.
+        fold_type (Literal["full", "view"]): Folding strategy.
             "view": Fastest; reinterprets the first 8 bytes as uint64.
             "full": Slower; folds all bytes in the row using bitwise operations.
             Default is "view".
@@ -62,7 +171,8 @@ def fold_bytes_to_uint64(
 def hash_numpy(
     i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
     seed: bytes | None = None,
-    hash_name: Literal["blake2b", "sha256"] = "blake2b",
+    hash_name: HashType = "blake2b",
+    hash_size: int | None = None,
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
     """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
 
@@ -75,25 +185,46 @@ def hash_numpy(
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes, optional): The seed bytes are prepended to the index. If None, hashes only the index.
-        hash_name (Literal["blake2b", "sha256"]): Hash algorithm to use. Defaults to "blake2b".
+        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). The blake3 is only available
+            if the C extension is installed. Defaults to "blake2b".
+        hash_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
+            and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 
     Returns:
         np.ndarray[tuple[int, int], np.dtype[np.uint8]]: A 2D array of shape (n, H) where H is the hash output size in
-        bytes (32 for sha256, 64 for blake2b). Each row contains the full hash output for the corresponding input.
+        bytes. Each row contains the full hash output for the corresponding input.
 
     Raises:
+        ValueError: If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.
         ValueError: If a hash algorithm is not supported.
+        ValueError: If `hash_name` is "blake3" but the C extension is not available.
     """
     if hash_name == "blake2b":
-        hash_size = 64
+        if hash_size is None:
+            hash_size = 64
+        elif hash_size != 64:
+            raise ValueError("blake2b hash_size must be 64 bytes.")
         if _HAS_C_MODULE:
             ffi = _npblake2bffi.ffi
             method = _npblake2bffi.lib.numpy_blake2b
         else:
             ffi = None
             method = hashlib.blake2b
+    elif hash_name == "blake3":
+        if hash_size is None:
+            hash_size = 32
+        elif hash_size <= 0:
+            raise ValueError("blake3 hash_size must be larger than 0 bytes.")
+        if _HAS_C_MODULE:
+            ffi = _npblake3ffi.ffi
+            method = _npblake3ffi.lib.numpy_blake3
+        else:
+            raise ValueError("blake3 requires the C extension.")
     elif hash_name == "sha256":
-        hash_size = 32
+        if hash_size is None:
+            hash_size = 32
+        elif hash_size != 32:
+            raise ValueError("sha256 hash_size must be 32 bytes.")
         if _HAS_C_MODULE:
             ffi = _npsha256ffi.ffi
             method = _npsha256ffi.lib.numpy_sha256
@@ -106,13 +237,16 @@ def hash_numpy(
     out = np.empty((n, hash_size), dtype=np.uint8)
 
     if ffi is not None:
-        method(
+        args = [
             ffi.cast("const uint64_t *", ffi.from_buffer(i)),
             n,
             ffi.from_buffer(seed) if seed is not None else ffi.NULL,
             len(seed) if seed is not None else 0,
             ffi.from_buffer(out),
-        )
+        ]
+        if hash_name == "blake3":
+            args.append(hash_size)
+        method(*args)
     else:
         i_bytes = i.view(np.uint8)
         for idx, j in enumerate(range(0, len(i_bytes), 8)):

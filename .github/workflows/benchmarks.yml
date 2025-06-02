@@ -27,15 +27,15 @@ jobs:
       - name: Set benchmark sizes
         id: benchvars
         run: |
-          echo "SIZES=5 25 100" >> $GITHUB_ENV
+          echo "SIZES=25 100 500" >> $GITHUB_ENV
 
       - name: Install system dependencies and build C modules
         run: |
-          sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
+          sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev libtbb-dev python3-dev
           python -m pip install .[dev,numpy,cffi]
           cd nphash
           python build.py
-          ls -lh _npblake2bffi.* _npsha256ffi.*
+          ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
           cd ..
           python -m pip install .
         shell: bash
@@ -61,14 +61,14 @@ jobs:
               rm -f fx.py seed.bin output.enc output.dec
 
               start_enc=$(date +%s%N)
-              vernamveil encode --infile input.bin --outfile output.enc --verbosity error
+              vernamveil encode --infile input.bin --outfile output.enc --hash-name blake3 --verbosity error
               end_enc=$(date +%s%N)
               enc_time=$((end_enc - start_enc))
               enc_time_s=$(awk "BEGIN {printf \"%.3f\", $enc_time / 1000000000}")
               total_enc=$((total_enc + enc_time))
 
               start_dec=$(date +%s%N)
-              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin --verbosity error
+              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin --hash-name blake3 --verbosity error
               end_dec=$(date +%s%N)
               dec_time=$((end_dec - start_dec))
               dec_time_s=$(awk "BEGIN {printf \"%.3f\", $dec_time / 1000000000}")

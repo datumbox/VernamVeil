@@ -3,8 +3,8 @@ import secrets
 import unittest
 from unittest.mock import patch
 
-from vernamveil._cypher import _HAS_NUMPY
-from vernamveil._hash_utils import _HAS_C_MODULE, fold_bytes_to_uint64, hash_numpy
+from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
 
 try:
     import numpy as np
@@ -21,6 +21,8 @@ class TestHashUtils(unittest.TestCase):
             return hashlib.sha256
         elif hash_name == "blake2b":
             return hashlib.blake2b
+        elif hash_name == "blake3":
+            return blake3
         else:
             raise ValueError(f"Unsupported hash_name '{hash_name}'.")
 
@@ -28,10 +30,15 @@ class TestHashUtils(unittest.TestCase):
     def test_hash_numpy_correctness(self):
         """Check that hash_numpy output matches expected hash values for a range of inputs, for both fold types."""
         checks = [False]
+        hashes = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             checks.append(True)
+            hashes.append("blake3")
         for has_c in checks:
-            for hash_name in ("sha256", "blake2b"):
+            for hash_name in hashes:
+                if hash_name == "blake3" and not has_c:
+                    # Skip blake3 if C module is not available, as it requires the CFFI implementation
+                    continue
                 for fold_type in ("full", "view"):
                     with self.subTest(
                         _HAS_C_MODULE=has_c, hash_name=hash_name, fold_type=fold_type
@@ -51,7 +58,10 @@ class TestHashUtils(unittest.TestCase):
                             method = self._get_hash_method_for_test(hash_name)
 
                             def get_digest(j):
-                                hasher = method(seed)
+                                if hash_name == "blake3":
+                                    hasher = method(key=seed)
+                                else:
+                                    hasher = method(seed)
                                 hasher.update(i_bytes[j : j + 8])
                                 digest = hasher.digest()
                                 if fold_type == "full":
@@ -70,10 +80,15 @@ class TestHashUtils(unittest.TestCase):
     def test_hash_numpy_no_seed(self):
         """Check that hash_numpy works with no seed (seed=None), for both fold types."""
         checks = [False]
+        hashes = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             checks.append(True)
+            hashes.append(f"blake3")
         for has_c in checks:
-            for hash_name in ("sha256", "blake2b"):
+            for hash_name in hashes:
+                if hash_name == "blake3" and not has_c:
+                    # Skip blake3 if C module is not available, as it requires the CFFI implementation
+                    continue
                 for fold_type in ("full", "view"):
                     with self.subTest(
                         _HAS_C_MODULE=has_c, hash_name=hash_name, fold_type=fold_type

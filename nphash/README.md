@@ -1,10 +1,12 @@
 # Building the `nphash` C Library with `build.py`
 
-This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations.
+This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations. We also provide a `blake3` class, which offers a hashlib-style BLAKE3 hash object using the C backend. **The `blake3` implementation is only available when the C extension is built.**
 
-The C code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
+The C and C++ code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
 > **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
+
+> **Note:** The `build.py` script will automatically download the required BLAKE3 C and C++ source files from the [official BLAKE3 repository](https://github.com/BLAKE3-team/BLAKE3) if they are not already present locally.
 
 ## Prerequisites
 
@@ -12,9 +14,10 @@ Before building, ensure you have the following dependencies installed:
 
 - **Python 3.10 or later**
 - **pip** (Python package manager)
-- **gcc** (GNU Compiler Collection)
-- **OpenMP** (usually included with gcc)
+- **gcc/g++** (GNU Compiler Collection, including C++ support)
+- **OpenMP** (usually included with gcc/g++)
 - **OpenSSL development libraries**
+- **TBB (Threading Building Blocks) development libraries**
 - **cffi** and **numpy** Python packages
 
 Supported platforms: Linux, macOS, and Windows (with suitable build tools).
@@ -26,23 +29,40 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    On Ubuntu/Debian:  
    ```bash
    sudo apt-get update
-   sudo apt-get install build-essential libssl-dev python3-dev
+   sudo apt-get install build-essential g++ libssl-dev libtbb-dev python3-dev
    ```
 
    On Fedora:  
    ```bash
-   sudo dnf install gcc openssl-devel python3-devel
+   sudo dnf install gcc gcc-c++ openssl-devel python3-devel tbb-devel
    ```
 
    On Mac (with Homebrew):
    ```bash
-   brew install libomp openssl
+   brew install libomp openssl tbb
    ```
    
-   On Windows (with Chocolatey):
-   ```bash
-   choco install openssl
-   ```
+   On Windows (with Chocolatey and vcpkg):
+   
+   1. Install OpenSSL with Chocolatey:
+      ```bash
+      choco install openssl
+      ```
+   2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
+      ```bash
+      git clone https://github.com/microsoft/vcpkg.git
+      .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      .\vcpkg\vcpkg.exe install tbb:x64-windows
+      ```
+   3. Copy the TBB DLLs to your build directory (if needed):
+      ```bash
+      copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+      ```
+   4. Set the environment variables for include and lib paths (for the current session):
+      ```bash
+      set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
+      set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
+      ```
 
 2. **Install Python dependencies**
 
@@ -58,7 +78,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    python build.py
    ```
 
-   This will compile the C code and generate libraries named `_npblake2bffi.*.so` and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
+   This will compile the C code and generate libraries named `_npblake2bffi.*.so`, `_npblake3ffi.*.so`  and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
 4. **Reinstall the library**
 
@@ -67,6 +87,22 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    ```bash
    pip install .
    ```
+
+## Disabling TBB (Threading Building Blocks) for BLAKE3
+
+By default, the build uses [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multithreaded BLAKE3 hashing if possible. If you encounter issues installing TBB or want a simpler build (at the cost of single-threaded BLAKE3), you can disable TBB support:
+
+- **Using an environment variable:**
+  ```bash
+  export NPBLAKE3_NO_TBB=1
+  python build.py
+  ```
+- **Or using a command-line flag:**
+  ```bash
+  python build.py --no-tbb
+  ```
+
+If either is set, the build will not require TBB or C++ support, and will not use `blake3_tbb.cpp`. This is useful for platforms where TBB is difficult to install. **Note:** Disabling TBB is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
 
 ## Usage
 
@@ -80,9 +116,10 @@ from vernamveil._hash_utils import _HAS_C_MODULE
 After building, you can use the extension from Python code:
 
 ```python
-from vernamveil import hash_numpy
-# hash_numpy will use the C extension if available, otherwise a pure NumPy fallback.
-# Both BLAKE2b and SHA-256 are supported via the C extension.
+from vernamveil import blake3, hash_numpy
+# The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.
+# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback.
+# All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
 ```
 
 If the C extension is not built or importable, `hash_numpy` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
@@ -96,3 +133,8 @@ If the C extension is not built or importable, `hash_numpy` will transparently f
    export ARCHFLAGS=-arch arm64
    python build.py
    ```
+- **macOS users:** If you encounter an error like `[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate` when building or downloading sources, run the `Install Certificates.command` script that comes with your Python installation. For example, in your terminal:
+   ```bash
+   /Applications/Python\ <your-version>/Install\ Certificates.command
+   ```
+  Replace `<your-version>` with your installed Python version (e.g., `3.10`). This will install the required root certificates for SSL verification.
