@@ -98,6 +98,7 @@ def _print_build_summary(
     extra_link_args: list[str],
     include_dirs: list[str],
     library_dirs: list[str],
+    extra_objects: list[str],
 ) -> None:
     """Print a summary of the build configuration.
 
@@ -107,6 +108,7 @@ def _print_build_summary(
         extra_link_args (list): Extra linker arguments.
         include_dirs (list): Include directories.
         library_dirs (list): Library directories.
+        extra_objects (list): Extra object files to link.
     """
     print("Build configuration summary:")
     print(f"  Platform: {sys.platform}")
@@ -115,6 +117,7 @@ def _print_build_summary(
     print(f"  Extra link args: {extra_link_args}")
     print(f"  Include dirs: {include_dirs}")
     print(f"  Library dirs: {library_dirs}")
+    print(f"  Extra objects: {extra_objects}")
 
 
 def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
@@ -392,7 +395,7 @@ def main() -> None:
             avx512vl_supported = _supports_flag(compiler, "-mavx512vl")
 
     # Compile SIMD files to objects
-    simd_objects = []
+    extra_objects = []
     for flag, fname in supported_simd:
         src = blake3_dir / fname
         if src.exists():
@@ -403,7 +406,7 @@ def main() -> None:
                 compile_args.append("-mavx512vl")
             print(f"Compiling {src} with {compile_args} -> {obj}")
             subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
-            simd_objects.append(str(obj))
+            extra_objects.append(str(obj))
 
     # Add extension build
     ffibuilder_blake2b.set_source(
@@ -425,7 +428,7 @@ def main() -> None:
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
-        extra_objects=simd_objects,
+        extra_objects=extra_objects,
     )
 
     ffibuilder_sha256.set_source(
@@ -444,6 +447,7 @@ def main() -> None:
         extra_link_args,
         include_paths,
         library_paths,
+        extra_objects,
     )
 
     if tbb_enabled:
