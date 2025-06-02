@@ -16,7 +16,7 @@
 #define MIN_PARALLEL_LEN (2 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
 
 // Platform-specific alignment for SIMD acceleration
-#if defined(__AVX512F__)
+#if defined(__AVX512F__) || defined(__AVX512VL__)
     #define BLAKE3_ALIGNMENT 64
 #elif defined(__AVX2__)
     #define BLAKE3_ALIGNMENT 32
