@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "_npblake3.h"
 
 #include "blake3.h"
@@ -94,28 +93,27 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
 void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
     // Input: byte array; each byte is hashed as a single byte block
     bool seeded = seed != NULL && seedlen > 0;
+    bool use_parallel = datalen >= MIN_PARALLEL_LEN;
 
     // Prepare the key if seeded
     uint8_t key[BLAKE3_KEY_LEN] = {0};
     prepare_blake3_key(seeded, seed, seedlen, key);
 
     // Alignment check and copy if needed
-    const size_t ALIGNMENT = BLAKE3_ALIGNMENT;
     const uint8_t* aligned_data = data;
     void* aligned_buf = NULL;
 
-    if (((uintptr_t)data) % ALIGNMENT != 0) {
-        // Data is not aligned; allocate aligned buffer and copy
-        printf("[bytes_blake3] Alignment required (%zu bytes, %zu-byte align).\n", datalen, ALIGNMENT);
-        if (posix_memalign(&aligned_buf, ALIGNMENT, datalen) != 0) {
-            // Allocation failed, fallback to unaligned
-            aligned_data = data;
-        } else {
+    if (use_parallel && ((uintptr_t)data) % BLAKE3_ALIGNMENT != 0) {
+        // Data is not aligned and large enough to benefit from alignment; allocate aligned buffer and copy
+        if (posix_memalign(&aligned_buf, BLAKE3_ALIGNMENT, datalen) == 0) {
             memcpy(aligned_buf, data, datalen);
             aligned_data = (const uint8_t*)aligned_buf;
         }
     }
 
     // Hash the byte array
-    blake3_hash_bytes(aligned_data, datalen, key, seeded, out, hash_size, datalen >= MIN_PARALLEL_LEN);
+    blake3_hash_bytes(aligned_data, datalen, key, seeded, out, hash_size, use_parallel);
+
+    // Free aligned buffer
+    free(aligned_buf);
 }
