@@ -353,42 +353,35 @@ def main() -> None:
     # BLAKE3 SIMD feature detection and flags
     blake3_simd_flags = []
     blake3_simd_defines = []
-    # Only try SIMD on x86/x64/arm platforms
-    is_x86 = any(plat in platform.machine().lower() for plat in ["x86", "amd64", "i386", "i686"])
-    is_arm = "arm" in platform.machine().lower() or "aarch64" in platform.machine().lower()
-    # SSE2
-    if is_x86 and _supports_flag(compiler, "-msse2"):
-        blake3_simd_flags.append("-msse2")
-    else:
-        blake3_simd_defines.append("-DBLAKE3_NO_SSE2")
-    # SSE4.1
-    if is_x86 and _supports_flag(compiler, "-msse4.1"):
-        blake3_simd_flags.append("-msse4.1")
-    else:
-        blake3_simd_defines.append("-DBLAKE3_NO_SSE41")
-    # AVX2
-    if is_x86 and _supports_flag(compiler, "-mavx2"):
-        blake3_simd_flags.append("-mavx2")
-    else:
-        blake3_simd_defines.append("-DBLAKE3_NO_AVX2")
-    # AVX512
-    if is_x86 and _supports_flag(compiler, "-mavx512f"):
-        blake3_simd_flags.append("-mavx512f")
-    else:
-        blake3_simd_defines.append("-DBLAKE3_NO_AVX512")
-    # NEON (ARM)
-    if is_arm and _supports_flag(compiler, "-mfpu=neon"):
-        blake3_simd_flags.append("-mfpu=neon")
-        blake3_simd_defines.append("-DBLAKE3_USE_NEON=1")
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in ["x86", "amd64", "i386", "i686"])
+    is_arm = "arm" in machine or "aarch64" in machine
+
+    def _add_simd_flag(flag: str, define: str, is_arch: bool) -> bool:
+        if is_arch and _supports_flag(compiler, flag):
+            blake3_simd_flags.append(flag)
+            return True
+        else:
+            blake3_simd_defines.append(define)
+            return False
+
+    if is_arm:
+        if _supports_flag(compiler, "-mfpu=neon"):
+            blake3_simd_flags.append("-mfpu=neon")
+            blake3_simd_defines.append("-DBLAKE3_USE_NEON=1")
+        else:
+            blake3_simd_defines.append("-DBLAKE3_USE_NEON=0")
     else:
         blake3_simd_defines.append("-DBLAKE3_USE_NEON=0")
+        _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2", is_x86)
+        _add_simd_flag("-msse4.1", "-DBLAKE3_NO_SSE41", is_x86)
+        _add_simd_flag("-mavx2", "-DBLAKE3_NO_AVX2", is_x86)
+        _add_simd_flag("-mavx512f", "-DBLAKE3_NO_AVX512", is_x86)
 
-    # Check for AVX512VL support if AVX512F is supported
+    # AVX512VL support (only relevant if AVX512F is present)
     avx512_flags = []
-    if "-mavx512f" in blake3_simd_flags:
-        avx512_flags.append("-mavx512f")
-        if _supports_flag(compiler, "-mavx512vl"):
-            avx512_flags.append("-mavx512vl")
+    if "-mavx512f" in blake3_simd_flags and _supports_flag(compiler, "-mavx512vl"):
+        avx512_flags.append("-mavx512vl")
 
     # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
     # This avoids errors related to C++11 features in C code.
