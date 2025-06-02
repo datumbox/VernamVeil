@@ -390,8 +390,11 @@ def main() -> None:
         )
 
     # Prepare sources for BLAKE3
+    # Use relative paths to ensure we don't output absolute paths in the generated CFFI files
     blake3_sources = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
     core_c_files = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
+    if tbb_enabled:
+        core_c_files.append("blake3_tbb.cpp")
     for fname in core_c_files:
         f = blake3_dir / fname
         if f.exists():
@@ -421,16 +424,22 @@ def main() -> None:
                 subprocess.run(compile_cmd, check=True)
                 simd_objects.append(str(obj))
 
-    # TBB file only if tbb_enabled
-    if tbb_enabled:
-        f = blake3_dir / "blake3_tbb.cpp"
-        if f.exists():
-            blake3_sources.append(os.path.relpath(f, nphash_dir))
 
     # Remove SIMD flags from compile args for the main extension
     blake3_compile_args_main = [
         arg for arg in blake3_compile_args if arg not in [flag for _, flag in simd_files_flags]
     ]
+
+    # Add extension build
+    ffibuilder_blake2b.set_source(
+        "_npblake2bffi",
+        c_source_blake2b,
+        libraries=libraries_c,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        include_dirs=include_paths,
+        library_dirs=library_paths,
+    )
 
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
@@ -442,17 +451,6 @@ def main() -> None:
         include_dirs=include_paths,
         library_dirs=library_paths,
         extra_objects=simd_objects,
-    )
-
-    # Add extension build
-    ffibuilder_blake2b.set_source(
-        "_npblake2bffi",
-        c_source_blake2b,
-        libraries=libraries_c,
-        extra_compile_args=extra_compile_args,
-        extra_link_args=extra_link_args,
-        include_dirs=include_paths,
-        library_dirs=library_paths,
     )
 
     ffibuilder_sha256.set_source(
