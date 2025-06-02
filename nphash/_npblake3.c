@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "_npblake3.h"
 
 #include "blake3.h"
@@ -12,6 +14,19 @@
 
 #define BLOCK_SIZE 8  // Each input element is a uint64 block
 #define MIN_PARALLEL_LEN (2 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
+
+// Platform-specific alignment for SIMD acceleration
+#if defined(__AVX512F__)
+    #define BLAKE3_ALIGNMENT 64
+#elif defined(__AVX2__)
+    #define BLAKE3_ALIGNMENT 32
+#elif defined(__SSE2__)
+    #define BLAKE3_ALIGNMENT 16
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+    #define BLAKE3_ALIGNMENT 16
+#else
+    #define BLAKE3_ALIGNMENT 8
+#endif
 
 // Inline helper to prepare a BLAKE3 key from a seed (up to 32 bytes, zero-padded if shorter)
 static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seedlen, uint8_t key[BLAKE3_KEY_LEN]) {
@@ -84,6 +99,23 @@ void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t 
     uint8_t key[BLAKE3_KEY_LEN] = {0};
     prepare_blake3_key(seeded, seed, seedlen, key);
 
+    // Alignment check and copy if needed
+    const size_t ALIGNMENT = BLAKE3_ALIGNMENT;
+    const uint8_t* aligned_data = data;
+    void* aligned_buf = NULL;
+
+    if (((uintptr_t)data) % ALIGNMENT != 0) {
+        // Data is not aligned; allocate aligned buffer and copy
+        printf("[bytes_blake3] Alignment required (%zu bytes, %zu-byte align).\n", datalen, ALIGNMENT);
+        if (posix_memalign(&aligned_buf, ALIGNMENT, datalen) != 0) {
+            // Allocation failed, fallback to unaligned
+            aligned_data = data;
+        } else {
+            memcpy(aligned_buf, data, datalen);
+            aligned_data = (const uint8_t*)aligned_buf;
+        }
+    }
+
     // Hash the byte array
-    blake3_hash_bytes(data, datalen, key, seeded, out, hash_size, datalen >= MIN_PARALLEL_LEN);
+    blake3_hash_bytes(aligned_data, datalen, key, seeded, out, hash_size, datalen >= MIN_PARALLEL_LEN);
 }
