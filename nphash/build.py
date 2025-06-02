@@ -354,34 +354,27 @@ def main() -> None:
     blake3_simd_flags = []
     blake3_simd_defines = []
     machine = platform.machine().lower()
-    is_x86 = any(plat in machine for plat in ["x86", "amd64", "i386", "i686"])
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
     is_arm = "arm" in machine or "aarch64" in machine
 
-    def _add_simd_flag(flag: str, define: str, is_arch: bool) -> bool:
-        if is_arch and _supports_flag(compiler, flag):
+    def _add_simd_flag(flag: str, disable_option: str) -> bool:
+        if _supports_flag(compiler, flag):
             blake3_simd_flags.append(flag)
             return True
         else:
-            blake3_simd_defines.append(define)
+            blake3_simd_defines.append(disable_option)
             return False
 
-    if is_arm:
-        if _supports_flag(compiler, "-mfpu=neon"):
-            blake3_simd_flags.append("-mfpu=neon")
-            blake3_simd_defines.append("-DBLAKE3_USE_NEON=1")
-        else:
-            blake3_simd_defines.append("-DBLAKE3_USE_NEON=0")
-    else:
-        blake3_simd_defines.append("-DBLAKE3_USE_NEON=0")
-        _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2", is_x86)
-        _add_simd_flag("-msse4.1", "-DBLAKE3_NO_SSE41", is_x86)
-        _add_simd_flag("-mavx2", "-DBLAKE3_NO_AVX2", is_x86)
-        _add_simd_flag("-mavx512f", "-DBLAKE3_NO_AVX512", is_x86)
-
-    # AVX512VL support (only relevant if AVX512F is present)
-    avx512_flags = []
-    if "-mavx512f" in blake3_simd_flags and _supports_flag(compiler, "-mavx512vl"):
-        avx512_flags.append("-mavx512vl")
+    avx512vl_supported = False
+    if is_arm and _add_simd_flag("-mfpu=neon", "-DBLAKE3_USE_NEON=0"):
+        blake3_simd_defines.append("-DBLAKE3_USE_NEON=1")
+    elif is_x86:
+        _add_simd_flag("-msse2", "-DBLAKE3_NO_SSE2")
+        _add_simd_flag("-msse4.1", "-DBLAKE3_NO_SSE41")
+        _add_simd_flag("-mavx2", "-DBLAKE3_NO_AVX2")
+        if _add_simd_flag("-mavx512f", "-DBLAKE3_NO_AVX512"):
+            # AVX512VL support (only relevant if AVX512F is present)
+            avx512vl_supported = _supports_flag(compiler, "-mavx512vl")
 
     # Prepare compile args for BLAKE3: do NOT specify -std=c99 or -std=c++11 (let compiler choose defaults)
     # This avoids errors related to C++11 features in C code.
@@ -421,7 +414,7 @@ def main() -> None:
             if src.exists():
                 compile_args = list(extra_compile_args)
                 # For AVX512, use both -mavx512f and -mavx512vl if available
-                if fname == "blake3_avx512.c" and "-mavx512vl" in avx512_flags:
+                if fname == "blake3_avx512.c" and avx512vl_supported:
                     compile_args += ["-mavx512vl"]
                 compile_cmd = [compiler, "-c", str(src)] + compile_args + ["-o", str(obj)]
                 print(f"Compiling {src} with {compile_args} -> {obj}")
