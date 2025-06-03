@@ -297,7 +297,11 @@ def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[lis
 
     def _add_asm_file(asm_path: Path, flag: str) -> None:
         if asm_path.exists():
-            if sys.platform == "win32" and asm_path.suffix.lower() == ".asm" and "gcc" not in compiler.lower():
+            if (
+                sys.platform == "win32"
+                and asm_path.suffix.lower() == ".asm"
+                and "gcc" not in compiler.lower()
+            ):
                 obj_path = asm_path.parent / (asm_path.stem + ".obj")
             else:
                 obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
@@ -310,7 +314,7 @@ def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[lis
                     subprocess.run(
                         ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
                         check=True,
-                        cwd=str(asm_path.parent)
+                        cwd=str(asm_path.parent),
                     )
                 else:
                     subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)

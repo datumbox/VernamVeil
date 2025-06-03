@@ -14,7 +14,8 @@ Before building, ensure you have the following dependencies installed:
 
 - **Python 3.10 or later**
 - **pip** (Python package manager)
-- **gcc/g++** (GNU Compiler Collection, including C++ support)
+- **gcc/g++** (GNU Compiler Collection, including C++ support)  
+  _or_ **Microsoft Visual Studio Build Tools** (MSVC, for Windows)
 - **OpenMP** (usually included with gcc/g++)
 - **OpenSSL development libraries**
 - **TBB (Threading Building Blocks) development libraries**
@@ -44,10 +45,11 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    
    On Windows (with Chocolatey and vcpkg):
    
-   1. Install OpenSSL with Chocolatey:
+   1. Install OpenSSL and Visual Studio 2022 Build Tools with Chocolatey:
       ```bash
-      choco install openssl
+      choco install openssl visualstudio2022buildtools --no-progress -y
       ```
+      This installs the required compiler and assembler (ml64) for building assembly files on Windows.
    2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
@@ -63,6 +65,11 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
       set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
       set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
       ```
+   5. Open a Developer Command Prompt for VS 2022, or run the following command to set up the build environment in your terminal (replace the path if you installed Visual Studio elsewhere):
+      ```cmd
+      call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+      ```
+      This step is required to enable the Microsoft assembler (ml64) and compiler for building the C extension with assembly files.
 
 2. **Install Python dependencies**
 
