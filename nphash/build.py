@@ -215,6 +215,7 @@ def _detect_blake3_simd_support(
     blake3_compile_args: list[str],
     is_x86: bool,
     is_arm: bool,
+    is_msvc: bool,
 ) -> List[SimdFeature]:
     """Detect supported SIMD features for BLAKE3 and update compile args as needed.
 
@@ -223,15 +224,12 @@ def _detect_blake3_simd_support(
         blake3_compile_args (list[str]): List of compile arguments to update with disables/enables.
         is_x86 (bool): True if the current architecture is x86/x86_64.
         is_arm (bool): True if the current architecture is ARM64 (arm64/aarch64).
+        is_msvc (bool): True if using MSVC compiler.
 
     Returns:
         List[SimdFeature]: Each SimdFeature contains 'flags' (list of str) and 'filename' (str) for a SIMD file.
     """
     supported_simd: List[SimdFeature] = []
-    machine = platform.machine().lower()
-    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
-    is_arm = "arm" in machine or "aarch64" in machine
-    is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
 
     def _add_simd_flag(flags: List[str], disable_option: str, src_filename: str) -> bool:
         # For MSVC, treat /arch:SSE2 and /arch:SSE41 as placeholders, not real compiler flags
@@ -276,6 +274,7 @@ def _compile_blake3_simd_objects(
     blake3_dir: Path,
     extra_compile_args: list[str],
     compiler: str,
+    is_msvc: bool,
 ) -> list[Path]:
     """Compile BLAKE3 SIMD source files to object files and return their paths.
 
@@ -287,12 +286,12 @@ def _compile_blake3_simd_objects(
         blake3_dir (Path): Path to the BLAKE3 source directory.
         extra_compile_args (list[str]): Base compile arguments.
         compiler (str): Compiler executable.
+        is_msvc (bool): True if using MSVC compiler.
 
     Returns:
         list[Path]: List of paths to compiled object files.
     """
     simd_objects = []
-    is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
 
     for simd in supported_simd:
         simd_path = blake3_dir / simd.filename
@@ -324,6 +323,7 @@ def _detect_and_compile_blake3_asm(
     blake3_dir: Path,
     compiler: str,
     is_x86: bool,
+    is_msvc: bool,
 ) -> tuple[list[Path], set[str]]:
     """Detect and compile BLAKE3 assembly files for the current platform and compiler.
 
@@ -331,6 +331,7 @@ def _detect_and_compile_blake3_asm(
         blake3_dir (Path): Path to the BLAKE3 source directory.
         compiler (str): Compiler executable name.
         is_x86 (bool): True if the current architecture is x86/x86_64.
+        is_msvc (bool): True if using MSVC compiler.
 
     Returns:
         tuple[list[Path], set[str]]: (asm_objects, asm_flags)
@@ -343,7 +344,7 @@ def _detect_and_compile_blake3_asm(
     def _add_asm_file(asm_path: Path, flag: str) -> None:
         if asm_path.exists():
             suffix = asm_path.suffix.lower()
-            if suffix == ".asm" and sys.platform == "win32" and "gcc" not in compiler.lower():
+            if suffix == ".asm" and is_msvc:
                 obj_path = asm_path.parent / (asm_path.stem + ".obj")
                 print(f"Compiling assembly: {asm_path} -> {obj_path}")
                 subprocess.run(
@@ -440,6 +441,7 @@ def main() -> None:
     is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
     is_arm = machine in ("arm64", "aarch64")
     compiler = _detect_compiler()
+    is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
 
     include_dirs: list[Path] = []
     library_dirs: list[Path] = []
@@ -573,17 +575,18 @@ def main() -> None:
 
     # BLAKE3 hardware acceleration detection and compilation
     if asm_enabled:
-        extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler, is_x86)
+        extra_objects, asm_flags = _detect_and_compile_blake3_asm(
+            blake3_dir, compiler, is_x86, is_msvc
+        )
     else:
         extra_objects, asm_flags = [], set()
     if simd_enabled:
-        supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args, is_x86, is_arm)
+        supported_simd = _detect_blake3_simd_support(
+            compiler, blake3_compile_args, is_x86, is_arm, is_msvc
+        )
         filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
         extra_objects += _compile_blake3_simd_objects(
-            supported_simd=filtered_simd,
-            blake3_dir=blake3_dir,
-            extra_compile_args=extra_compile_args,
-            compiler=compiler,
+            filtered_simd, blake3_dir, extra_compile_args, compiler, is_msvc
         )
     elif sys.platform == "darwin":
         blake3_compile_args.append("-DBLAKE3_USE_NEON=0")
