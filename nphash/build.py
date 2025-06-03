@@ -442,6 +442,7 @@ def main() -> None:
             "-mtune=native",
             "-march=native",
             "-funroll-loops",
+            "-DNDEBUG",
         ]
         extra_link_args = ["-fopenmp"]
     elif sys.platform == "darwin":
@@ -450,7 +451,7 @@ def main() -> None:
         min_version_flag = (
             f"-mmacosx-version-min={os.environ.get('MACOSX_DEPLOYMENT_TARGET', '11.0')}"
         )
-        extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3", min_version_flag]
+        extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3", min_version_flag, "-DNDEBUG"]
         extra_link_args = ["-lomp", min_version_flag]
         # Detect architecture and set Homebrew prefix accordingly
         if is_arm:
@@ -484,6 +485,7 @@ def main() -> None:
                 "-mtune=native",
                 "-march=native",
                 "-funroll-loops",
+                "-DNDEBUG",
             ]
             extra_link_args = ["-fopenmp"]
             # Add common MSYS2 MinGW-w64 include and lib paths for TBB and OpenSSL
@@ -499,7 +501,7 @@ def main() -> None:
             # MSVC
             libraries_c = ["libssl", "libcrypto"]
             libraries_cpp = ["tbb12"]
-            extra_compile_args = ["/openmp", "-O2"]
+            extra_compile_args = ["/openmp", "/O2", "/DNDEBUG"]
             extra_link_args = []
         # Check all possible Dependecy install locations
         for prefix in [
