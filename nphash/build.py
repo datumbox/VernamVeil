@@ -292,18 +292,30 @@ def _compile_blake3_simd_objects(
         list[Path]: List of paths to compiled object files.
     """
     simd_objects = []
+    is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
+
     for simd in supported_simd:
-        src = blake3_dir / simd.filename
-        if src.exists():
-            obj = blake3_dir / (simd.filename + ".o")
+        simd_path = blake3_dir / simd.filename
+        if simd_path.exists():
             # Filter out MSVC placeholder flags before passing to the compiler
             filtered_flags = [f for f in simd.flags if f not in {"/arch:SSE2", "/arch:SSE41"}]
             compile_args = extra_compile_args + filtered_flags
-            print(f"Compiling {src} with {compile_args} -> {obj}")
-            subprocess.run(
-                [compiler, "-c", str(src), *compile_args, "-o", str(obj)],
-                check=True,
-            )
+
+            suffix = simd_path.suffix.lower()
+            if is_msvc:
+                obj = simd_path.parent / (simd_path.stem + ".obj")
+                subprocess.run(
+                    [compiler, "/c", str(simd_path), *compile_args, f"/Fo{obj.name}"],
+                    check=True,
+                    cwd=str(simd_path.parent),
+                )
+            else:
+                obj = simd_path.parent / (simd_path.stem + ".o")
+                subprocess.run(
+                    [compiler, "-c", str(simd_path), *compile_args, "-o", str(obj)],
+                    check=True,
+                )
+            print(f"Compiling {simd_path} with {compile_args} -> {obj}")
             simd_objects.append(obj)
     return simd_objects
 
@@ -312,7 +324,6 @@ def _detect_and_compile_blake3_asm(
     blake3_dir: Path,
     compiler: str,
     is_x86: bool,
-    is_arm: bool,
 ) -> tuple[list[Path], set[str]]:
     """Detect and compile BLAKE3 assembly files for the current platform and compiler.
 
@@ -320,7 +331,6 @@ def _detect_and_compile_blake3_asm(
         blake3_dir (Path): Path to the BLAKE3 source directory.
         compiler (str): Compiler executable name.
         is_x86 (bool): True if the current architecture is x86/x86_64.
-        is_arm (bool): True if the current architecture is ARM64 (arm64/aarch64).
 
     Returns:
         tuple[list[Path], set[str]]: (asm_objects, asm_flags)
@@ -555,9 +565,7 @@ def main() -> None:
 
     # BLAKE3 hardware acceleration detection and compilation
     if asm_enabled:
-        extra_objects, asm_flags = _detect_and_compile_blake3_asm(
-            blake3_dir, compiler, is_x86, is_arm
-        )
+        extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler, is_x86)
     else:
         extra_objects, asm_flags = [], set()
     if simd_enabled:
