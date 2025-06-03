@@ -319,9 +319,7 @@ def _detect_and_compile_blake3_asm(
                 )
             else:
                 obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
-                subprocess.run(
-                    [compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True
-                )
+                subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
             print(f"Compiled assembly: {asm_path} -> {obj_path}")
             asm_objects.append(obj_path)
             asm_flags.add(flag)
@@ -409,8 +407,8 @@ def main() -> None:
     is_arm = machine in ("arm64", "aarch64")
     compiler = _detect_compiler()
 
-    include_dirs = []
-    library_dirs = []
+    include_dirs: list[Path] = []
+    library_dirs: list[Path] = []
     if sys.platform.startswith("linux"):
         libraries_c = ["ssl", "crypto", "gomp"]
         libraries_cpp = ["tbb", "stdc++", "gomp"]
