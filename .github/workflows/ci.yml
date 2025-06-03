@@ -124,7 +124,6 @@ jobs:
               cd nphash
               set NPBLAKE3_NO_SIMD=1
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]

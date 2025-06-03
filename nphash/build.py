@@ -279,6 +279,9 @@ def _compile_blake3_simd_objects(
 ) -> list[Path]:
     """Compile BLAKE3 SIMD source files to object files and return their paths.
 
+    For MSVC, placeholder flags like /arch:SSE2 and /arch:SSE41 are used for feature tracking and filtering only,
+    and must NOT be passed to the compiler as they are not valid MSVC flags. Only AVX2/AVX512 are real flags.
+
     Args:
         supported_simd (List[SimdFeature]): List of SimdFeature with 'flags' (list of str) and 'filename' (str).
         blake3_dir (Path): Path to the BLAKE3 source directory.
@@ -293,7 +296,9 @@ def _compile_blake3_simd_objects(
         src = blake3_dir / simd.filename
         if src.exists():
             obj = blake3_dir / (simd.filename + ".o")
-            compile_args = extra_compile_args + simd.flags
+            # Filter out MSVC placeholder flags before passing to the compiler
+            filtered_flags = [f for f in simd.flags if f not in {"/arch:SSE2", "/arch:SSE41"}]
+            compile_args = extra_compile_args + filtered_flags
             print(f"Compiling {src} with {compile_args} -> {obj}")
             subprocess.run(
                 [compiler, "-c", str(src), *compile_args, "-o", str(obj)],
