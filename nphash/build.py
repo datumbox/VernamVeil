@@ -579,6 +579,9 @@ def main() -> None:
                 "-DTBB_USE_EXCEPTIONS=0",
             ]
         )
+        # Add -fno-rtti if supported and not using MSVC
+        if not is_msvc and _supports_flag(compiler, "-fno-rtti"):
+            blake3_compile_args.append("-fno-rtti")
 
     # BLAKE3 hardware acceleration detection and compilation
     if asm_enabled:
