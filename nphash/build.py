@@ -236,8 +236,8 @@ def _detect_blake3_simd_support(
         if is_msvc and (flags == ["/arch:SSE2"] or flags == ["/arch:SSE41"]):
             supported_simd.append(SimdFeature(flags, src_filename))
             return True
-        # All flags in the list must be supported
-        if all(_supports_flag(compiler, flag) for flag in flags if flag):
+        elif all(_supports_flag(compiler, flag) for flag in flags if flag):
+            # All flags in the list must be supported
             supported_simd.append(SimdFeature(flags, src_filename))
             return True
         else:
