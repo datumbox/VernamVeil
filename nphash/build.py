@@ -92,7 +92,8 @@ def _supports_flag(compiler: str, flag: str) -> bool:
 
 
 def _print_build_summary(
-    libraries: list[str],
+    libraries_c: list[str],
+    libraries_cpp: list[str],
     extra_compile_args: list[str],
     extra_link_args: list[str],
     include_dirs: list[str],
@@ -102,7 +103,8 @@ def _print_build_summary(
     """Print a summary of the build configuration.
 
     Args:
-        libraries (list): Libraries to link against.
+        libraries_c (list): C Libraries to link against.
+        libraries_cpp (list): C++ libraries to link against.
         extra_compile_args (list): Extra compiler arguments.
         extra_link_args (list): Extra linker arguments.
         include_dirs (list): Include directories.
@@ -119,7 +121,8 @@ def _print_build_summary(
     )
     print(f"  Uname: {platform.uname()}")
     print("Build options:")
-    print(f"  Libraries: {libraries}")
+    print(f"  C Libraries: {libraries_c}")
+    print(f"  C++ Libraries: {libraries_cpp}")
     print(f"  Extra compile args: {extra_compile_args}")
     print(f"  Extra link args: {extra_link_args}")
     print(f"  Include dirs: {include_dirs}")
@@ -585,7 +588,8 @@ def main() -> None:
     )
 
     _print_build_summary(
-        libraries_c + (libraries_cpp if tbb_enabled else []),
+        libraries_c,
+        libraries_cpp,
         extra_compile_args,
         extra_link_args,
         include_paths,
