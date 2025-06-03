@@ -25,7 +25,6 @@ jobs:
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
               cd nphash
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -35,7 +34,6 @@ jobs:
               cd nphash
               export NPBLAKE3_NO_TBB=1
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -45,7 +43,6 @@ jobs:
               cd nphash
               export NPBLAKE3_NO_SIMD=1
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -55,7 +52,6 @@ jobs:
               cd nphash
               export NPBLAKE3_NO_ASM=1
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -63,7 +59,6 @@ jobs:
               brew install libomp openssl tbb
               cd nphash
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -73,7 +68,6 @@ jobs:
               cd nphash
               export NPBLAKE3_NO_TBB=1
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -83,7 +77,6 @@ jobs:
               cd nphash
               export NPBLAKE3_NO_SIMD=1
               python build.py
-              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -101,7 +94,6 @@ jobs:
               call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
               cd nphash
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -113,7 +105,6 @@ jobs:
               cd nphash
               set NPBLAKE3_NO_TBB=1
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
@@ -132,7 +123,6 @@ jobs:
               cd nphash
               set NPBLAKE3_NO_ASM=1
               python build.py
-              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
     name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}${{ matrix.postfix || '' }}
     runs-on: ${{ matrix.os }}
@@ -186,6 +176,9 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -s tests/ -v
 
-      - name: Assert C module import
+      - name: Assert C module existence and import
         if: matrix.build-steps != ''
-        run: python -c "from vernamveil._types import _HAS_C_MODULE; assert _HAS_C_MODULE"
+        run: | 
+          ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+          python -c "from vernamveil._types import _HAS_C_MODULE; assert _HAS_C_MODULE"
+        shell: bash
