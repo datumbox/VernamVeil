@@ -228,8 +228,16 @@ def _detect_blake3_simd_support(
         List[SimdFeature]: Each SimdFeature contains 'flags' (list of str) and 'filename' (str) for a SIMD file.
     """
     supported_simd: List[SimdFeature] = []
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_arm = "arm" in machine or "aarch64" in machine
+    is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
 
     def _add_simd_flag(flags: List[str], disable_option: str, src_filename: str) -> bool:
+        # For MSVC, treat /arch:SSE2 and /arch:SSE41 as placeholders, not real compiler flags
+        if is_msvc and (flags == ["/arch:SSE2"] or flags == ["/arch:SSE41"]):
+            supported_simd.append(SimdFeature(flags, src_filename))
+            return True
         # All flags in the list must be supported
         if all(_supports_flag(compiler, flag) for flag in flags if flag):
             supported_simd.append(SimdFeature(flags, src_filename))
@@ -243,16 +251,23 @@ def _detect_blake3_simd_support(
         _add_simd_flag([], "-DBLAKE3_USE_NEON=0", "blake3_neon.c")
         blake3_compile_args.append("-DBLAKE3_USE_NEON=1")
     elif is_x86:
-        _add_simd_flag(["-msse2"], "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
-        _add_simd_flag(["-msse4.1"], "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
-        _add_simd_flag(["-mavx2"], "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
-        if _supports_flag(compiler, "-mavx512f"):
-            avx512_flags = ["-mavx512f"]
-            if _supports_flag(compiler, "-mavx512vl"):
-                avx512_flags.append("-mavx512vl")
-            supported_simd.append(SimdFeature(avx512_flags, "blake3_avx512.c"))
+        if is_msvc:
+            # SSE2/SSE4.1 enabled by default, use explicit placeholders for filtering
+            _add_simd_flag(["/arch:SSE2"], "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
+            _add_simd_flag(["/arch:SSE41"], "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
+            _add_simd_flag(["/arch:AVX2"], "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
+            _add_simd_flag(["/arch:AVX512"], "-DBLAKE3_NO_AVX512", "blake3_avx512.c")
         else:
-            blake3_compile_args.append("-DBLAKE3_NO_AVX512")
+            _add_simd_flag(["-msse2"], "-DBLAKE3_NO_SSE2", "blake3_sse2.c")
+            _add_simd_flag(["-msse4.1"], "-DBLAKE3_NO_SSE41", "blake3_sse41.c")
+            _add_simd_flag(["-mavx2"], "-DBLAKE3_NO_AVX2", "blake3_avx2.c")
+            if _supports_flag(compiler, "-mavx512f"):
+                avx512_flags = ["-mavx512f"]
+                if _supports_flag(compiler, "-mavx512vl"):
+                    avx512_flags.append("-mavx512vl")
+                supported_simd.append(SimdFeature(avx512_flags, "blake3_avx512.c"))
+            else:
+                blake3_compile_args.append("-DBLAKE3_NO_AVX512")
     return supported_simd
 
 
@@ -334,10 +349,10 @@ def _detect_and_compile_blake3_asm(
             _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_gnu.S", "-mavx2")
             _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_gnu.S", "-mavx512f")
         else:
-            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_msvc.asm", "-msse2")
-            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_msvc.asm", "-msse4.1")
-            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_msvc.asm", "-mavx2")
-            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_msvc.asm", "-mavx512f")
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_msvc.asm", "/arch:SSE2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_msvc.asm", "/arch:SSE41")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_msvc.asm", "/arch:AVX2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_msvc.asm", "/arch:AVX512")
     elif is_x86:
         _add_asm_file(blake3_dir / "blake3_sse2_x86-64_unix.S", "-msse2")
         _add_asm_file(blake3_dir / "blake3_sse41_x86-64_unix.S", "-msse4.1")
