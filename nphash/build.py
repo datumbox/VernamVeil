@@ -134,7 +134,7 @@ def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
         blake3_dir (Path): Directory where BLAKE3 sources should be located.
         version (str): Version to clone from the BLAKE3 repository.
     """
-    if any(blake3_dir.iterdir()):
+    if blake3_dir.exists() and any(blake3_dir.iterdir()):
         print(f"BLAKE3 sources already present at {blake3_dir.resolve()}. Skipping clone.")
         return
     with tempfile.TemporaryDirectory() as tmpdir:
