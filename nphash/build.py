@@ -297,13 +297,23 @@ def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[lis
 
     def _add_asm_file(asm_path: Path, flag: str) -> None:
         if asm_path.exists():
-            obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
+            if sys.platform == "win32" and asm_path.suffix.lower() == ".asm" and "gcc" not in compiler.lower():
+                obj_path = asm_path.parent / (asm_path.stem + ".obj")
+            else:
+                obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
             print(f"Compiling assembly: {asm_path} -> {obj_path}")
             suffix = asm_path.suffix.lower()
             if suffix == ".s":
                 subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
             elif suffix == ".asm":
-                subprocess.run(["ml64", "/c", str(asm_path), f"/Fo{obj_path}"], check=True)
+                if sys.platform == "win32" and "gcc" not in compiler.lower():
+                    subprocess.run(
+                        ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
+                        check=True,
+                        cwd=str(asm_path.parent)
+                    )
+                else:
+                    subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
             else:
                 raise RuntimeError(f"Unknown assembly file type: {asm_path}")
             asm_objects.append(str(obj_path))
