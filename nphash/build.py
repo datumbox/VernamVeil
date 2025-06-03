@@ -539,7 +539,13 @@ def main() -> None:
 
     # Try to add optional flags if supported
     if not is_msvc:
-        for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
+        for flag in [
+            "-flto",
+            "-fomit-frame-pointer",
+            "-ftree-vectorize",
+            "-Wl,-O1",
+            "-Wl,--as-needed",
+        ]:
             if _supports_flag(compiler, flag):
                 if flag.startswith("-Wl,"):
                     extra_link_args.append(flag)
