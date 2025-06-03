@@ -41,9 +41,6 @@ def _get_c_source(path: Path) -> str:
     Returns:
         str: Contents of the C source file.
     """
-    if not path.exists():
-        print(f"Error: C source file '{path}' was not found.")
-        sys.exit(1)
     with path.open() as f:
         return f.read()
 
@@ -87,7 +84,7 @@ def _supports_flag(compiler: str, flag: str) -> bool:
         exe = tmp_path / "test.out"
         src.write_text("int main(void) { return 0; }")
         result = subprocess.run(
-            shlex.split(compiler) + [str(src), flag, "-o", str(exe)],
+            [compiler, str(src), flag, "-o", str(exe)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -95,7 +92,8 @@ def _supports_flag(compiler: str, flag: str) -> bool:
 
 
 def _print_build_summary(
-    libraries: list[str],
+    libraries_c: list[str],
+    libraries_cpp: list[str],
     extra_compile_args: list[str],
     extra_link_args: list[str],
     include_dirs: list[str],
@@ -105,7 +103,8 @@ def _print_build_summary(
     """Print a summary of the build configuration.
 
     Args:
-        libraries (list): Libraries to link against.
+        libraries_c (list): C Libraries to link against.
+        libraries_cpp (list): C++ libraries to link against.
         extra_compile_args (list): Extra compiler arguments.
         extra_link_args (list): Extra linker arguments.
         include_dirs (list): Include directories.
@@ -113,8 +112,17 @@ def _print_build_summary(
         extra_objects (list): Extra object files to link.
     """
     print("Build configuration summary:")
-    print(f"  Platform: {sys.platform}")
-    print(f"  Libraries: {libraries}")
+    print("Platform:")
+    print(f"  OS: {sys.platform}")
+    print(f"  Machine: {platform.machine()}")
+    print(f"  Architecture: {platform.architecture()[0]}")
+    print(
+        f"  Python: {platform.python_implementation()} {platform.python_version()} ({platform.python_compiler()})"
+    )
+    print(f"  Uname: {platform.uname()}")
+    print("Build options:")
+    print(f"  C Libraries: {libraries_c}")
+    print(f"  C++ Libraries: {libraries_cpp}")
     print(f"  Extra compile args: {extra_compile_args}")
     print(f"  Extra link args: {extra_link_args}")
     print(f"  Include dirs: {include_dirs}")
@@ -127,7 +135,7 @@ def _ensure_blake3_sources(blake3_dir: Path, version: str) -> None:
 
     Args:
         blake3_dir (Path): Directory where BLAKE3 sources should be located.
-        version (str): Version tag to clone from the BLAKE3 repository.
+        version (str): Version to clone from the BLAKE3 repository.
     """
     if blake3_dir.exists() and any(blake3_dir.iterdir()):
         print(f"BLAKE3 sources already present at {blake3_dir.resolve()}. Skipping clone.")
@@ -188,7 +196,7 @@ class _build_ext_with_cpp11(_build_ext):
             """
             # If compiling a .cpp file, add -std=c++11 if not present
             if src.endswith(".cpp") and "-std=c++11" not in extra_postargs:
-                extra_postargs = list(extra_postargs) + ["-std=c++11"]
+                extra_postargs = extra_postargs + ["-std=c++11"]
             return orig_compile(obj, src, ext, cc_args, extra_postargs, pp_opts)
 
         self.compiler._compile = custom_compile
@@ -205,25 +213,26 @@ SimdFeature = namedtuple("SimdFeature", ["flags", "filename"])
 def _detect_blake3_simd_support(
     compiler: str,
     blake3_compile_args: list[str],
+    is_x86: bool,
+    is_arm: bool,
 ) -> List[SimdFeature]:
     """Detect supported SIMD features for BLAKE3 and update compile args as needed.
 
     Args:
         compiler (str): Compiler executable name.
         blake3_compile_args (list[str]): List of compile arguments to update with disables/enables.
+        is_x86 (bool): True if the current architecture is x86/x86_64.
+        is_arm (bool): True if the current architecture is ARM64 (arm64/aarch64).
 
     Returns:
         List[SimdFeature]: Each SimdFeature contains 'flags' (list of str) and 'filename' (str) for a SIMD file.
     """
     supported_simd: List[SimdFeature] = []
-    machine = platform.machine().lower()
-    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
-    is_arm = "arm" in machine or "aarch64" in machine
 
-    def _add_simd_flag(flags: List[str], disable_option: str, src_file: str) -> bool:
+    def _add_simd_flag(flags: List[str], disable_option: str, src_filename: str) -> bool:
         # All flags in the list must be supported
         if all(_supports_flag(compiler, flag) for flag in flags if flag):
-            supported_simd.append(SimdFeature(flags, src_file))
+            supported_simd.append(SimdFeature(flags, src_filename))
             return True
         else:
             blake3_compile_args.append(disable_option)
@@ -252,7 +261,7 @@ def _compile_blake3_simd_objects(
     blake3_dir: Path,
     extra_compile_args: list[str],
     compiler: str,
-) -> list[str]:
+) -> list[Path]:
     """Compile BLAKE3 SIMD source files to object files and return their paths.
 
     Args:
@@ -262,65 +271,60 @@ def _compile_blake3_simd_objects(
         compiler (str): Compiler executable.
 
     Returns:
-        list[str]: List of paths to compiled object files.
+        list[Path]: List of paths to compiled object files.
     """
-    extra_objects = []
+    simd_objects = []
     for simd in supported_simd:
         src = blake3_dir / simd.filename
         if src.exists():
             obj = blake3_dir / (simd.filename + ".o")
-            compile_args = list(extra_compile_args)
-            compile_args += simd.flags
+            compile_args = extra_compile_args + simd.flags
             print(f"Compiling {src} with {compile_args} -> {obj}")
-            subprocess.run([compiler, "-c", str(src)] + compile_args + ["-o", str(obj)], check=True)
-            extra_objects.append(str(obj))
-    return extra_objects
+            subprocess.run(
+                [compiler, "-c", str(src), *compile_args, "-o", str(obj)],
+                check=True,
+            )
+            simd_objects.append(obj)
+    return simd_objects
 
 
-def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[list[str], set[str]]:
+def _detect_and_compile_blake3_asm(
+    blake3_dir: Path,
+    compiler: str,
+    is_x86: bool,
+    is_arm: bool,
+) -> tuple[list[Path], set[str]]:
     """Detect and compile BLAKE3 assembly files for the current platform and compiler.
 
     Args:
         blake3_dir (Path): Path to the BLAKE3 source directory.
         compiler (str): Compiler executable name.
+        is_x86 (bool): True if the current architecture is x86/x86_64.
+        is_arm (bool): True if the current architecture is ARM64 (arm64/aarch64).
 
     Returns:
-        tuple[list[str], set[str]]: (asm_objects, asm_flags)
+        tuple[list[Path], set[str]]: (asm_objects, asm_flags)
             asm_objects: List of compiled object file paths.
             asm_flags: Set of SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
     """
-    asm_objects: list[str] = []
-    asm_flags: set[str] = set()
-    machine = platform.machine().lower()
-    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
-    is_arm = "arm" in machine or "aarch64" in machine
+    asm_objects = []
+    asm_flags = set()
 
     def _add_asm_file(asm_path: Path, flag: str) -> None:
         if asm_path.exists():
-            if (
-                sys.platform == "win32"
-                and asm_path.suffix.lower() == ".asm"
-                and "gcc" not in compiler.lower()
-            ):
+            suffix = asm_path.suffix.lower()
+            if suffix == ".asm" and sys.platform == "win32" and "gcc" not in compiler.lower():
                 obj_path = asm_path.parent / (asm_path.stem + ".obj")
+                subprocess.run(
+                    ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
+                    check=True,
+                    cwd=str(asm_path.parent),
+                )
             else:
                 obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
-            print(f"Compiling assembly: {asm_path} -> {obj_path}")
-            suffix = asm_path.suffix.lower()
-            if suffix == ".s":
                 subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
-            elif suffix == ".asm":
-                if sys.platform == "win32" and "gcc" not in compiler.lower():
-                    subprocess.run(
-                        ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
-                        check=True,
-                        cwd=str(asm_path.parent),
-                    )
-                else:
-                    subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
-            else:
-                raise RuntimeError(f"Unknown assembly file type: {asm_path}")
-            asm_objects.append(str(obj_path))
+            print(f"Compiled assembly: {asm_path} -> {obj_path}")
+            asm_objects.append(obj_path)
             asm_flags.add(flag)
 
     if sys.platform == "win32":
@@ -334,14 +338,12 @@ def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[lis
             _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_msvc.asm", "-msse4.1")
             _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_msvc.asm", "-mavx2")
             _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_msvc.asm", "-mavx512f")
-    elif sys.platform.startswith("linux") or sys.platform == "darwin":
-        if is_x86:
-            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_unix.S", "-msse2")
-            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_unix.S", "-msse4.1")
-            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_unix.S", "-mavx2")
-            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_unix.S", "-mavx512f")
-        elif is_arm:
-            pass
+    elif is_x86:
+        _add_asm_file(blake3_dir / "blake3_sse2_x86-64_unix.S", "-msse2")
+        _add_asm_file(blake3_dir / "blake3_sse41_x86-64_unix.S", "-msse4.1")
+        _add_asm_file(blake3_dir / "blake3_avx2_x86-64_unix.S", "-mavx2")
+        _add_asm_file(blake3_dir / "blake3_avx512_x86-64_unix.S", "-mavx512f")
+
     return asm_objects, asm_flags
 
 
@@ -388,6 +390,7 @@ def main() -> None:
 
     ffibuilder_blake3 = FFI()
     ffibuilder_blake3.cdef(
+        # No const/restrict qualifiers here, as these files are mixed with C++.
         """
         void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
         void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
@@ -402,14 +405,13 @@ def main() -> None:
     )
 
     # Platform-specific build options
-    libraries_c = []
-    libraries_cpp = []
-    extra_compile_args = []
-    extra_link_args: list[str] = []
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_arm = machine in ("arm64", "aarch64")
+    compiler = _detect_compiler()
+
     include_dirs: list[Path] = []
     library_dirs: list[Path] = []
-
-    compiler = _detect_compiler()
     if sys.platform.startswith("linux"):
         libraries_c = ["ssl", "crypto", "gomp"]
         libraries_cpp = ["tbb", "stdc++", "gomp"]
@@ -425,17 +427,28 @@ def main() -> None:
     elif sys.platform == "darwin":
         libraries_c = ["ssl", "crypto"]
         libraries_cpp = ["tbb", "c++"]
-        extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3"]
-        extra_link_args = ["-lomp"]
-        # Add include/library dirs for both OpenSSL and libomp
-        for prefix in [
-            Path("/opt/homebrew/opt/openssl"),
-            Path("/usr/local/opt/openssl"),
-            Path("/opt/homebrew/opt/libomp"),
-            Path("/usr/local/opt/libomp"),
-            Path("/opt/homebrew/opt/tbb"),
-            Path("/usr/local/opt/tbb"),
-        ]:
+        min_version_flag = (
+            f"-mmacosx-version-min={os.environ.get('MACOSX_DEPLOYMENT_TARGET', '11.0')}"
+        )
+        extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3", min_version_flag]
+        extra_link_args = ["-lomp", min_version_flag]
+        # Detect architecture and set Homebrew prefix accordingly
+        if is_arm:
+            # Add -arch arm64 for both compile and link args to ensure correct architecture
+            extra_compile_args += ["-arch", "arm64"]
+            extra_link_args += ["-arch", "arm64"]
+            brew_prefixes = [
+                Path("/opt/homebrew/opt/openssl"),
+                Path("/opt/homebrew/opt/libomp"),
+                Path("/opt/homebrew/opt/tbb"),
+            ]
+        else:
+            brew_prefixes = [
+                Path("/usr/local/opt/openssl"),
+                Path("/usr/local/opt/libomp"),
+                Path("/usr/local/opt/tbb"),
+            ]
+        for prefix in brew_prefixes:
             if prefix.exists():
                 include_dirs.append(prefix / "include")
                 library_dirs.append(prefix / "lib")
@@ -458,17 +471,16 @@ def main() -> None:
                 Path(r"C:/msys64/mingw64"),
                 Path(r"C:/msys2/mingw64"),
             ]:
-                include_dir = prefix / "include"
-                lib_dir = prefix / "lib"
-                if include_dir.exists() and lib_dir.exists():
-                    include_dirs.append(include_dir)
-                    library_dirs.append(lib_dir)
+                if prefix.exists():
+                    include_dirs.append(prefix / "include")
+                    library_dirs.append(prefix / "lib")
                     break
         else:
             # MSVC
             libraries_c = ["libssl", "libcrypto"]
             libraries_cpp = ["tbb12"]
             extra_compile_args = ["/openmp", "-O2"]
+            extra_link_args = []
         # Check all possible Dependecy install locations
         for prefix in [
             Path(r"C:\Program Files\OpenSSL"),
@@ -483,17 +495,6 @@ def main() -> None:
     else:
         raise RuntimeError("Unsupported platform")
 
-    # Add nphash directory to include_dirs so _npblake3.h is found
-    nphash_dir = Path(__file__).parent
-    if nphash_dir not in include_dirs:
-        include_dirs.append(nphash_dir)
-
-    # Add blake3_dir to include_dirs
-    blake3_dir = nphash_dir.parent / "third_party" / "blake3"
-    _ensure_blake3_sources(blake3_dir, version="1.8.2")
-    if blake3_dir.exists():
-        include_dirs.append(blake3_dir)
-
     # Try to add optional flags if supported
     for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
         if _supports_flag(compiler, flag):
@@ -502,19 +503,19 @@ def main() -> None:
             else:
                 extra_compile_args.append(flag)
 
-    # Dependencies
-    include_paths = [str(p) for p in include_dirs]
-    library_paths = [str(p) for p in library_dirs]
+    # Add BLAKE3 sources
+    nphash_dir = Path(__file__).parent
+    include_dirs.append(nphash_dir)  # Ensure _npblake3.h is found
 
-    # Add C source
-    c_source_blake2b = _get_c_source(nphash_dir / "_npblake2b.c")
-    c_source_sha256 = _get_c_source(nphash_dir / "_npsha256.c")
+    blake3_dir = nphash_dir.parent / "third_party" / "blake3"
+    _ensure_blake3_sources(blake3_dir, version="1.8.2")
+    include_dirs.append(blake3_dir)
 
-    c_sources_blake3 = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
+    c_paths_blake3 = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
     core_c_files = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
     if tbb_enabled:
         core_c_files.append("blake3_tbb.cpp")
-    c_sources_blake3 += [
+    c_paths_blake3 += [
         os.path.relpath(blake3_dir / fname, nphash_dir)
         for fname in core_c_files
         if (blake3_dir / fname).exists()
@@ -532,28 +533,31 @@ def main() -> None:
 
     # BLAKE3 hardware acceleration detection and compilation
     if asm_enabled:
-        extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
+        extra_objects, asm_flags = _detect_and_compile_blake3_asm(
+            blake3_dir, compiler, is_x86, is_arm
+        )
     else:
         extra_objects, asm_flags = [], set()
     if simd_enabled:
-        supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
-    else:
-        supported_simd = []
-        if sys.platform == "darwin":
-            blake3_compile_args.append("-DBLAKE3_USE_NEON=0")
-    filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
-    if simd_enabled:
+        supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args, is_x86, is_arm)
+        filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
         extra_objects += _compile_blake3_simd_objects(
             supported_simd=filtered_simd,
             blake3_dir=blake3_dir,
             extra_compile_args=extra_compile_args,
             compiler=compiler,
         )
+    elif sys.platform == "darwin":
+        blake3_compile_args.append("-DBLAKE3_USE_NEON=0")
 
     # Add extension build
+    include_paths = [str(p) for p in include_dirs]
+    library_paths = [str(p) for p in library_dirs]
+    object_paths = [str(p) for p in extra_objects]
+
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
-        c_source_blake2b,
+        _get_c_source(nphash_dir / "_npblake2b.c"),
         libraries=libraries_c,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
@@ -564,18 +568,18 @@ def main() -> None:
     ffibuilder_blake3.set_source(
         "_npblake3ffi",
         '#include "_npblake3.h"\n',
-        sources=c_sources_blake3,  # use relative paths to avoid issues with CFFI output structure
+        sources=c_paths_blake3,  # use relative paths to avoid issues with CFFI output structure
         libraries=libraries_cpp if tbb_enabled else libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
         library_dirs=library_paths,
-        extra_objects=extra_objects,
+        extra_objects=object_paths,
     )
 
     ffibuilder_sha256.set_source(
         "_npsha256ffi",
-        c_source_sha256,
+        _get_c_source(nphash_dir / "_npsha256.c"),
         libraries=libraries_c,
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
@@ -584,12 +588,13 @@ def main() -> None:
     )
 
     _print_build_summary(
-        libraries_c + (libraries_cpp if tbb_enabled else []),
+        libraries_c,
+        libraries_cpp,
         extra_compile_args,
         extra_link_args,
         include_paths,
         library_paths,
-        extra_objects,
+        object_paths,
     )
 
     if tbb_enabled:

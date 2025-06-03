@@ -53,8 +53,8 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
-      .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
-      .\vcpkg\vcpkg.exe install tbb:x64-windows
+      call .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      call .\vcpkg\vcpkg.exe install tbb:x64-windows
       ```
    3. Copy the TBB DLLs to your build directory (if needed):
       ```bash
