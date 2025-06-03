@@ -353,19 +353,30 @@ def main() -> None:
     Raises:
         RuntimeError: If the platform is unsupported.
     """
-    # Parse --no-tbb flag and env var
+    # Parse flags and env vars
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3"
     )
+    parser.add_argument(
+        "--no-simd",
+        action="store_true",
+        help="Disable SIMD C acceleration for BLAKE3 (SSE/AVX/NEON)",
+    )
+    parser.add_argument(
+        "--no-asm",
+        action="store_true",
+        help="Disable assembly acceleration for BLAKE3 (platform-specific .S/.asm files)",
+    )
     args = parser.parse_args()
-    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip().lower() not in {
-        "",
-        "0",
-        "false",
-        "no",
-    }
+
+    on_values = {"1", "true", "yes", "on", "enabled"}
+    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "0").strip().lower() in on_values
+    no_simd_env = os.environ.get("NPBLAKE3_NO_SIMD", "0").strip().lower() in on_values
+    no_asm_env = os.environ.get("NPBLAKE3_NO_ASM", "0").strip().lower() in on_values
     tbb_enabled = not args.no_tbb and not no_tbb_env
+    simd_enabled = not args.no_simd and not no_simd_env
+    asm_enabled = not args.no_asm and not no_asm_env
 
     # FFI builders
     ffibuilder_blake2b = FFI()
@@ -520,15 +531,22 @@ def main() -> None:
         )
 
     # BLAKE3 hardware acceleration detection and compilation
-    extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
-    supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
+    if asm_enabled:
+        extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
+    else:
+        extra_objects, asm_flags = [], set()
+    if simd_enabled:
+        supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
+    else:
+        supported_simd = []
     filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
-    extra_objects += _compile_blake3_simd_objects(
-        supported_simd=filtered_simd,
-        blake3_dir=blake3_dir,
-        extra_compile_args=extra_compile_args,
-        compiler=compiler,
-    )
+    if simd_enabled:
+        extra_objects += _compile_blake3_simd_objects(
+            supported_simd=filtered_simd,
+            blake3_dir=blake3_dir,
+            extra_compile_args=extra_compile_args,
+            compiler=compiler,
+        )
 
     # Add extension build
     ffibuilder_blake2b.set_source(
