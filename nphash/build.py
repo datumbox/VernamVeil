@@ -301,7 +301,6 @@ def _compile_blake3_simd_objects(
             filtered_flags = [f for f in simd.flags if f not in {"/arch:SSE2", "/arch:SSE41"}]
             compile_args = extra_compile_args + filtered_flags
 
-            suffix = simd_path.suffix.lower()
             if is_msvc:
                 obj = simd_path.parent / (simd_path.stem + ".obj")
                 subprocess.run(
