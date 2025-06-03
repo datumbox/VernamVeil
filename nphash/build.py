@@ -303,6 +303,7 @@ def _compile_blake3_simd_objects(
 
             if is_msvc:
                 obj = simd_path.parent / (simd_path.stem + ".obj")
+                print(f"Compiling {simd_path} with {compile_args} -> {obj}")
                 subprocess.run(
                     [compiler, "/c", str(simd_path), *compile_args, f"/Fo{obj.name}"],
                     check=True,
@@ -310,11 +311,11 @@ def _compile_blake3_simd_objects(
                 )
             else:
                 obj = simd_path.parent / (simd_path.stem + ".o")
+                print(f"Compiling {simd_path} with {compile_args} -> {obj}")
                 subprocess.run(
                     [compiler, "-c", str(simd_path), *compile_args, "-o", str(obj)],
                     check=True,
                 )
-            print(f"Compiling {simd_path} with {compile_args} -> {obj}")
             simd_objects.append(obj)
     return simd_objects
 
@@ -344,6 +345,7 @@ def _detect_and_compile_blake3_asm(
             suffix = asm_path.suffix.lower()
             if suffix == ".asm" and sys.platform == "win32" and "gcc" not in compiler.lower():
                 obj_path = asm_path.parent / (asm_path.stem + ".obj")
+                print(f"Compiling assembly: {asm_path} -> {obj_path}")
                 subprocess.run(
                     ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
                     check=True,
@@ -351,8 +353,8 @@ def _detect_and_compile_blake3_asm(
                 )
             else:
                 obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
+                print(f"Compiling assembly: {asm_path} -> {obj_path}")
                 subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
-            print(f"Compiled assembly: {asm_path} -> {obj_path}")
             asm_objects.append(obj_path)
             asm_flags.add(flag)
 
