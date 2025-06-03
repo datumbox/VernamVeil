@@ -185,3 +185,7 @@ jobs:
 
       - name: Run tests
         run: python -m unittest discover -s tests/ -v
+
+      - name: Assert C module import
+        if: matrix.build-steps != ''
+        run: python -c "from vernamveil._types import _HAS_C_MODULE; assert _HAS_C_MODULE"
