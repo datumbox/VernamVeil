@@ -543,8 +543,11 @@ def main() -> None:
             "-flto",
             "-fomit-frame-pointer",
             "-ftree-vectorize",
+            "-fvisibility=hidden",
             "-Wl,-O1",
             "-Wl,--as-needed",
+            #"-D_FORTIFY_SOURCE=2",
+            #"-fstack-protector-strong",
         ]:
             if _supports_flag(compiler, flag):
                 if flag.startswith("-Wl,"):
