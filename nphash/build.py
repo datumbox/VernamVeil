@@ -461,7 +461,14 @@ def main() -> None:
         min_version_flag = (
             f"-mmacosx-version-min={os.environ.get('MACOSX_DEPLOYMENT_TARGET', '11.0')}"
         )
-        extra_compile_args = ["-std=c99", "-Xpreprocessor", "-fopenmp", "-O3", min_version_flag, "-DNDEBUG"]
+        extra_compile_args = [
+            "-std=c99",
+            "-Xpreprocessor",
+            "-fopenmp",
+            "-O3",
+            min_version_flag,
+            "-DNDEBUG",
+        ]
         extra_link_args = ["-lomp", min_version_flag]
         # Detect architecture and set Homebrew prefix accordingly
         if is_arm:
