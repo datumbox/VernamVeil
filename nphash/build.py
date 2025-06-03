@@ -431,6 +431,9 @@ def main() -> None:
         extra_link_args = ["-lomp", min_version_flag]
         # Detect architecture and set Homebrew prefix accordingly
         if is_arm:
+            # Add -arch arm64 for both compile and link args to ensure correct architecture
+            extra_compile_args += ["-arch", "arm64"]
+            extra_link_args += ["-arch", "arm64"]
             brew_prefixes = [
                 Path("/opt/homebrew/opt/openssl"),
                 Path("/opt/homebrew/opt/libomp"),
