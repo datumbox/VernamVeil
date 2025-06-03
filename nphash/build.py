@@ -539,6 +539,7 @@ def main() -> None:
         supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
     else:
         supported_simd = []
+        blake3_compile_args.append("-DBLAKE3_USE_NEON=0")
     filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
     if simd_enabled:
         extra_objects += _compile_blake3_simd_objects(
