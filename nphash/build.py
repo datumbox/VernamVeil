@@ -538,12 +538,13 @@ def main() -> None:
         raise RuntimeError("Unsupported platform")
 
     # Try to add optional flags if supported
-    for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
-        if _supports_flag(compiler, flag):
-            if flag.startswith("-Wl,"):
-                extra_link_args.append(flag)
-            else:
-                extra_compile_args.append(flag)
+    if not is_msvc:
+        for flag in ["-flto", "-fomit-frame-pointer", "-ftree-vectorize", "-Wl,-O1", "-Wl,--as-needed"]:
+            if _supports_flag(compiler, flag):
+                if flag.startswith("-Wl,"):
+                    extra_link_args.append(flag)
+                else:
+                    extra_compile_args.append(flag)
 
     # Add BLAKE3 sources
     nphash_dir = Path(__file__).parent
