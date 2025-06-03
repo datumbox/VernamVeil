@@ -277,6 +277,74 @@ def _compile_blake3_simd_objects(
     return extra_objects
 
 
+def _detect_and_compile_blake3_asm(blake3_dir: Path, compiler: str) -> tuple[list[str], set[str]]:
+    """Detect and compile BLAKE3 assembly files for the current platform and compiler.
+
+    Args:
+        blake3_dir (Path): Path to the BLAKE3 source directory.
+        compiler (str): Compiler executable name.
+
+    Returns:
+        tuple[list[str], set[str]]: (asm_objects, asm_flags)
+            asm_objects: List of compiled object file paths.
+            asm_flags: Set of SIMD flags implemented in assembly (e.g. '-msse2', '-msse4.1', ...)
+    """
+    asm_objects: list[str] = []
+    asm_flags: set[str] = set()
+    machine = platform.machine().lower()
+    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_arm = "arm" in machine or "aarch64" in machine
+
+    def _add_asm_file(asm_path: Path, flag: str) -> None:
+        if asm_path.exists():
+            if (
+                sys.platform == "win32"
+                and asm_path.suffix.lower() == ".asm"
+                and "gcc" not in compiler.lower()
+            ):
+                obj_path = asm_path.parent / (asm_path.stem + ".obj")
+            else:
+                obj_path = asm_path.with_suffix(asm_path.suffix + ".o")
+            print(f"Compiling assembly: {asm_path} -> {obj_path}")
+            suffix = asm_path.suffix.lower()
+            if suffix == ".s":
+                subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
+            elif suffix == ".asm":
+                if sys.platform == "win32" and "gcc" not in compiler.lower():
+                    subprocess.run(
+                        ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
+                        check=True,
+                        cwd=str(asm_path.parent),
+                    )
+                else:
+                    subprocess.run([compiler, "-c", str(asm_path), "-o", str(obj_path)], check=True)
+            else:
+                raise RuntimeError(f"Unknown assembly file type: {asm_path}")
+            asm_objects.append(str(obj_path))
+            asm_flags.add(flag)
+
+    if sys.platform == "win32":
+        if "gcc" in compiler.lower():
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_gnu.S", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_gnu.S", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_gnu.S", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_gnu.S", "-mavx512f")
+        else:
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_windows_msvc.asm", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_windows_msvc.asm", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_windows_msvc.asm", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_windows_msvc.asm", "-mavx512f")
+    elif sys.platform.startswith("linux") or sys.platform == "darwin":
+        if is_x86:
+            _add_asm_file(blake3_dir / "blake3_sse2_x86-64_unix.S", "-msse2")
+            _add_asm_file(blake3_dir / "blake3_sse41_x86-64_unix.S", "-msse4.1")
+            _add_asm_file(blake3_dir / "blake3_avx2_x86-64_unix.S", "-mavx2")
+            _add_asm_file(blake3_dir / "blake3_avx512_x86-64_unix.S", "-mavx512f")
+        elif is_arm:
+            pass
+    return asm_objects, asm_flags
+
+
 def main() -> None:
     """Main entry point for building the nphash CFFI extensions.
 
@@ -285,19 +353,30 @@ def main() -> None:
     Raises:
         RuntimeError: If the platform is unsupported.
     """
-    # Parse --no-tbb flag and env var
+    # Parse flags and env vars
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--no-tbb", action="store_true", help="Disable TBB (Threading Building Blocks) for BLAKE3"
     )
+    parser.add_argument(
+        "--no-simd",
+        action="store_true",
+        help="Disable SIMD C acceleration for BLAKE3 (SSE/AVX/NEON)",
+    )
+    parser.add_argument(
+        "--no-asm",
+        action="store_true",
+        help="Disable assembly acceleration for BLAKE3 (platform-specific .S/.asm files)",
+    )
     args = parser.parse_args()
-    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "").strip().lower() not in {
-        "",
-        "0",
-        "false",
-        "no",
-    }
+
+    on_values = {"1", "true", "yes", "on", "enabled"}
+    no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "0").strip().lower() in on_values
+    no_simd_env = os.environ.get("NPBLAKE3_NO_SIMD", "0").strip().lower() in on_values
+    no_asm_env = os.environ.get("NPBLAKE3_NO_ASM", "0").strip().lower() in on_values
     tbb_enabled = not args.no_tbb and not no_tbb_env
+    simd_enabled = not args.no_simd and not no_simd_env
+    asm_enabled = not args.no_asm and not no_asm_env
 
     # FFI builders
     ffibuilder_blake2b = FFI()
@@ -441,7 +520,6 @@ def main() -> None:
         if (blake3_dir / fname).exists()
     ]
 
-    # BLAKE3 SIMD feature detection and flags
     # Do NOT specify -std=c99 or -std=c++11. This avoids errors related to C++11 features in C code.
     blake3_compile_args = [arg for arg in extra_compile_args if not arg.startswith("-std=")]
     if tbb_enabled:
@@ -452,14 +530,25 @@ def main() -> None:
             ]
         )
 
-    # Detect SIMD support and Compile them to objects
-    supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
-    extra_objects = _compile_blake3_simd_objects(
-        supported_simd=supported_simd,
-        blake3_dir=blake3_dir,
-        extra_compile_args=extra_compile_args,
-        compiler=compiler,
-    )
+    # BLAKE3 hardware acceleration detection and compilation
+    if asm_enabled:
+        extra_objects, asm_flags = _detect_and_compile_blake3_asm(blake3_dir, compiler)
+    else:
+        extra_objects, asm_flags = [], set()
+    if simd_enabled:
+        supported_simd = _detect_blake3_simd_support(compiler, blake3_compile_args)
+    else:
+        supported_simd = []
+        if sys.platform == "darwin":
+            blake3_compile_args.append("-DBLAKE3_USE_NEON=0")
+    filtered_simd = [simd for simd in supported_simd if not (set(simd.flags) & asm_flags)]
+    if simd_enabled:
+        extra_objects += _compile_blake3_simd_objects(
+            supported_simd=filtered_simd,
+            blake3_dir=blake3_dir,
+            extra_compile_args=extra_compile_args,
+            compiler=compiler,
+        )
 
     # Add extension build
     ffibuilder_blake2b.set_source(

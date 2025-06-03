@@ -14,7 +14,8 @@ Before building, ensure you have the following dependencies installed:
 
 - **Python 3.10 or later**
 - **pip** (Python package manager)
-- **gcc/g++** (GNU Compiler Collection, including C++ support)
+- **gcc/g++** (GNU Compiler Collection, including C++ support)  
+  _or_ **Microsoft Visual Studio Build Tools** (MSVC, for Windows)
 - **OpenMP** (usually included with gcc/g++)
 - **OpenSSL development libraries**
 - **TBB (Threading Building Blocks) development libraries**
@@ -44,10 +45,11 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    
    On Windows (with Chocolatey and vcpkg):
    
-   1. Install OpenSSL with Chocolatey:
+   1. Install OpenSSL and Visual Studio 2022 Build Tools with Chocolatey:
       ```bash
-      choco install openssl
+      choco install openssl visualstudio2022buildtools --no-progress -y
       ```
+      This installs the required compiler and assembler (ml64) for building assembly files on Windows.
    2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
@@ -63,6 +65,11 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
       set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
       set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
       ```
+   5. Open a Developer Command Prompt for VS 2022, or run the following command to set up the build environment in your terminal (replace the path if you installed Visual Studio elsewhere):
+      ```cmd
+      call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+      ```
+      This step is required to enable the Microsoft assembler (ml64) and compiler for building the C extension with assembly files.
 
 2. **Install Python dependencies**
 
@@ -88,21 +95,49 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    pip install .
    ```
 
-## Disabling TBB (Threading Building Blocks) for BLAKE3
+## Disabling BLAKE3 Acceleration (TBB, SIMD, Assembly)
 
-By default, the build uses [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multithreaded BLAKE3 hashing if possible. If you encounter issues installing TBB or want a simpler build (at the cost of single-threaded BLAKE3), you can disable TBB support:
+By default, the build enables all available hardware and threading acceleration for BLAKE3, including:
+- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multithreaded hashing
+- SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON)
+- Hand-written assembly acceleration (platform-specific .S/.asm files)
 
-- **Using an environment variable:**
-  ```bash
-  export NPBLAKE3_NO_TBB=1
-  python build.py
-  ```
-- **Or using a command-line flag:**
-  ```bash
-  python build.py --no-tbb
-  ```
+If you encounter issues installing these dependencies or want a simpler build (at the cost of reduced performance), you can disable any of these features individually:
 
-If either is set, the build will not require TBB or C++ support, and will not use `blake3_tbb.cpp`. This is useful for platforms where TBB is difficult to install. **Note:** Disabling TBB is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
+- **Disable TBB (multithreading):**
+  - Using an environment variable:
+    ```bash
+    export NPBLAKE3_NO_TBB=1
+    python build.py
+    ```
+  - Or using a command-line flag:
+    ```bash
+    python build.py --no-tbb
+    ```
+
+- **Disable SIMD C acceleration (SSE/AVX/NEON):**
+  - Using an environment variable:
+    ```bash
+    export NPBLAKE3_NO_SIMD=1
+    python build.py
+    ```
+  - Or using a command-line flag:
+    ```bash
+    python build.py --no-simd
+    ```
+
+- **Disable assembly acceleration:**
+  - Using an environment variable:
+    ```bash
+    export NPBLAKE3_NO_ASM=1
+    python build.py
+    ```
+  - Or using a command-line flag:
+    ```bash
+    python build.py --no-asm
+    ```
+
+If any of these are set, the build will skip the corresponding acceleration features. This is useful for platforms where these features are difficult to install or cause build issues. **Note:** Disabling any acceleration is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
 
 ## Usage
 

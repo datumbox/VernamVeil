@@ -37,6 +37,26 @@ jobs:
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
+          - os: ubuntu-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_nosimd'
+            build-steps: |
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
+              cd nphash
+              export NPBLAKE3_NO_SIMD=1
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
+          - os: ubuntu-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_noasm'
+            build-steps: |
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
+              cd nphash
+              export NPBLAKE3_NO_ASM=1
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
@@ -55,6 +75,16 @@ jobs:
               python build.py
               ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
+          - os: macos-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_nosimd'
+            build-steps: |
+              brew install libomp openssl tbb
+              cd nphash
+              export NPBLAKE3_NO_SIMD=1
+              python build.py
+              ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
           - os: windows-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
@@ -67,7 +97,8 @@ jobs:
               copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
               set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
-              choco install openssl --no-progress -y
+              choco install openssl visualstudio2022buildtools --no-progress -y
+              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
               cd nphash
               python build.py
               dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
@@ -77,9 +108,29 @@ jobs:
             postfix: '_notbb'
             build-steps: |
               @echo on
-              choco install openssl --no-progress -y
+              choco install openssl visualstudio2022buildtools --no-progress -y
+              call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
               cd nphash
               set NPBLAKE3_NO_TBB=1
+              python build.py
+              dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+
+          - os: windows-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_noasm'
+            build-steps: |
+              @echo on
+              if not exist vcpkg (
+                git clone https://github.com/microsoft/vcpkg.git
+                call .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+                call .\vcpkg\vcpkg.exe install tbb:x64-windows
+              )
+              copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
+              set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
+              set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
+              choco install openssl --no-progress -y
+              cd nphash
+              set NPBLAKE3_NO_ASM=1
               python build.py
               dir _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
 
@@ -113,7 +164,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: vcpkg
-          key: vcpkg_windows-latest_dev_numpy_cffi
+          key: vcpkg_windows-latest
 
       - name: Install Python dependencies and library
         run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
