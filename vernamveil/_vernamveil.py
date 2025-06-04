@@ -289,55 +289,60 @@ class VernamVeil(_Cypher):
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
-        # Maximum size based on chunks and padding
+        # Precompute all pre/post pad lengths and generate all random bytes
+        chunk_size = self._chunk_size
         pad_min, pad_max = self._padding_range
         pad_width = pad_max - pad_min + 1
-        estimated_size = (
-            2 * total_count * (self._delimiter_size + pad_max)
-            + message_len
-            + decoy_count * self._chunk_size
-        )
+        pad_count = 2 * total_count
+        pad_lens = [
+            secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            for _ in range(pad_count)
+        ]  # the order of padding lengths is not important; we pop in reverse order
+        random_size = sum(pad_lens) + decoy_count * chunk_size
+        random_bytes = memoryview(secrets.token_bytes(random_size))
+
+        # Calculate the exact size from the delimiters, message, and random bytes
+        exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray(estimated_size)
-        current_loc = 0
+        noisy_blocks = bytearray(exact_size)
+        current_rec_loc = 0
+        current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
-            if chunk_range is not None:
-                start, end = chunk_range
-                chunk: memoryview | bytes = message[start:end]
-                chunk_len = end - start
-            else:
-                chunk = secrets.token_bytes(self._chunk_size)
-                chunk_len = self._chunk_size
+            record = []
 
             # Pre-pad
-            pre_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            pre_pad_len = pad_lens.pop()
             if pre_pad_len > 0:
-                next_loc = current_loc + pre_pad_len
-                noisy_blocks[current_loc:next_loc] = secrets.token_bytes(pre_pad_len)
-                current_loc = next_loc
-
-            next_loc = current_loc + self._delimiter_size
-            noisy_blocks[current_loc:next_loc] = delimiter
-            current_loc = next_loc
+                next_rnd_loc = current_rnd_loc + pre_pad_len
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
+            record.append(delimiter)
 
             # Actual data
-            next_loc = current_loc + chunk_len
-            noisy_blocks[current_loc:next_loc] = chunk
-            current_loc = next_loc
+            if chunk_range is not None:
+                start, end = chunk_range
+                record.append(message[start:end])
+            else:
+                next_rnd_loc = current_rnd_loc + chunk_size
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
 
             # Post-pad
-            next_loc = current_loc + self._delimiter_size
-            noisy_blocks[current_loc:next_loc] = delimiter
-            current_loc = next_loc
-
-            post_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            record.append(delimiter)
+            post_pad_len = pad_lens.pop()
             if post_pad_len > 0:
-                next_loc = current_loc + post_pad_len
-                noisy_blocks[current_loc:next_loc] = secrets.token_bytes(post_pad_len)
-                current_loc = next_loc
+                next_rnd_loc = current_rnd_loc + post_pad_len
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
 
-        return memoryview(noisy_blocks)[:current_loc]
+            # Add the record to the noisy blocks
+            for part in record:
+                next_rec_loc = current_rec_loc + len(part)
+                noisy_blocks[current_rec_loc:next_rec_loc] = part
+                current_rec_loc = next_rec_loc
+
+        return memoryview(noisy_blocks)
 
     def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
         """Remove noise and extract real chunks from a shuffled noisy message.
@@ -391,7 +396,7 @@ class VernamVeil(_Cypher):
         # Estimate the shuffled real positions
         shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
 
-        # Calculate exact size from the chunk ranges
+        # Calculate the exact size from the chunk ranges
         exact_size = sum(
             end - start for start, end in (all_chunk_ranges[pos] for pos in shuffled_positions)
         )
@@ -402,9 +407,8 @@ class VernamVeil(_Cypher):
         current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
-            chunk_len = end - start
 
-            next_loc = current_loc + chunk_len
+            next_loc = current_loc + end - start
             message[current_loc:next_loc] = view[start:end]
             current_loc = next_loc
 
