@@ -10,9 +10,9 @@ The C and C++ code is compiled and wrapped for Python using the [cffi](https://c
 
 ## Hardware Acceleration and SIMD Support
 
-The BLAKE3 implementation in this extension uses the official [BLAKE3 C/C++ codebase](https://github.com/BLAKE3-team/BLAKE3) and can automatically take advantage of hardware acceleration features for optimal performance. Specifically, BLAKE3 supports the following SIMD instruction sets, if available on your platform and enabled during build:
+The BLAKE3 implementation in this extension uses the official [BLAKE3 C/C++ codebase](https://github.com/BLAKE3-team/BLAKE3/tree/master/c) and can automatically take advantage of hardware acceleration features for optimal performance. Specifically, BLAKE3 supports the following SIMD instruction sets, if available on your platform and enabled during build:
 
-- SSE2, SSE4.1, AVX2, AVX512 (on x86 or x86_64)
+- SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64)
 - NEON (on ARM)
 - Hand-written assembly routines (where supported)
 

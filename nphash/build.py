@@ -438,7 +438,7 @@ def main() -> None:
 
     # Platform-specific build options
     machine = platform.machine().lower()
-    is_x86 = any(plat in machine for plat in {"x86", "amd64", "i386", "i686"})
+    is_x86 = any(plat in machine for plat in {"x86_64", "amd64"})
     is_arm = machine in ("arm64", "aarch64")
     compiler = _detect_compiler()
     is_msvc = sys.platform == "win32" and "gcc" not in compiler.lower()
