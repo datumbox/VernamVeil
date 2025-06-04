@@ -298,16 +298,26 @@ class VernamVeil(_Cypher):
             + decoy_count * self._chunk_size
         )
 
+        # Precompute all pre/post pad lengths and generate random padding bytes
+        pad_lens = [
+            secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            for _ in range(2 * total_count)
+        ]
+        padding = memoryview(secrets.token_bytes(sum(pad_lens)))
+
         # Build the noisy message by combining fake and shuffled real chunks
         noisy_blocks = bytearray(estimated_size)
-        current_loc = 0
+        current_rec_loc = 0
+        current_pad_loc = 0
         for chunk_range in shuffled_chunk_ranges:
             record: list[memoryview | bytes] = []
 
             # Pre-pad
-            pre_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            pre_pad_len = pad_lens.pop(0)
             if pre_pad_len > 0:
-                record.append(secrets.token_bytes(pre_pad_len))
+                next_pad_loc = current_pad_loc + pre_pad_len
+                record.append(padding[current_pad_loc:next_pad_loc])
+                current_pad_loc = next_pad_loc
             record.append(delimiter)
 
             # Actual data
@@ -319,17 +329,19 @@ class VernamVeil(_Cypher):
 
             # Post-pad
             record.append(delimiter)
-            post_pad_len = secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
+            post_pad_len = pad_lens.pop(0)
             if post_pad_len > 0:
-                record.append(secrets.token_bytes(post_pad_len))
+                next_pad_loc = current_pad_loc + post_pad_len
+                record.append(padding[current_pad_loc:next_pad_loc])
+                current_pad_loc = next_pad_loc
 
             # Add the record to the noisy blocks
             for part in record:
-                next_loc = current_loc + len(part)
-                noisy_blocks[current_loc:next_loc] = part
-                current_loc = next_loc
+                next_rec_loc = current_rec_loc + len(part)
+                noisy_blocks[current_rec_loc:next_rec_loc] = part
+                current_rec_loc = next_rec_loc
 
-        return memoryview(noisy_blocks)[:current_loc]
+        return memoryview(noisy_blocks)[:current_rec_loc]
 
     def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
         """Remove noise and extract real chunks from a shuffled noisy message.
