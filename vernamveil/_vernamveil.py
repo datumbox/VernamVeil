@@ -301,7 +301,7 @@ class VernamVeil(_Cypher):
         random_size = sum(pad_lens) + decoy_count * chunk_size
         random_bytes = memoryview(secrets.token_bytes(random_size))
 
-        # Calculate thhe exact size from the delimiters, message, and random bytes
+        # Calculate the exact size from the delimiters, message, and random bytes
         exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
