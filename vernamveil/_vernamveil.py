@@ -289,38 +289,34 @@ class VernamVeil(_Cypher):
         for i in shuffled_positions:
             shuffled_chunk_ranges[i] = next(chunk_ranges_iter)
 
-        # Precompute all pre/post pad lengths and generate random padding bytes
+        # Precompute all pre/post pad lengths and generate all random bytes
+        chunk_size = self._chunk_size
         pad_min, pad_max = self._padding_range
         pad_width = pad_max - pad_min + 1
         pad_count = 2 * total_count
         pad_lens = [
             secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
             for _ in range(pad_count)
-        ]
-        pad_size = sum(pad_lens)
-        padding = memoryview(secrets.token_bytes(pad_size))
+        ]  # the order of padding lengths is not important; we pop in reverse order
+        random_size = sum(pad_lens) + decoy_count * chunk_size
+        random_bytes = memoryview(secrets.token_bytes(random_size))
 
-        # Exact size based on chunks and padding
-        exact_size = (
-            pad_count * self._delimiter_size
-            + pad_size
-            + message_len
-            + decoy_count * self._chunk_size
-        )
+        # Calculate thhe exact size from the delimiters, message, and random bytes
+        exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
         noisy_blocks = bytearray(exact_size)
         current_rec_loc = 0
-        current_pad_loc = 0
+        current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
-            record: list[memoryview | bytes] = []
+            record = []
 
             # Pre-pad
-            pre_pad_len = pad_lens.pop(0)
+            pre_pad_len = pad_lens.pop()
             if pre_pad_len > 0:
-                next_pad_loc = current_pad_loc + pre_pad_len
-                record.append(padding[current_pad_loc:next_pad_loc])
-                current_pad_loc = next_pad_loc
+                next_rnd_loc = current_rnd_loc + pre_pad_len
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
             record.append(delimiter)
 
             # Actual data
@@ -328,15 +324,17 @@ class VernamVeil(_Cypher):
                 start, end = chunk_range
                 record.append(message[start:end])
             else:
-                record.append(secrets.token_bytes(self._chunk_size))
+                next_rnd_loc = current_rnd_loc + chunk_size
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
 
             # Post-pad
             record.append(delimiter)
-            post_pad_len = pad_lens.pop(0)
+            post_pad_len = pad_lens.pop()
             if post_pad_len > 0:
-                next_pad_loc = current_pad_loc + post_pad_len
-                record.append(padding[current_pad_loc:next_pad_loc])
-                current_pad_loc = next_pad_loc
+                next_rnd_loc = current_rnd_loc + post_pad_len
+                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                current_rnd_loc = next_rnd_loc
 
             # Add the record to the noisy blocks
             for part in record:
@@ -398,7 +396,7 @@ class VernamVeil(_Cypher):
         # Estimate the shuffled real positions
         shuffled_positions = self._determine_shuffled_indices(seed, real_count, total_count)
 
-        # Calculate exact size from the chunk ranges
+        # Calculate the exact size from the chunk ranges
         exact_size = sum(
             end - start for start, end in (all_chunk_ranges[pos] for pos in shuffled_positions)
         )
