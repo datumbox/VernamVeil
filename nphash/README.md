@@ -8,6 +8,16 @@ The C and C++ code is compiled and wrapped for Python using the [cffi](https://c
 
 > **Note:** The `build.py` script will automatically download the required BLAKE3 C and C++ source files from the [official BLAKE3 repository](https://github.com/BLAKE3-team/BLAKE3) if they are not already present locally.
 
+## Hardware Acceleration and SIMD Support
+
+The BLAKE3 implementation in this extension uses the official [BLAKE3 C/C++ codebase](https://github.com/BLAKE3-team/BLAKE3) and can automatically take advantage of hardware acceleration features for optimal performance. Specifically, BLAKE3 supports the following SIMD instruction sets, if available on your platform and enabled during build:
+
+- SSE2, SSE4.1, AVX2, AVX512 (on x86 or x86_64)
+- NEON (on ARM)
+- Hand-written assembly routines (where supported)
+
+These features are detected and enabled automatically by the build system. No manual configuration is required unless you wish to disable them (see below).
+
 ## Prerequisites
 
 Before building, ensure you have the following dependencies installed:
@@ -43,28 +53,28 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    brew install libomp openssl tbb
    ```
    
-   On Windows (with Chocolatey and vcpkg):
-   
-   1. Install OpenSSL and Visual Studio 2022 Build Tools with Chocolatey:
-      ```bash
-      choco install openssl visualstudio2022buildtools --no-progress -y
-      ```
-      This installs the required compiler and assembler (ml64) for building assembly files on Windows.
-   2. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
+   On Windows (with vcpkg and Chocolatey):
+
+   1. Install `tbb` with [vcpkg](https://github.com/microsoft/vcpkg):
       ```bash
       git clone https://github.com/microsoft/vcpkg.git
       call .\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       call .\vcpkg\vcpkg.exe install tbb:x64-windows
       ```
-   3. Copy the TBB DLLs to your build directory (if needed):
+   2. Copy the TBB DLLs to your build directory (if needed):
       ```bash
       copy .\vcpkg\installed\x64-windows\bin\tbb*.dll nphash\
       ```
-   4. Set the environment variables for include and lib paths (for the current session):
+   3. Set the environment variables for include and lib paths (if needed for the current session):
       ```bash
       set INCLUDE=%CD%\vcpkg\installed\x64-windows\include;%INCLUDE%
       set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
       ```
+   4. Install OpenSSL and Visual Studio 2022 Build Tools with Chocolatey:
+      ```bash
+      choco install openssl visualstudio2022buildtools --no-progress -y
+      ```
+      This installs the required compiler and assembler (ml64) for building assembly files on Windows.
    5. Open a Developer Command Prompt for VS 2022, or run the following command to set up the build environment in your terminal (replace the path if you installed Visual Studio elsewhere):
       ```cmd
       call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
@@ -98,7 +108,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
 ## Disabling BLAKE3 Acceleration (TBB, SIMD, Assembly)
 
 By default, the build enables all available hardware and threading acceleration for BLAKE3, including:
-- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multithreaded hashing
+- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multi-threaded hashing
 - SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON)
 - Hand-written assembly acceleration (platform-specific .S/.asm files)
 

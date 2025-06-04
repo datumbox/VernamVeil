@@ -75,7 +75,7 @@ This approach enables novel forms of key generation, especially for those who en
 2. **Synthetic IV Seed Initialisation, Stateful Seed Evolution & Avalanche Effects**: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as a keyed hash of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by key-hashing the previous seed with the chunk's plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).
 3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimizing the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
 4. **Modular & Configurable Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs, cryptographic hashes or OTP. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs. 
-5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `vectorise=True`, with a slower pure Python fallback available. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be compiled (with `cffi` and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
+5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `vectorise=True`, with a slower pure Python fallback available. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be compiled (with `cffi` and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. BLAKE3, in particular, is only available via this extension and benefits from hardware acceleration, including SIMD and assembly optimisations where supported. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
 
 ---
 
@@ -84,7 +84,7 @@ This approach enables novel forms of key generation, especially for those who en
 - **Not Secure for Real Use**: This is an educational tool and experimental toy, not production-ready cryptography.
 - **Use Strong `fx` Functions**: The entire system's unpredictability hinges on the entropy and behaviour of your `fx`. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.
 - **Use Secure Seeds & Avoid Reuse**: Generate initial seeds using the provided `VernamVeil.get_initial_seed()` method which is cryptographically safe. Treat each `initial_seed` as a one-time-use context and use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.
-- **True One-Time Pad Support**: If you use the `OTPFX` callable wrapper with a truly random keystream (generated from a physical entropy source), VernamVeil can be configured to operate as a one-time pad cypher. The keystream must be at least as long as the message, used only once, and never reused for any other message. Generating such keystreams is challenging in practice; pseudo-random generators (including cryptographically secure ones) do not provide the same guarantees as a true one-time pad.
+- **True One-Time Pad Support**: If you use the `OTPFX` callable wrapper with a truly random keystream (generated from a physical entropy source), VernamVeil can be configured to operate as an One-Time Pad cypher. The keystream must be at least as long as the message, used only once, and never reused for any other message. Generating such keystreams is challenging in practice; pseudo-random generators (including cryptographically secure ones) do not provide the same guarantees as a true one-time pad.
 - **Message Ordering & Replay**: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct `initial_seed`. The Synthetic IV mechanism, by incorporating the current timestamp, ensures each cyphertext is unique even for identical messages and seeds, and specifically provides resilience against accidental seed reuse for the first message. However, the cypher itself does not guarantee full replay protection or enforce message ordering; these must be handled by the application. For strict anti-replay or ordering requirements, implement explicit mechanisms (such as sequence numbers or nonces) at a higher layer.
 
 ---
@@ -260,11 +260,13 @@ from vernamveil import FX, hash_numpy
 
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
-    # Implements a standard keyed hash-based pseudorandom function (PRF) using blake3.
+    # Implements a standard keyed hash-based pseudorandom function (PRF) using BLAKE3.
+    # BLAKE3 is only available when the C extension is installed, and benefits from hardware acceleration
+    # (SIMD and assembly) for maximum performance.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Hash using blake3
+    # Hash using BLAKE3
     return hash_numpy(i, seed, "blake3", hash_size=1024)  # requires the C module
 
 
@@ -451,7 +453,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 - **Compact Implementation**: The core cypher implementation (`_vernamveil.py`) is about 200 lines of code, excluding comments, documentation and empty lines.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
-- **Optional C/C++ Module for Fast Hashing**: Includes an optional C/C++ module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b, BLAKE3 and SHA-256 keyed hashing for vectorised `fx` functions. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (e.g., gcc and g++) are required to build it. See the [`nphash` README](nphash/README.md) for details.
+- **Optional C/C++ Module for Fast Hashing**: Includes an optional C/C++ module (`nphash`) built with [cffi](https://cffi.readthedocs.io/), enabling fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays. BLAKE3 support is exclusive to this extension and makes use of hardware acceleration for optimal performance. In particular, BLAKE3 uses the [official implementation](https://github.com/BLAKE3-team/BLAKE3) and can take advantage of SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512 (on x86 or x86_64), and NEON (on ARM), as well as hand-written assembly, if supported by your hardware and compiler. These acceleration features are detected and enabled automatically during build. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, MSVC) are required to build it. See the [`nphash` README](nphash/README.md) for details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
@@ -467,7 +469,7 @@ pip install .[dev,numpy,cffi]
 
 ### ⚡ Fast Vectorised `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b, BLAKE3 and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. If not present, a slower pure NumPy fallback is used.
+If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b, BLAKE3, and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. BLAKE3 is only available via the C extension and is hardware-accelerated for maximum speed. If the extension is not present, a slower pure NumPy fallback is used (excluding BLAKE3).
 
 **To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
