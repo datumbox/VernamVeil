@@ -241,11 +241,11 @@ from vernamveil import FX, hash_numpy
 
 def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # The secure default `fx` of the VernamVeil cypher.
-    # Implements a standard keyed hash-based pseudorandom function (PRF) using blake2b.
+    # Implements a standard keyed hash-based pseudorandom function (PRF) using BLAKE2b.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
-    # Hash using blake2b
+    # Hash using BLAKE2b
     return hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
