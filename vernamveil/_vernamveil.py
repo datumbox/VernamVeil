@@ -305,11 +305,16 @@ class VernamVeil(_Cypher):
         exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray(exact_size)
+        result = bytearray(exact_size)
+        if self._fx.vectorise:
+            # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
+            buffer = np.frombuffer(result, dtype=np.uint8)
+        else:
+            buffer = result
         current_rec_loc = 0
         current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
-            record = []
+            record: list[memoryview] = []
 
             # Pre-pad
             pre_pad_len = pad_lens.pop()
@@ -339,10 +344,11 @@ class VernamVeil(_Cypher):
             # Add the record to the noisy blocks
             for part in record:
                 next_rec_loc = current_rec_loc + len(part)
-                noisy_blocks[current_rec_loc:next_rec_loc] = part
+                # Potential vectorised write; requires the assignment to be a memoryview
+                buffer[current_rec_loc:next_rec_loc] = part
                 current_rec_loc = next_rec_loc
 
-        return memoryview(noisy_blocks)
+        return memoryview(result)
 
     def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
         """Remove noise and extract real chunks from a shuffled noisy message.
@@ -402,17 +408,23 @@ class VernamVeil(_Cypher):
         )
 
         # Reconstruct and unshuffle the message
-        message = bytearray(exact_size)
+        result = bytearray(exact_size)
+        if self._fx.vectorise:
+            # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
+            buffer = np.frombuffer(result, dtype=np.uint8)
+        else:
+            buffer = result
         view = memoryview(noisy)
         current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
 
             next_loc = current_loc + end - start
-            message[current_loc:next_loc] = view[start:end]
+            # Potential vectorised write; requires the assignment to be a memoryview
+            buffer[current_loc:next_loc] = view[start:end]
             current_loc = next_loc
 
-        return message
+        return result
 
     def _xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
@@ -550,10 +562,16 @@ class VernamVeil(_Cypher):
 
         # Concatenate all parts into a single bytearray
         result = bytearray(sum(len(part) for part in output))
+        if self._fx.vectorise:
+            # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
+            buffer = np.frombuffer(result, dtype=np.uint8)
+        else:
+            buffer = result
         current_loc = 0
         for part in output:
             next_loc = current_loc + len(part)
-            result[current_loc:next_loc] = part
+            # Potential vectorised write; requires the assignment to be a memoryview
+            buffer[current_loc:next_loc] = memoryview(part)
             current_loc = next_loc
 
         return result, last_seed
