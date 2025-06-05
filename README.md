@@ -267,10 +267,10 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.
 
     # Hash using BLAKE3
-    return hash_numpy(i, seed, "blake3", hash_size=1024)  # requires the C module
+    return hash_numpy(i, seed, "blake3", hash_size=512)  # requires the C module
 
 
-fx = FX(keystream_fn, block_size=1024, vectorise=True)
+fx = FX(keystream_fn, block_size=512, vectorise=True)
 ```
 
 ---
@@ -498,7 +498,7 @@ openssl rand -hex 16 > iv.hex
 ```bash
 vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 4.959s_
+_Time: 4.937s_
 
 **Decoding:**
 ```bash
@@ -524,7 +524,7 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 4.959 s     | 4.304 s     |
+| VernamVeil   | 4.937 s     | 4.304 s     |
 | AES-256-CBC  | 3.007 s     | 2.636 s     |
 
 ---
