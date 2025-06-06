@@ -204,7 +204,7 @@ class VernamVeil(_Cypher):
             i_arr = np.arange(num_raw_hash_outputs, dtype=np.uint64)
 
             # Get the raw bytes from hashing these indices.
-            raw_bytes = hash_numpy(i_arr, seed, self._hash_name)
+            raw_bytes = hash_numpy(i_arr, seed, self._hash_name, self._HASH_LENGTH)
 
             # Truncate the raw bytes to the exact total number of bytes needed for the uint64s.
             truncated_bytes = raw_bytes.ravel()[:num_bytes_needed].reshape(num_uint64_needed, 8)
