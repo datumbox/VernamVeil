@@ -139,7 +139,7 @@ class VernamVeil(_Cypher):
         """
         if not isinstance(num_bytes, int):
             raise TypeError("num_bytes must be an integer.")
-        if num_bytes <= 0:
+        elif num_bytes <= 0:
             raise ValueError("num_bytes must be a positive integer.")
 
         return secrets.token_bytes(num_bytes)
@@ -216,7 +216,7 @@ class VernamVeil(_Cypher):
             byteorder: Literal["little", "big"] = "big"
             random_ints = [
                 int.from_bytes(self._hash(seed, [i.to_bytes(8, byteorder)]), byteorder)
-                for i in range(1, total_count)
+                for i in range(total_count - 1)
             ]
 
         # Shuffle deterministically based on the hashed seed
@@ -245,7 +245,7 @@ class VernamVeil(_Cypher):
             # Vectorised generation using numpy
             # Generate enough uint64s to cover the length
             n_uint64 = math.ceil(length / self._fx.block_size)
-            indices = np.arange(1, n_uint64 + 1, dtype=np.uint64)
+            indices = np.arange(n_uint64, dtype=np.uint64)
             # Generate uint8 for bytes
             keystream = self._fx(indices, seed)
             # Flatten the array to 1D and slice to the required length
@@ -255,7 +255,7 @@ class VernamVeil(_Cypher):
         else:
             # Standard generation using python
             result = bytearray()
-            i = 1
+            i = 0
             total = 0
             while total < length:
                 # Generate bytes

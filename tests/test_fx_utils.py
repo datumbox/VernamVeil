@@ -193,7 +193,7 @@ class TestFxUtils(unittest.TestCase):
             fx_loaded = load_fx_from_file(tmp_path)
             self.assertTrue(callable(fx_loaded))
             self.assertTrue(
-                isinstance(fx_loaded(np.arange(1, 10, dtype=np.uint64), bytes()), np.ndarray)
+                isinstance(fx_loaded(np.arange(10, dtype=np.uint64), bytes()), np.ndarray)
             )
         finally:
             tmp_path.unlink()

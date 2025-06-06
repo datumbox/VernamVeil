@@ -160,7 +160,7 @@ def fold_bytes_to_uint64(
         return hashes.view(np.uint64).reshape(-1).byteswap()
     elif fold_type == "full":
         # Compute the shifts for each byte position (big-endian)
-        shifts = np.arange((hashes.shape[1] - 1) * 8, -1, -8, dtype=np.uint64)
+        shifts = np.arange(8 * cols - 8, -1, -8, dtype=np.uint64)
 
         # Cast to uint64
         hashes_u64 = hashes.astype(np.uint64, copy=False)

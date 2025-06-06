@@ -48,7 +48,7 @@ class TestHashUtils(unittest.TestCase):
                         )
                         with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
                             seed = secrets.token_bytes(64)
-                            i = np.arange(1, 1000, dtype=np.uint64)
+                            i = np.arange(1000, dtype=np.uint64)
 
                             output = fold_bytes_to_uint64(
                                 hash_numpy(i, seed, hash_name), fold_type=fold_type
@@ -97,7 +97,7 @@ class TestHashUtils(unittest.TestCase):
                             f"_HAS_C_MODULE={has_c}, hash_name={hash_name}, fold_type={fold_type}"
                         )
                         with patch("vernamveil._hash_utils._HAS_C_MODULE", has_c):
-                            i = np.arange(1, 1000, dtype=np.uint64)
+                            i = np.arange(1000, dtype=np.uint64)
 
                             output = fold_bytes_to_uint64(
                                 hash_numpy(i, None, hash_name), fold_type=fold_type

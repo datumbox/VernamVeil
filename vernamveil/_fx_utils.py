@@ -500,7 +500,7 @@ def check_fx_sanity(
 
     # 1. Type and output size check
     if fx.vectorise:
-        arr = np.arange(1, num_samples + 1, dtype=np.uint64)
+        arr = np.arange(num_samples, dtype=np.uint64)
         outputs = fx(arr, seed)
         if not (
             isinstance(outputs, np.ndarray)
@@ -518,7 +518,7 @@ def check_fx_sanity(
             passed = False
         outputs_list = [bytes(row) for row in outputs]
     else:
-        outputs_list = [fx(i, seed) for i in range(1, num_samples + 1)]
+        outputs_list = [fx(i, seed) for i in range(num_samples)]
         if not all(isinstance(o, (bytes, bytearray)) for o in outputs_list):
             warnings.warn("fx output is not bytes or bytearray.")
             passed = False
@@ -540,11 +540,11 @@ def check_fx_sanity(
     # 3. Seed sensitivity
     alt_seed = bytes((b ^ 0xAA) for b in seed)
     if fx.vectorise:
-        arr = np.arange(1, num_samples + 1, dtype=np.uint64)
+        arr = np.arange(num_samples, dtype=np.uint64)
         outputs_alt = fx(arr, alt_seed)
         outputs_alt_list = [bytes(row) for row in outputs_alt]
     else:
-        outputs_alt_list = [fx(i, alt_seed) for i in range(1, num_samples + 1)]
+        outputs_alt_list = [fx(i, alt_seed) for i in range(num_samples)]
     if not isinstance(fx, OTPFX) and outputs_list == outputs_alt_list:
         warnings.warn("fx output does not depend on seed.")
         passed = False
