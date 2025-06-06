@@ -98,7 +98,7 @@ class VernamVeil(_Cypher):
 
         # Constants
         if hash_name == "blake3":
-            self._HASH_METHOD: Callable[..., Any] = blake3
+            self._HASH_METHOD: Callable[..., Any] = partial(blake3, deepcopy=False)
         else:
             self._HASH_METHOD = partial(hashlib.new, hash_name)
         self._HASH_LENGTH = self._HASH_METHOD().digest_size
@@ -120,7 +120,7 @@ class VernamVeil(_Cypher):
         )
 
     @classmethod
-    def get_initial_seed(cls, num_bytes: int = 64) -> bytes:
+    def get_initial_seed(cls, num_bytes: int = 32) -> bytes:
         """Generate a cryptographically secure initial random seed.
 
         This method uses the `secrets` module to generate a random sequence of bytes
@@ -162,14 +162,18 @@ class VernamVeil(_Cypher):
         Returns:
             bytes: The resulting hash digest.
         """
-        n = len(msg_list)
+        # Preallocate memory for the data
+        data = bytearray(sum(len(part) for part in msg_list))
+        current_loc = 0
+        for part in msg_list:
+            next_loc = current_loc + len(part)
+            data[current_loc:next_loc] = part
+            current_loc = next_loc
         key = cast(bytes, key)
         if use_hmac or self._hash_name == "sha256":  # sha256 does not support key argument
-            hasher = hmac.new(key, msg=msg_list[0] if n > 0 else None, digestmod=self._HASH_METHOD)
+            hasher = hmac.new(key, msg=data, digestmod=self._HASH_METHOD)
         else:
-            hasher = self._HASH_METHOD(msg_list[0] if n > 0 else b"", key=key)
-        for i in range(1, n):
-            hasher.update(msg_list[i])
+            hasher = self._HASH_METHOD(data, key=key)
         return hasher.digest()
 
     def _determine_shuffled_indices(
