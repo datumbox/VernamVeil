@@ -147,11 +147,17 @@ def fold_bytes_to_uint64(
         ValueError: If the input array is not 2D or has less than 8 columns.
         ValueError: If fold_type is not 'full' or 'view'.
     """
-    if hashes.ndim != 2 or hashes.shape[1] < 8:
-        raise ValueError("Input must be a 2D array with at least 8 columns per row.")
+    if hashes.ndim != 2:
+        raise ValueError("The input must be a 2D array.")
+    cols = hashes.shape[1]
+    if cols < 8:
+        raise ValueError("The input must have at least 8 columns per row.")
     if fold_type == "view":
         # Create a view of the first 8 bytes as uint64 (big-endian)
-        return hashes[:, :8].view(np.uint64).reshape(-1).byteswap()
+        if cols > 8:
+            # If there are more than 8 columns, we only take the first 8
+            hashes = hashes[:, :8]
+        return hashes.view(np.uint64).reshape(-1).byteswap()
     elif fold_type == "full":
         # Compute the shifts for each byte position (big-endian)
         shifts = np.arange((hashes.shape[1] - 1) * 8, -1, -8, dtype=np.uint64)
