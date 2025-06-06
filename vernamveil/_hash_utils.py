@@ -26,7 +26,14 @@ class blake3:
     This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
     """
 
-    def __init__(self, data: bytes | bytearray = b"", *, key: bytes | None = None, length: int = 32, deepcopy: bool = True) -> None:
+    def __init__(
+        self,
+        data: bytes | bytearray = b"",
+        *,
+        key: bytes | None = None,
+        length: int = 32,
+        deepcopy: bool = True,
+    ) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:
