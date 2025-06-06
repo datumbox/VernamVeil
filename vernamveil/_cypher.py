@@ -251,6 +251,7 @@ class _Cypher(ABC):
                         bytes_processed += len(block)
                         progress_callback(bytes_processed, total_size)
             elif mode == "decode":
+                last_block = False
                 buffer = bytearray()
                 while exception_queue.empty():
                     block = queue_get(read_q)
@@ -263,8 +264,7 @@ class _Cypher(ABC):
                             if not block and buffer:
                                 # This is EOF, set delim_index to the end of the buffer
                                 delim_index = len(buffer)
-                                # Set the delimiter_size to 0 to avoid slicing out of bounds and detect EOF
-                                delimiter_size = 0
+                                last_block = True
                             else:
                                 break  # No complete block in buffer yet or EOF handled
 
@@ -276,12 +276,15 @@ class _Cypher(ABC):
                         if not queue_put(write_q, processed_block):
                             break
 
+                        if last_block:
+                            buffer = bytearray()  # Clear buffer
+                            break
+
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + delimiter_size :]
 
-                        if delimiter_size > 0:
-                            # Refresh block delimiter
-                            block_delimiter, current_seed = self._generate_delimiter(current_seed)
+                        # Refresh block delimiter
+                        block_delimiter, current_seed = self._generate_delimiter(current_seed)
 
                     if progress_callback:
                         bytes_processed += len(block)
