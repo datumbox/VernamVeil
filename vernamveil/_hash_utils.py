@@ -26,7 +26,7 @@ class blake3:
     This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
     """
 
-    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32) -> None:
+    def __init__(self, data: bytes = b"", key: bytes | None = None, length: int = 32) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:
@@ -57,13 +57,13 @@ class blake3:
         return 64
 
     @property
-    def key_size(self) -> int:
-        """The size of the key used for keyed hashing.
+    def name(self) -> str:
+        """The name of the hash algorithm.
 
         Returns:
-            int: 32 bytes, which is the standard key size for BLAKE3.
+            str: The name of the hash algorithm, which is "blake3".
         """
-        return 32
+        return blake3.__name__
 
     def copy(self) -> "blake3":
         """Return a copy of the current blake3 hash object.
@@ -85,7 +85,7 @@ class blake3:
         """
         self._data.extend(data)
 
-    def digest(self, *, length: int | None = None) -> bytearray:
+    def digest(self, length: int | None = None) -> bytearray:
         """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
 
         Args:
@@ -115,7 +115,7 @@ class blake3:
         )
         return out
 
-    def hexdigest(self, *, length: int | None = None) -> str:
+    def hexdigest(self, length: int | None = None) -> str:
         """Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.
 
         Args:
