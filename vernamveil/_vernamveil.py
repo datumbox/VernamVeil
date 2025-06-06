@@ -190,7 +190,7 @@ class VernamVeil(_Cypher):
         # Create a list with all positions
         positions = list(range(total_count))
 
-        hashes: Sequence[int]
+        random_ints: Sequence[int]
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
 
@@ -210,11 +210,11 @@ class VernamVeil(_Cypher):
             truncated_bytes = raw_bytes.ravel()[:num_bytes_needed].reshape(num_uint64_needed, 8)
 
             # Fold these bytes into an array of uint64s.
-            hashes = fold_bytes_to_uint64(truncated_bytes)
+            random_ints = fold_bytes_to_uint64(truncated_bytes)
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"
-            hashes = [
+            random_ints = [
                 int.from_bytes(self._hash(seed, [i.to_bytes(8, byteorder)]), byteorder)
                 for i in range(1, total_count)
             ]
@@ -222,7 +222,7 @@ class VernamVeil(_Cypher):
         # Shuffle deterministically based on the hashed seed
         for i in range(total_count - 1, 0, -1):
             # Create a random number between 0 and i
-            j = hashes[i - 1] % (i + 1)
+            j = random_ints[i - 1] % (i + 1)
 
             # Swap elements at positions i and j
             positions[i], positions[j] = positions[j], positions[i]
