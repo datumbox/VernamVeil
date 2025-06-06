@@ -147,9 +147,11 @@ def fold_bytes_to_uint64(
         ValueError: If the input array is not 2D or has less than 8 columns.
         ValueError: If fold_type is not 'full' or 'view'.
     """
+    if hashes.ndim != 2:
+        raise ValueError("The input must be a 2D array.")
     cols = hashes.shape[1]
-    if hashes.ndim != 2 or cols < 8:
-        raise ValueError("Input must be a 2D array with at least 8 columns per row.")
+    if cols < 8:
+        raise ValueError("The input must have at least 8 columns per row.")
     if fold_type == "view":
         # Create a view of the first 8 bytes as uint64 (big-endian)
         if cols > 8:
