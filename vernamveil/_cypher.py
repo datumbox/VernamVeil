@@ -113,7 +113,6 @@ class _Cypher(ABC):
             ValueError: If `mode` is not "encode" or "decode".
             TypeError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not an integer.
             ValueError: If `buffer_size`, `read_queue_size`, or `write_queue_size` is not a positive integer.
-            ValueError: If the end of file is reached in decode mode and a block is incomplete (missing delimiter).
             exception: If an unexpected error occurs in the reader or writer threads.
         """
         # Input validation
@@ -225,11 +224,21 @@ class _Cypher(ABC):
             delimiter_size = len(block_delimiter)
 
             if mode == "encode":
+                first_block = True
                 while exception_queue.empty():
                     # Read from the file
                     block = queue_get(read_q)
                     if not block:
                         break  # End of file or exception occurred
+
+                    if not first_block:
+                        # Write a fixed delimiter to mark the end of the previous block
+                        if not queue_put(write_q, block_delimiter):
+                            break
+                        # Refresh the block delimiter
+                        block_delimiter, current_seed = self._generate_delimiter(current_seed)
+                    else:
+                        first_block = False
 
                     # Encode the content block
                     processed_block, current_seed = self.encode(block, current_seed)
@@ -238,28 +247,26 @@ class _Cypher(ABC):
                     if not queue_put(write_q, processed_block):
                         break
 
-                    # Write a fixed delimiter to mark the end of the block
-                    if not queue_put(write_q, block_delimiter):
-                        break
-
-                    # Refresh the block delimiter
-                    block_delimiter, current_seed = self._generate_delimiter(current_seed)
-
                     if progress_callback:
                         bytes_processed += len(block)
                         progress_callback(bytes_processed, total_size)
             elif mode == "decode":
+                last_block = False
                 buffer = bytearray()
                 while exception_queue.empty():
                     block = queue_get(read_q)
-                    if not block and not buffer:
-                        break  # End of file with nothing left to process or exception occurred
 
                     buffer.extend(block)
                     while exception_queue.empty():
                         delim_index = buffer.find(block_delimiter)
                         if delim_index == -1:
-                            break  # No complete block in buffer yet
+                            # No delimiter found
+                            if not block and buffer:
+                                # This is EOF, set delim_index to the end of the buffer
+                                delim_index = len(buffer)
+                                last_block = True
+                            else:
+                                break  # No complete block in buffer yet or EOF handled
 
                         # Extract the complete block up to the delimiter
                         complete_block = memoryview(buffer)[:delim_index]
@@ -269,22 +276,23 @@ class _Cypher(ABC):
                         if not queue_put(write_q, processed_block):
                             break
 
+                        if last_block:
+                            buffer = bytearray()  # Clear buffer
+                            break
+
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + delimiter_size :]
 
                         # Refresh block delimiter
                         block_delimiter, current_seed = self._generate_delimiter(current_seed)
 
-                    if progress_callback:
+                    if progress_callback and block:
                         bytes_processed += len(block)
                         progress_callback(bytes_processed, total_size)
 
-                    if not block:
-                        # No more data to read, but there may be leftover data without a delimiter
-                        if buffer:
-                            exception_queue.put(
-                                ValueError("Incomplete block at end of file: missing delimiter.")
-                            )
+                    if (
+                        not block and not buffer
+                    ):  # End of file with nothing left to process or exception occurred
                         break
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
