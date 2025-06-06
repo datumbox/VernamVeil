@@ -286,7 +286,7 @@ class _Cypher(ABC):
                         # Refresh block delimiter
                         block_delimiter, current_seed = self._generate_delimiter(current_seed)
 
-                    if progress_callback:
+                    if progress_callback and block:
                         bytes_processed += len(block)
                         progress_callback(bytes_processed, total_size)
 
