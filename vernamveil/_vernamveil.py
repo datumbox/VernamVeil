@@ -201,7 +201,7 @@ class VernamVeil(_Cypher):
             num_raw_hash_outputs = math.ceil(num_bytes_needed / self._HASH_LENGTH)
 
             # Generate input indices for these raw hash outputs.
-            i_arr = np.arange(1, num_raw_hash_outputs + 1, dtype=np.uint64)
+            i_arr = np.arange(num_raw_hash_outputs, dtype=np.uint64)
 
             # Get the raw bytes from hashing these indices.
             raw_bytes = hash_numpy(i_arr, seed, self._hash_name)
