@@ -193,8 +193,24 @@ class VernamVeil(_Cypher):
         hashes: Sequence[int]
         if self._fx.vectorise:
             # Vectorised: generate all hashes at once
-            i_arr = np.arange(1, total_count, dtype=np.uint64)
-            hashes = fold_bytes_to_uint64(hash_numpy(i_arr, seed, self._hash_name))
+
+            # Calculate the number of raw hash primitive outputs required.
+            # Each uint64 needs 8 bytes. self._HASH_LENGTH is bytes per raw hash output.
+            num_uint64_needed = total_count - 1
+            num_bytes_needed = 8 * num_uint64_needed
+            num_raw_hash_outputs = math.ceil(num_bytes_needed / self._HASH_LENGTH)
+
+            # Generate input indices for these raw hash outputs.
+            i_arr = np.arange(1, num_raw_hash_outputs + 1, dtype=np.uint64)
+
+            # Get the raw bytes from hashing these indices.
+            raw_bytes = hash_numpy(i_arr, seed, self._hash_name)
+
+            # Truncate the raw bytes to the exact total number of bytes needed for the uint64s.
+            truncated_bytes = raw_bytes.ravel()[:num_bytes_needed].reshape(num_uint64_needed, 8)
+
+            # Fold these bytes into an array of uint64s.
+            hashes = fold_bytes_to_uint64(truncated_bytes)
         else:
             # Standard: generate hashes one by one
             byteorder: Literal["little", "big"] = "big"
