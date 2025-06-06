@@ -24,19 +24,29 @@ class blake3:
     """A hashlib-style BLAKE3 hash object using the C backend (single-shot only).
 
     This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
+    It accumulates data via update() calls and processes all chunks in C upon digest().
     """
 
-    def __init__(self, data: bytes = b"", key: bytes | None = None, length: int = 32) -> None:
+    def __init__(
+        self,
+        data: bytes | bytearray | memoryview = b"",
+        key: bytes | bytearray | memoryview | None = None,
+        length: int = 32,
+    ) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:
-            data (bytes): Initial data to hash. Defaults to an empty byte string.
-            key (bytes, optional): Optional key for keyed hashing. If None, no key is used.
+            data (bytes or bytearray or memoryview): Initial data to hash. Defaults to an empty byte string.
+            key (bytes or bytearray or memoryview, optional): Optional key for keyed hashing. If None, no key is used.
             length (int): Desired output length in bytes. Default is 32 bytes.
         """
         self._key = key
         self._length = length
-        self._data = bytearray(data)
+        self._data_chunks: list[bytes | bytearray | memoryview]
+        if data:
+            self._data_chunks = [data]
+        else:
+            self._data_chunks = []
 
     @property
     def digest_size(self) -> int:
@@ -71,19 +81,17 @@ class blake3:
         Returns:
             blake3: A new blake3 object with the same state as the current one.
         """
-        new_obj = blake3()
-        new_obj._key = self._key
-        new_obj._length = self._length
-        new_obj._data = self._data.copy()
+        new_obj = blake3(key=self._key, length=self._length)
+        new_obj._data_chunks = list(self._data_chunks)
         return new_obj
 
-    def update(self, data: bytes | memoryview) -> None:
+    def update(self, data: bytes | bytearray | memoryview) -> None:
         """Update the hash object with additional data.
 
         Args:
-            data (bytes or memoryview): Data to add to the hash. Can be a bytes object or a memoryview.
+            data (bytes or bytearray or memoryview): Data to add to the hash.
         """
-        self._data.extend(data)
+        self._data_chunks.append(data)
 
     def digest(self, length: int | None = None) -> bytearray:
         """Compute the BLAKE3 hash of the accumulated data with optional keying and length.
@@ -104,10 +112,34 @@ class blake3:
             length = self._length
 
         ffi = _npblake3ffi.ffi
+
+        # This list holds references to cdata objects created by ffi.from_buffer().
+        # It's crucial for preventing these objects from being garbage-collected
+        # while their underlying memory is still in use by C functions.
+        # This ensures the C pointers remain valid throughout the C function call.
+        keep_alive_buffers = []
+
+        num_chunks = len(self._data_chunks)
+        if num_chunks > 0:
+            c_data_chunks_ptr = ffi.new(f"uint8_t*[{num_chunks}]")
+            c_data_lengths_ptr = ffi.new(f"size_t[{num_chunks}]")
+
+            for i, chunk_mv in enumerate(self._data_chunks):
+                c_buf = ffi.from_buffer(chunk_mv)
+                c_data_chunks_ptr[i] = c_buf
+                c_data_lengths_ptr[i] = len(chunk_mv)
+
+                keep_alive_buffers.append(c_buf)
+        else:
+            # Pass NULL pointers for empty chunk arrays if num_chunks is 0
+            c_data_chunks_ptr = ffi.NULL
+            c_data_lengths_ptr = ffi.NULL
+
         out = bytearray(length)
-        _npblake3ffi.lib.bytes_blake3(
-            ffi.from_buffer(self._data),
-            len(self._data),
+        _npblake3ffi.lib.bytes_blake3_multi_chunk(
+            c_data_chunks_ptr,
+            c_data_lengths_ptr,
+            num_chunks,
             ffi.from_buffer(self._key) if self._key is not None else ffi.NULL,
             len(self._key) if self._key is not None else 0,
             ffi.from_buffer(out),
