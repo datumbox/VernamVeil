@@ -259,16 +259,14 @@ class _Cypher(ABC):
                     while exception_queue.empty():
                         delim_index = buffer.find(block_delimiter)
                         if delim_index == -1:
-                            # No delimiter found. If this is EOF, process remaining buffer.
+                            # No delimiter found
                             if not block and buffer:
-                                # Process remaining buffer as the last block
-                                processed_block, current_seed = self.decode(
-                                    memoryview(buffer), current_seed
-                                )
-                                if not queue_put(write_q, processed_block):
-                                    break
-                                buffer = bytearray()  # Clear buffer after processing
-                            break  # No complete block in buffer yet or EOF handled
+                                # This is EOF, set delim_index to the end of the buffer
+                                delim_index = len(buffer)
+                                # Set the delimiter_size to 0 to avoid slicing out of bounds and detect EOF
+                                delimiter_size = 0
+                            else:
+                                break  # No complete block in buffer yet or EOF handled
 
                         # Extract the complete block up to the delimiter
                         complete_block = memoryview(buffer)[:delim_index]
@@ -281,8 +279,9 @@ class _Cypher(ABC):
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + delimiter_size :]
 
-                        # Refresh block delimiter
-                        block_delimiter, current_seed = self._generate_delimiter(current_seed)
+                        if delimiter_size > 0:
+                            # Refresh block delimiter
+                            block_delimiter, current_seed = self._generate_delimiter(current_seed)
 
                     if progress_callback:
                         bytes_processed += len(block)
