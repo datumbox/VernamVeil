@@ -98,7 +98,7 @@ class VernamVeil(_Cypher):
 
         # Constants
         if hash_name == "blake3":
-            self._HASH_METHOD: Callable[..., Any] = partial(blake3, deepcopy=False)
+            self._HASH_METHOD: Callable[..., Any] = blake3
         else:
             self._HASH_METHOD = partial(hashlib.new, hash_name)
         self._HASH_LENGTH = self._HASH_METHOD().digest_size

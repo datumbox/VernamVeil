@@ -26,27 +26,17 @@ class blake3:
     This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
     """
 
-    def __init__(
-        self,
-        data: bytes | bytearray = b"",
-        *,
-        key: bytes | None = None,
-        length: int = 32,
-        deepcopy: bool = True,
-    ) -> None:
+    def __init__(self, data: bytes = b"", *, key: bytes | None = None, length: int = 32) -> None:
         """Initialise a BLAKE3 hash object.
 
         Args:
-            data (bytes or bytearray): Initial data to hash. Defaults to an empty byte string.
+            data (bytes): Initial data to hash. Defaults to an empty byte string.
             key (bytes, optional): Optional key for keyed hashing. If None, no key is used.
             length (int): Desired output length in bytes. Default is 32 bytes.
-            deepcopy (bool): If True, the data is copied to ensure immutability. If False, the original data is used.
-                If deepcopy is True, the caller must ensure the `update()` is not called on this object after initialisation.
         """
         self._key = key
         self._length = length
-        self._data = data if isinstance(data, bytearray) and not deepcopy else bytearray(data)
-        self._deepcopy = deepcopy
+        self._data = bytearray(data)
 
     @property
     def digest_size(self) -> int:
@@ -84,7 +74,7 @@ class blake3:
         new_obj = blake3()
         new_obj._key = self._key
         new_obj._length = self._length
-        new_obj._data = self._data.copy() if self._deepcopy else self._data
+        new_obj._data = self._data.copy()
         return new_obj
 
     def update(self, data: bytes | memoryview) -> None:
