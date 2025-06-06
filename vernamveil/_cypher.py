@@ -290,7 +290,9 @@ class _Cypher(ABC):
                         bytes_processed += len(block)
                         progress_callback(bytes_processed, total_size)
 
-                    if not block and not buffer:  # End of file with nothing left to process or exception occurred
+                    if (
+                        not block and not buffer
+                    ):  # End of file with nothing left to process or exception occurred
                         break
             else:
                 raise ValueError("Invalid mode. Use 'encode' or 'decode'.")
