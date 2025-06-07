@@ -73,17 +73,40 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
     }
 }
 
-// Hashes a single byte array with BLAKE3, outputs variable-length hash
+// Hashes multiple data chunks with BLAKE3, outputs variable-length hash
 // - If a seed is provided, the keyed mode is used by setting the key (up to 32 bytes, zero-padded if shorter)
 // - Output is a uint8 array of length hash_size
-void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
-    // Input: byte array; each byte is hashed as a single byte block
+void bytes_blake3_multi_chunk(const uint8_t* const* data_chunks, const size_t* data_lengths, size_t num_chunks, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
+    // Input: data_chunks is an array of pointers to data buffers that are to be hashed.
+    blake3_hasher hasher;
     bool seeded = seed != NULL && seedlen > 0;
 
     // Prepare the key if seeded
     uint8_t key[BLAKE3_KEY_LEN] = {0};
     prepare_blake3_key(seeded, seed, seedlen, key);
 
-    // Hash the byte array
-    blake3_hash_bytes(data, datalen, key, seeded, out, hash_size, datalen >= MIN_PARALLEL_LEN);
+    if (seeded) {
+        // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+        blake3_hasher_init_keyed(&hasher, key);
+    } else {
+        // If no seed is provided, use the default BLAKE3 hasher
+        blake3_hasher_init(&hasher);
+    }
+
+    for (size_t i = 0; i < num_chunks; ++i) {
+         // Hash the data
+#ifdef BLAKE3_USE_TBB
+        if (data_lengths[i] >= MIN_PARALLEL_LEN) {
+            blake3_hasher_update_tbb(&hasher, data_chunks[i], data_lengths[i]);
+        } else {
+#else
+        {
+            // If not using TBB, use the standard update function
+#endif
+            blake3_hasher_update(&hasher, data_chunks[i], data_lengths[i]);
+        }
+    }
+
+    // Finalise the hash and write it to the output buffer (arbitrary length)
+    blake3_hasher_finalize(&hasher, out, hash_size);
 }
