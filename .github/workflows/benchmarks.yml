@@ -35,7 +35,7 @@ jobs:
           python -m pip install .[dev,numpy,cffi]
           cd nphash
           python build.py
-          ls -lh _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
+          ls -lh _kmpffi.* _npblake2bffi.* _npblake3ffi.* _npsha256ffi.*
           cd ..
           python -m pip install .
         shell: bash

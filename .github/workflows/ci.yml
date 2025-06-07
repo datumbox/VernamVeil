@@ -199,6 +199,6 @@ jobs:
       - name: Assert C module existence and importability
         if: matrix.build-steps != ''
         run: | 
-          ls -lh nphash/_npblake2bffi.*.* nphash/_npblake3ffi.*.* nphash/_npsha256ffi.*.*
+          ls -lh nphash/_kmpffi.* nphash/_npblake2bffi.*.* nphash/_npblake3ffi.*.* nphash/_npsha256ffi.*.*
           python -c "from vernamveil._types import _HAS_C_MODULE; assert _HAS_C_MODULE; print('The C module is importable')"
         shell: bash
