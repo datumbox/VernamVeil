@@ -8,7 +8,7 @@
 void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
 
 // Hashes multiple data chunks with BLAKE3, outputs variable-length hash
-void bytes_blake3_multi_chunk(
+void bytes_multi_chunk_blake3(
     const uint8_t* const* data_chunks, // Array of pointers to data buffers
     const size_t* data_lengths,        // Array of lengths for each buffer
     size_t num_chunks,                 // Number of chunks

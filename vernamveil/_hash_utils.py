@@ -136,7 +136,7 @@ class blake3:
             c_data_lengths_ptr = ffi.NULL
 
         out = bytearray(length)
-        _npblake3ffi.lib.bytes_blake3_multi_chunk(
+        _npblake3ffi.lib.bytes_multi_chunk_blake3(
             c_data_chunks_ptr,
             c_data_lengths_ptr,
             num_chunks,
