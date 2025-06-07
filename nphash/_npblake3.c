@@ -11,7 +11,7 @@
 #endif
 
 #define BLOCK_SIZE 8  // Each input element is a uint64 block
-#define MIN_PARALLEL_LEN (2 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
+#define MIN_PARALLEL_LEN (8 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
 
 // Inline helper to prepare a BLAKE3 key from a seed (up to 32 bytes, zero-padded if shorter)
 static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seedlen, uint8_t key[BLAKE3_KEY_LEN]) {
