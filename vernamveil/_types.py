@@ -21,15 +21,17 @@ except ImportError:
 
 # C module types and imports
 _HashType: Any
+_kmpffi: Any
 _npblake2bffi: Any
 _npblake3ffi: Any
 _npsha256ffi: Any
 try:
-    from nphash import _npblake2bffi, _npblake3ffi, _npsha256ffi
+    from nphash import _kmpffi, _npblake2bffi, _npblake3ffi, _npsha256ffi
 
     _HAS_C_MODULE = True
     _HashType = Literal["blake2b", "blake3", "sha256"]
 except ImportError:
+    _kmpffi = None
     _npblake2bffi = None
     _npblake3ffi = None
     _npsha256ffi = None

@@ -12,6 +12,7 @@ from functools import partial
 from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
 from vernamveil._cypher import _Cypher
+from vernamveil._find import find_all
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
 from vernamveil._types import _HashType as HashType
@@ -373,25 +374,13 @@ class VernamVeil(_Cypher):
         """
         # Estimate the ranges of all chunks
         delimiter_len = len(delimiter)
-        all_chunk_ranges: list[tuple[int, int]] = []
-        prev_idx = None  # Tracks the index of the previous delimiter found
-        look_start = 0  # Start position for searching the next delimiter
-        while True:
-            # Search for the next occurrence of the delimiter
-            idx = noisy.find(delimiter, look_start)
-            if idx == -1:
-                # No more delimiters found
-                break
-            if prev_idx is not None:
-                # We have found a pair of delimiters:
-                # The chunk starts after the previous delimiter and ends at the current one
-                all_chunk_ranges.append((prev_idx + delimiter_len, idx))
-                prev_idx = None  # Reset to look for the next pair
-            else:
-                # Store the index of the first delimiter in the pair
-                prev_idx = idx
-            # Move the search start past the current delimiter
-            look_start = idx + delimiter_len
+        locations = find_all(noisy, delimiter)
+        all_chunk_ranges = [
+            # Take a pair of delimiter locations.
+            # The chunk starts after the first delimiter and ends at the second one
+            (locations[i] + delimiter_len, locations[i + 1])
+            for i in range(0, len(locations) - 1, 2)
+        ]
 
         # Determine the number of real chunks
         total_count = len(all_chunk_ranges)

@@ -9,8 +9,6 @@ build/
 dist/
 docs-html/
 nphash/*.o
-nphash/_npblake2bffi*
-nphash/_npblake3ffi*
-nphash/_npsha256ffi*
+nphash/_*ffi.*
 reports/
 third_party/

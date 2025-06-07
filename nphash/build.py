@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
-BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
+This script uses cffi to compile the _kmpffi, _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide KMP string search
+and fast, parallelised BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _kmpffi, _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import argparse
@@ -436,6 +436,14 @@ def main() -> None:
         """
     )
 
+    ffibuilder_kmp = FFI()
+    ffibuilder_kmp.cdef(
+        """
+        size_t* find_all_kmp(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
+        void free_indices_kmp(size_t *indices_ptr);
+        """
+    )
+
     # Platform-specific build options
     machine = platform.machine().lower()
     is_x86 = any(plat in machine for plat in {"x86_64", "amd64"})
@@ -641,6 +649,17 @@ def main() -> None:
         library_dirs=library_paths,
     )
 
+    ffibuilder_kmp.set_source(
+        "_kmpffi",
+        '#include "_kmp.h"\n',
+        sources=[os.path.relpath(nphash_dir / "_kmp.c", nphash_dir)],
+        include_dirs=include_paths,
+        libraries=libraries_c,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        library_dirs=library_paths,
+    )
+
     _print_build_summary(
         libraries_c,
         libraries_cpp,
@@ -660,6 +679,7 @@ def main() -> None:
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
+    ffibuilder_kmp.compile(verbose=True)
 
 
 if __name__ == "__main__":

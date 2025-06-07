@@ -2,6 +2,7 @@
 
 from types import ModuleType
 
+_kmpffi: ModuleType
 _npblake2bffi: ModuleType
 _npblake3ffi: ModuleType
 _npsha256ffi: ModuleType
