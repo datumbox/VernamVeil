@@ -188,7 +188,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         with self._in_tempdir():
             random_data = random.randbytes(total_size)
             infile = self._write_file("big_input.bin", random_data)
-            fx_path = self._create_fx()
+            fx_path = self._create_fx(code=self.fx_strong_code)
             seed_path = self._create_seed()
 
             encfile = self.temp_dir_path / "big_output.enc"
