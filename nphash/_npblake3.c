@@ -21,33 +21,6 @@ static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seed
     }
 }
 
-// Inline helper to hash data with BLAKE3, with or without a key, and output variable-length hash
-// If parallel, uses blake3_hasher_update_tbb for multithreading
-static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const uint8_t* key, bool seeded, uint8_t* out, size_t hash_size, bool parallel) {
-    // Initialise the BLAKE3 hasher
-    blake3_hasher hasher;
-    if (seeded) {
-        // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
-        blake3_hasher_init_keyed(&hasher, key);
-    } else {
-        // If no seed is provided, use the default BLAKE3 hasher
-        blake3_hasher_init(&hasher);
-    }
-    // Hash the data
-#ifdef BLAKE3_USE_TBB
-    if (parallel) {
-        blake3_hasher_update_tbb(&hasher, data, datalen);
-    } else {
-#else
-    {
-        // If not using TBB, use the standard update function
-#endif
-        blake3_hasher_update(&hasher, data, datalen);
-    }
-    // Finalise the hash and write it to the output buffer (arbitrary length)
-    blake3_hasher_finalize(&hasher, out, hash_size);
-}
-
 // Hashes an array of uint64 elements with a seed using BLAKE3, outputs variable-length hashes
 // - If a seed is provided, the keyed mode is used by setting the key (up to 32 bytes, zero-padded if shorter)
 // - Output is a 2D uint8 array of shape n x hash_size (n rows, hash_size columns)
@@ -68,8 +41,22 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
     #pragma omp parallel for schedule(static)
     #endif
     for (i = 0; i < n_int; ++i) {
-        // Hash the 8-byte block
-        blake3_hash_bytes(arr8[i], BLOCK_SIZE, key, seeded, &out[i * hash_size], hash_size, false);
+        // Initialise the BLAKE3 hasher
+        blake3_hasher hasher;
+
+        if (seeded) {
+            // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+            blake3_hasher_init_keyed(&hasher, key);
+        } else {
+            // If no seed is provided, use the default BLAKE3 hasher
+            blake3_hasher_init(&hasher);
+        }
+
+        // Hash the data
+        blake3_hasher_update(&hasher, arr8[i], BLOCK_SIZE);
+
+        // Finalise the hash and write it to the output buffer (arbitrary length)
+        blake3_hasher_finalize(&hasher, &out[i * hash_size], hash_size);
     }
 }
 
