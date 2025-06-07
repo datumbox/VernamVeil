@@ -46,7 +46,7 @@ size_t* find_all_kmp(const unsigned char *text, size_t n,
     size_t j = 0; // Index for pattern[]
 
     // Initial allocation for indices. We can reallocate if more are found.
-    size_t capacity = 10;
+    size_t capacity = 1000;
     size_t *indices = (size_t *)malloc(sizeof(size_t) * capacity);
     if (indices == NULL) {
         free(lps);
