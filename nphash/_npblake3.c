@@ -38,25 +38,31 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
 
     #ifdef _OPENMP
     // Parallelise the loop with OpenMP to use multiple CPU cores
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel
     #endif
-    for (i = 0; i < n_int; ++i) {
-        // Initialise the BLAKE3 hasher
+    {
+        // Create a new hasher for each hash computation; ensure thread safety
         blake3_hasher hasher;
 
-        if (seeded) {
-            // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
-            blake3_hasher_init_keyed(&hasher, key);
-        } else {
-            // If no seed is provided, use the default BLAKE3 hasher
-            blake3_hasher_init(&hasher);
+        #ifdef _OPENMP
+        #pragma omp for schedule(static)
+        #endif
+        for (i = 0; i < n_int; ++i) {
+            // Reinitialise the BLAKE3 hasher for each element
+            if (seeded) {
+                // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+                blake3_hasher_init_keyed(&hasher, key);
+            } else {
+                // If no seed is provided, use the default BLAKE3 hasher
+                blake3_hasher_init(&hasher);
+            }
+
+            // Hash the data
+            blake3_hasher_update(&hasher, arr8[i], BLOCK_SIZE);
+
+            // Finalise the hash and write it to the output buffer (arbitrary length)
+            blake3_hasher_finalize(&hasher, &out[i * hash_size], hash_size);
         }
-
-        // Hash the data
-        blake3_hasher_update(&hasher, arr8[i], BLOCK_SIZE);
-
-        // Finalise the hash and write it to the output buffer (arbitrary length)
-        blake3_hasher_finalize(&hasher, &out[i * hash_size], hash_size);
     }
 }
 
@@ -72,6 +78,7 @@ void bytes_blake3_multi_chunk(const uint8_t* const* data_chunks, const size_t* d
     uint8_t key[BLAKE3_KEY_LEN] = {0};
     prepare_blake3_key(seeded, seed, seedlen, key);
 
+    // Initialise the BLAKE3 hasher
     if (seeded) {
         // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
         blake3_hasher_init_keyed(&hasher, key);
