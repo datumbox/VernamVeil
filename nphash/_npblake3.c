@@ -11,7 +11,7 @@
 #endif
 
 #define BLOCK_SIZE 8  // Each input element is a uint64 block
-#define MIN_PARALLEL_LEN (2 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
+#define MIN_PARALLEL_LEN (8 * BLAKE3_CHUNK_LEN) // Minimum data length to enable parallel tree hashing
 
 // Inline helper to prepare a BLAKE3 key from a seed (up to 32 bytes, zero-padded if shorter)
 static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seedlen, uint8_t key[BLAKE3_KEY_LEN]) {
@@ -19,33 +19,6 @@ static inline void prepare_blake3_key(bool seeded, const char* seed, size_t seed
         const size_t copylen = seedlen < BLAKE3_KEY_LEN ? seedlen : BLAKE3_KEY_LEN;
         memcpy(key, seed, copylen);
     }
-}
-
-// Inline helper to hash data with BLAKE3, with or without a key, and output variable-length hash
-// If parallel, uses blake3_hasher_update_tbb for multithreading
-static inline void blake3_hash_bytes(const uint8_t* data, size_t datalen, const uint8_t* key, bool seeded, uint8_t* out, size_t hash_size, bool parallel) {
-    // Initialise the BLAKE3 hasher
-    blake3_hasher hasher;
-    if (seeded) {
-        // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
-        blake3_hasher_init_keyed(&hasher, key);
-    } else {
-        // If no seed is provided, use the default BLAKE3 hasher
-        blake3_hasher_init(&hasher);
-    }
-    // Hash the data
-#ifdef BLAKE3_USE_TBB
-    if (parallel) {
-        blake3_hasher_update_tbb(&hasher, data, datalen);
-    } else {
-#else
-    {
-        // If not using TBB, use the standard update function
-#endif
-        blake3_hasher_update(&hasher, data, datalen);
-    }
-    // Finalise the hash and write it to the output buffer (arbitrary length)
-    blake3_hasher_finalize(&hasher, out, hash_size);
 }
 
 // Hashes an array of uint64 elements with a seed using BLAKE3, outputs variable-length hashes
@@ -65,25 +38,69 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
 
     #ifdef _OPENMP
     // Parallelise the loop with OpenMP to use multiple CPU cores
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel
     #endif
-    for (i = 0; i < n_int; ++i) {
-        // Hash the 8-byte block
-        blake3_hash_bytes(arr8[i], BLOCK_SIZE, key, seeded, &out[i * hash_size], hash_size, false);
+    {
+        // Create a new hasher for each hash computation; ensure thread safety
+        blake3_hasher hasher;
+
+        #ifdef _OPENMP
+        #pragma omp for schedule(static)
+        #endif
+        for (i = 0; i < n_int; ++i) {
+            // Reinitialise the BLAKE3 hasher for each element
+            if (seeded) {
+                // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+                blake3_hasher_init_keyed(&hasher, key);
+            } else {
+                // If no seed is provided, use the default BLAKE3 hasher
+                blake3_hasher_init(&hasher);
+            }
+
+            // Hash the data
+            blake3_hasher_update(&hasher, arr8[i], BLOCK_SIZE);
+
+            // Finalise the hash and write it to the output buffer (arbitrary length)
+            blake3_hasher_finalize(&hasher, &out[i * hash_size], hash_size);
+        }
     }
 }
 
-// Hashes a single byte array with BLAKE3, outputs variable-length hash
+// Hashes multiple data chunks with BLAKE3, outputs variable-length hash
 // - If a seed is provided, the keyed mode is used by setting the key (up to 32 bytes, zero-padded if shorter)
 // - Output is a uint8 array of length hash_size
-void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
-    // Input: byte array; each byte is hashed as a single byte block
+void bytes_multi_chunk_blake3(const uint8_t* const* data_chunks, const size_t* data_lengths, size_t num_chunks, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
+    // Input: data_chunks is an array of pointers to data buffers that are to be hashed.
+    blake3_hasher hasher;
     bool seeded = seed != NULL && seedlen > 0;
 
     // Prepare the key if seeded
     uint8_t key[BLAKE3_KEY_LEN] = {0};
     prepare_blake3_key(seeded, seed, seedlen, key);
 
-    // Hash the byte array
-    blake3_hash_bytes(data, datalen, key, seeded, out, hash_size, datalen >= MIN_PARALLEL_LEN);
+    // Initialise the BLAKE3 hasher
+    if (seeded) {
+        // If a seed is provided, use it as the BLAKE3 key (up to 32 bytes, zero-padded if shorter)
+        blake3_hasher_init_keyed(&hasher, key);
+    } else {
+        // If no seed is provided, use the default BLAKE3 hasher
+        blake3_hasher_init(&hasher);
+    }
+
+    for (size_t i = 0; i < num_chunks; ++i) {
+         // Hash the data
+#ifdef BLAKE3_USE_TBB
+        if (data_lengths[i] >= MIN_PARALLEL_LEN) {
+            blake3_hasher_update_tbb(&hasher, data_chunks[i], data_lengths[i]);
+        } else {
+#else
+        {
+            // If not using TBB, use the standard update function
+#endif
+            blake3_hasher_update(&hasher, data_chunks[i], data_lengths[i]);
+        }
+    }
+
+    // Finalise the hash and write it to the output buffer (arbitrary length)
+    blake3_hasher_finalize(&hasher, out, hash_size);
 }

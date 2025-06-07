@@ -425,7 +425,7 @@ def main() -> None:
         # No const/restrict qualifiers here, as these files are mixed with C++.
         """
         void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
-        void bytes_blake3(const uint8_t* data, size_t datalen, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
+        void bytes_multi_chunk_blake3(const uint8_t* const* data_chunks, const size_t* data_lengths, size_t num_chunks, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size);
         """
     )
 
