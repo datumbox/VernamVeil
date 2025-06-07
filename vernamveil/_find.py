@@ -43,8 +43,8 @@ def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview
         count = count_ptr[0]
 
         if indices_ptr is not ffi.NULL and count > 0:
-            for i in range(count):
-                result_indices.append(indices_ptr[i])
+            # convert the C array of size_t to a Python list in one go
+            result_indices = ffi.unpack(indices_ptr, count)
             _kmpffi.lib.free_indices_kmp(indices_ptr)
 
     return result_indices
