@@ -253,12 +253,13 @@ class _Cypher(ABC):
             elif mode == "decode":
                 last_block = False
                 buffer = bytearray()
+                look_start = 0  # Start position for searching the next delimiter
                 while exception_queue.empty():
                     block = queue_get(read_q)
 
                     buffer.extend(block)
                     while exception_queue.empty():
-                        delim_index = buffer.find(block_delimiter)
+                        delim_index = buffer.find(block_delimiter, look_start)
                         if delim_index == -1:
                             # No delimiter found
                             if not block and buffer:
@@ -266,6 +267,9 @@ class _Cypher(ABC):
                                 delim_index = len(buffer)
                                 last_block = True
                             else:
+                                # Adjust look_start for the next find attempt after more data is appended.
+                                # This ensures a delimiter spanning the boundary can be found.
+                                look_start = max(0, len(buffer) - delimiter_size + 1)
                                 break  # No complete block in buffer yet or EOF handled
 
                         # Extract the complete block up to the delimiter
@@ -282,6 +286,7 @@ class _Cypher(ABC):
 
                         # Remove the processed block and delimiter from the buffer
                         buffer = buffer[delim_index + delimiter_size :]
+                        look_start = 0
 
                         # Refresh block delimiter
                         block_delimiter, current_seed = self._generate_delimiter(current_seed)
