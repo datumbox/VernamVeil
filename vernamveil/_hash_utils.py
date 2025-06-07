@@ -21,7 +21,7 @@ __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
 
 
 class blake3:
-    """A hashlib-style BLAKE3 hash object using the C backend (single-shot only).
+    """A hashlib-style BLAKE3 hash object using the C backend.
 
     This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
     It accumulates data via update() calls and processes all chunks in C upon digest().
