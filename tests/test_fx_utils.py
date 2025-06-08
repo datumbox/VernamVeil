@@ -5,13 +5,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil._fx_utils import FX, OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
-from vernamveil._types import _HAS_NUMPY
+from vernamveil._types import _HAS_NUMPY, np
 from vernamveil._vernamveil import VernamVeil
-
-try:
-    import numpy as np
-except ImportError:
-    pass
 
 
 class TestFxUtils(unittest.TestCase):
@@ -316,8 +311,6 @@ class TestFxUtils(unittest.TestCase):
         """Test that FX warns if NumPy is present but the C module is not available."""
 
         def keystream_fn(i, seed):
-            import numpy as np
-
             return np.zeros((1, 8), dtype=np.uint8)
 
         with (
