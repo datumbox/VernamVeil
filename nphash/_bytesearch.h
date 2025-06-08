@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-// Searches for all occurrences of 'pattern' in 'text' using the two way algorithm.
+// Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Parameters:
 //   text: The text to search within.
 //   n: The length of the text.
@@ -14,8 +14,7 @@
 // Returns:
 //   A dynamically allocated array of integers containing the 0-based starting
 //   indices of all occurrences. The caller is responsible for freeing this array
-//   using free_indices. Returns NULL if no occurrences are found,
-//   if m > n, or if memory allocation fails.
+//   using free_indices. Returns NULL if no occurrences are found or if memory allocation fails.
 size_t* find_all(const unsigned char *text, size_t n,
                                    const unsigned char *pattern, size_t m,
                                    size_t *count_ptr,

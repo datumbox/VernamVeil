@@ -4,7 +4,7 @@
 #include "_bytesearch.h"
 #include "_twoway.h"
 
-// Searches for all occurrences of 'pattern' in 'text' using the two-way algorithm.
+// Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
 // Caller must free the returned array using free_indices.
 size_t* find_all(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr, int allow_overlap) {
