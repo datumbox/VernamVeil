@@ -1,7 +1,7 @@
 #ifndef NPKMP_H
 #define NPKMP_H
 
-#include <stddef.h> // For size_t
+#include <stddef.h>
 
 // Searches for all occurrences of 'pattern' in 'text' using Knuth-Morris-Pratt.
 // Parameters:
@@ -25,4 +25,3 @@ size_t* find_all(const unsigned char *text, size_t n,
 void free_indices(size_t *indices_ptr);
 
 #endif // NPKMP_H
-

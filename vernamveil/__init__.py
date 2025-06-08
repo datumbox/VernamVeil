@@ -3,6 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 from vernamveil._deniability_utils import forge_plausible_fx
+from vernamveil._find import find_all
 from vernamveil._fx_utils import (
     FX,
     OTPFX,
@@ -29,6 +30,7 @@ __all__ = [
     "VernamVeil",
     "blake3",
     "check_fx_sanity",
+    "find_all",
     "fold_bytes_to_uint64",
     "forge_plausible_fx",
     "generate_default_fx",

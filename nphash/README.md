@@ -2,6 +2,8 @@
 
 This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations. We also provide a `blake3` class, which offers a hashlib-style BLAKE3 hash object using the C backend. **The `blake3` implementation is only available when the C extension is built.**
 
+In addition to hashing, the extension provides a fast byte search capability for efficiently finding all occurrences of a byte pattern within a buffer. This is exposed via the `find_all` method in the C extension and is used internally by VernamVeil for pattern and delimiter detection in binary data. When imported, the `find_all` method will automatically use the C extension for maximum performance if available, otherwise falling back to a pure Python implementation.
+
 The C and C++ code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
 > **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
@@ -161,13 +163,13 @@ from vernamveil._hash_utils import _HAS_C_MODULE
 After building, you can use the extension from Python code:
 
 ```python
-from vernamveil import blake3, hash_numpy
+from vernamveil import blake3, find_all, hash_numpy
 # The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.
-# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback.
-# All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
+# The `find_all` method will use the C extension for fast byte search if available, otherwise a pure Python fallback.
+# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback. All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
 ```
 
-If the C extension is not built or importable, `hash_numpy` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
+If the C extension is not built or importable, `hash_numpy` and `find_all` will transparently fall back to slower pure Python/NumPy implementations. No code changes are needed.
 
 ## Notes
 
