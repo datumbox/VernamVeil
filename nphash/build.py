@@ -416,7 +416,7 @@ def main() -> None:
     ffibuilder_bytesearch = FFI()
     ffibuilder_bytesearch.cdef(
         """
-        size_t* find_all(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
+        size_t* find_all(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr, int allow_overlap);
         void free_indices(size_t *indices_ptr);
         """
     )

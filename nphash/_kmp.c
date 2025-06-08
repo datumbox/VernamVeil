@@ -32,7 +32,8 @@ static void compute_lps_array(const unsigned char *pattern, size_t m, size_t *lp
 // Caller must free the returned array using free_indices.
 size_t* find_all(const unsigned char *text, size_t n,
                                 const unsigned char *pattern, size_t m,
-                                size_t *count_ptr) {
+                                size_t *count_ptr,
+                                int allow_overlap) {
     *count_ptr = 0;
 
     // Allocate LPS array
@@ -74,7 +75,11 @@ size_t* find_all(const unsigned char *text, size_t n,
             }
             indices[*count_ptr] = i - j;
             (*count_ptr)++;
-            j = lps[j - 1]; // Continue search for more occurrences
+            if (allow_overlap) {
+                j = lps[j - 1]; // Classic KMP: allow overlaps
+            } else {
+                j = 0; // Non-overlapping: skip matched region
+            }
         } else if (i < n && pattern[j] != text[i]) {
             // Mismatch after j matches
             // Do not match lps[0..lps[j-1]] characters, they will match anyway
@@ -106,3 +111,5 @@ void free_indices(size_t *indices_ptr) {
         free(indices_ptr);
     }
 }
+
+

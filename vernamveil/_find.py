@@ -42,7 +42,7 @@ def find_all(
 
         count_ptr = ffi.new("size_t *")
         indices_ptr = _bytesearchffi.lib.find_all(
-            ffi.from_buffer(haystack), n, ffi.from_buffer(needle), m, count_ptr
+            ffi.from_buffer(haystack), n, ffi.from_buffer(needle), m, count_ptr, 0
         )
         count = count_ptr[0]
 
