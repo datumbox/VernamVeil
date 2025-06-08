@@ -2,8 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from vernamveil._bytesearch import find_all
-from vernamveil._types import _HAS_C_MODULE
-from vernamveil._types import _HAS_NUMPY, np
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
 
 
 class TestFindAll(unittest.TestCase):
@@ -104,12 +103,8 @@ class TestFindAll(unittest.TestCase):
         arr_needle = np.array([97, 98, 99], dtype=np.uint8)  # b"abc"
         for has_c in self._get_checks():
             with self.subTest(_HAS_C_MODULE=has_c):
-                self.assertEqual(
-                    self._run_find_all(arr_haystack.data, b"abc", has_c), [0, 3]
-                )
-                self.assertEqual(
-                    self._run_find_all(b"abcabc", arr_needle.data, has_c), [0, 3]
-                )
+                self.assertEqual(self._run_find_all(arr_haystack.data, b"abc", has_c), [0, 3])
+                self.assertEqual(self._run_find_all(b"abcabc", arr_needle.data, has_c), [0, 3])
                 self.assertEqual(
                     self._run_find_all(arr_haystack.data, arr_needle.data, has_c), [0, 3]
                 )
