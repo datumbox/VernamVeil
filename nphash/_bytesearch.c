@@ -34,9 +34,6 @@
 #include <stddef.h>
 #include "_bytesearch.h"
 
-#undef HAVE_MEMMEM
-#define HAVE_MEMMEM 0 //TODO: Force disable memmem for this implementation
-
 #define ALPHABET_SIZE 256
 
 // Structure for BMH preprocessing data
