@@ -1,8 +1,8 @@
-from vernamveil._types import _kmpffi
+from vernamveil._types import _bytesearchffi
 
 
 def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview) -> list[int]:
-    """Finds all occurrences of pattern_bytes in text_bytes using KMP.
+    """Finds all occurrences of pattern_bytes in text_bytes using a fast byte search algorithm.
 
     Args:
         haystack (bytes or bytearray): The bytes object to search within.
@@ -19,7 +19,7 @@ def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview
     if m == 0 or n == 0 or m > n:
         return result_indices
 
-    if _kmpffi is None:
+    if _bytesearchffi is None:
         # Fallback to Python implementation if C library is not available
         look_start = 0  # Start position for searching the next needle
         while look_start < n:
@@ -33,11 +33,11 @@ def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview
             # Move the search start past the current needle
             look_start = idx + m
     else:
-        # Use the C extension for KMP search
-        ffi = _kmpffi.ffi
+        # Use the C extension for byte search
+        ffi = _bytesearchffi.ffi
 
         count_ptr = ffi.new("size_t *")
-        indices_ptr = _kmpffi.lib.find_all_kmp(
+        indices_ptr = _bytesearchffi.lib.find_all(
             ffi.from_buffer(haystack), n, ffi.from_buffer(needle), m, count_ptr
         )
         count = count_ptr[0]
@@ -45,6 +45,6 @@ def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview
         if indices_ptr is not ffi.NULL and count > 0:
             # convert the C array of size_t to a Python list in one go
             result_indices = ffi.unpack(indices_ptr, count)
-            _kmpffi.lib.free_indices_kmp(indices_ptr)
+            _bytesearchffi.lib.free_indices(indices_ptr)
 
     return result_indices

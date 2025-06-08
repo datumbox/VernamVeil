@@ -13,13 +13,13 @@
 // Returns:
 //   A dynamically allocated array of integers containing the 0-based starting
 //   indices of all occurrences. The caller is responsible for freeing this array
-//   using free_indices_kmp. Returns NULL if no occurrences are found,
+//   using free_indices. Returns NULL if no occurrences are found,
 //   if m > n, or if memory allocation fails.
-size_t* find_all_kmp(const unsigned char *text, size_t n,
+size_t* find_all(const unsigned char *text, size_t n,
                                    const unsigned char *pattern, size_t m,
                                    size_t *count_ptr);
 
-// Frees the array of indices allocated by find_all_kmp.
-void free_indices_kmp(size_t *indices_ptr);
+// Frees the array of indices allocated by find_all.
+void free_indices(size_t *indices_ptr);
 
 #endif // NPKMP_H

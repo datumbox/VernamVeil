@@ -5,7 +5,7 @@
 // Computes the Longest Proper Prefix which is also Suffix (LPS) array.
 // This is a standard KMP preprocessing step.
 // Marked static to limit visibility to this file.
-static void compute_lps_array_kmp(const unsigned char *pattern, size_t m, size_t *lps) {
+static void compute_lps_array(const unsigned char *pattern, size_t m, size_t *lps) {
     size_t length = 0; // Length of the previous longest prefix suffix
     lps[0] = 0;       // lps[0] is always 0
     size_t i = 1;
@@ -29,8 +29,8 @@ static void compute_lps_array_kmp(const unsigned char *pattern, size_t m, size_t
 
 // Searches for all occurrences of 'pattern' in 'text' using KMP.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
-// Caller must free the returned array using free_indices_kmp.
-size_t* find_all_kmp(const unsigned char *text, size_t n,
+// Caller must free the returned array using free_indices.
+size_t* find_all(const unsigned char *text, size_t n,
                                 const unsigned char *pattern, size_t m,
                                 size_t *count_ptr) {
     *count_ptr = 0;
@@ -40,7 +40,7 @@ size_t* find_all_kmp(const unsigned char *text, size_t n,
     if (lps == NULL) {
         return NULL;
     }
-    compute_lps_array_kmp(pattern, m, lps);
+    compute_lps_array(pattern, m, lps);
 
     size_t i = 0; // Index for text[]
     size_t j = 0; // Index for pattern[]
@@ -100,8 +100,8 @@ size_t* find_all_kmp(const unsigned char *text, size_t n,
     return indices;
 }
 
-// Frees the array of indices allocated by find_all_kmp.
-void free_indices_kmp(size_t *indices_ptr) {
+// Frees the array of indices allocated by find_all.
+void free_indices(size_t *indices_ptr) {
     if (indices_ptr != NULL) {
         free(indices_ptr);
     }

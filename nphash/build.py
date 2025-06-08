@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _kmpffi, _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide KMP string search
+This script uses cffi to compile the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast byte search
 and fast, parallelised BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _kmpffi, _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import argparse
@@ -413,11 +413,11 @@ def main() -> None:
     asm_enabled = not args.no_asm and not no_asm_env
 
     # FFI builders
-    ffibuilder_kmp = FFI()
-    ffibuilder_kmp.cdef(
+    ffibuilder_bytesearch = FFI()
+    ffibuilder_bytesearch.cdef(
         """
-        size_t* find_all_kmp(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
-        void free_indices_kmp(size_t *indices_ptr);
+        size_t* find_all(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
+        void free_indices(size_t *indices_ptr);
         """
     )
 
@@ -617,8 +617,8 @@ def main() -> None:
     library_paths = [str(p) for p in library_dirs]
     object_paths = [str(p) for p in extra_objects]
 
-    ffibuilder_kmp.set_source(
-        "_kmpffi",
+    ffibuilder_bytesearch.set_source(
+        "_bytesearchffi",
         '#include "_kmp.h"\n',
         sources=[os.path.relpath(nphash_dir / "_kmp.c", nphash_dir)],
         include_dirs=include_paths,
@@ -676,7 +676,7 @@ def main() -> None:
         # Using setattr avoids mypy errors and keeps the patch local to this build process.
         setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
 
-    ffibuilder_kmp.compile(verbose=True)
+    ffibuilder_bytesearch.compile(verbose=True)
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)

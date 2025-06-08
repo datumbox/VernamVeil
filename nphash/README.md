@@ -95,7 +95,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    python build.py
    ```
 
-   This will compile the C code and generate libraries named `_kmpffi.*.so`, `_npblake2bffi.*.so`, `_npblake3ffi.*.so`  and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
+   This will compile the C code and generate libraries named `_bytesearchffi.*.so`, `_npblake2bffi.*.so`, `_npblake3ffi.*.so`  and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
 4. **Reinstall the library**
 
