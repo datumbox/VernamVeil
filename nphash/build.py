@@ -676,10 +676,10 @@ def main() -> None:
         # Using setattr avoids mypy errors and keeps the patch local to this build process.
         setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
 
+    ffibuilder_kmp.compile(verbose=True)
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
-    ffibuilder_kmp.compile(verbose=True)
 
 
 if __name__ == "__main__":
