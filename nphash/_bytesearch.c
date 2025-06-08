@@ -32,9 +32,10 @@
     #endif
 #endif
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include "_bytesearch.h"
 
 #define ALPHABET_SIZE 256
@@ -76,13 +77,12 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t
 
     // Good Suffix Rule preprocessing can use stack arrays.
     p->good_suffix_shifts = p->good_suffix_shifts_arr; // Point to the stack array in the struct
-
     ptrdiff_t *gs = p->good_suffix_shifts;
     for (size_t i = 0; i <= m; ++i) {
         gs[i] = m_ptrdiff_t; // Default shift is pattern length
     }
 
-    ptrdiff_t f_arr[BMH_GOOD_SUFFIX_STACK_MAX_M + 1]; // VLA for f, fixed-size array for MSVC compatibility
+    ptrdiff_t f_arr[BMH_GOOD_SUFFIX_STACK_MAX_M + 1]; // fixed-size array for MSVC compatibility
     ptrdiff_t *f = f_arr;   // Use f as a pointer to the stack array f_arr
 
     // Phase 1 (compute f array - KMP-like borders for reversed pattern)
@@ -112,19 +112,18 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t
 
 // Searches for pattern in text using Boyer-Moore-Horspool algorithm with precomputed data.
 static inline ptrdiff_t bmh_search(const unsigned char * restrict text, size_t n, const bmh_prework_t * restrict p) {
-    const unsigned char * restrict pattern = p->pattern_ptr;
-    const size_t m = p->pattern_len;
-
-    // n is 0 is handled by Python side. it is assumed that the caller ensures n >= 0.
+    // if (n == 0) return -1; // Python side handles n >= 0.
     // if (m == 0) return 0; // Python side handles m=0, bmh_preprocess also handles m=0 for skip_table.
     // if (m > n) return -1; // Python side handles m > n.
 
     // Pre-calculate values that are constant within the loop
+    const unsigned char * restrict pattern = p->pattern_ptr;
+    const size_t m = p->pattern_len;
     const size_t n_minus_m = n - m;
     const ptrdiff_t m_minus_1 = (ptrdiff_t)m - 1;
+    const bool has_good_suffix = (p->good_suffix_shifts != NULL);
 
     size_t i = 0; // Current alignment of pattern's start in text
-
     while (i <= n_minus_m) {
         ptrdiff_t k = m_minus_1; // Index for pattern (from m-1 down to 0)
         while (k >= 0 && pattern[k] == text[i + k]) {
@@ -135,14 +134,12 @@ static inline ptrdiff_t bmh_search(const unsigned char * restrict text, size_t n
             return (ptrdiff_t)i; // Match found at text[i]
         } else {
             ptrdiff_t bad_char_shift = p->skip_table[text[i + m_minus_1]];
-            ptrdiff_t good_suffix_shift = 1; // Default shift if GS rule not applicable or not precomputed
 
-            if (p->good_suffix_shifts != NULL) {
-                // k is the index of mismatch in pattern P[0...m-1]
-                // Good suffix is P[k+1 ... m-1]
-                // gs table is indexed by the start of the good suffix (k+1 here)
-                good_suffix_shift = p->good_suffix_shifts[k + 1];
-            }
+            // k is the index of mismatch in pattern P[0...m-1]
+            // Good suffix is P[k+1 ... m-1]
+            // gs table is indexed by the start of the good suffix (k+1 here)
+            // if no good suffix is precomputed, we use a default shift of 1
+            ptrdiff_t good_suffix_shift = has_good_suffix ? p->good_suffix_shifts[k + 1] : 1;
 
             // Take the maximum of the two shifts
             i += (bad_char_shift > good_suffix_shift) ? bad_char_shift : good_suffix_shift;
