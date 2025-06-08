@@ -1,3 +1,34 @@
+#include <string.h>
+
+// MEMMEM availability check
+#if defined(_GNU_SOURCE) && defined(__GLIBC__)
+    // GNU/Linux systems
+    #define HAVE_MEMMEM 1
+#elif defined(__APPLE__)
+    // Apple/macOS systems
+    #include <AvailabilityMacros.h>
+    #if defined(MAC_OS_X_VERSION_10_7) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7
+        // macOS has memmem since 10.7
+        #define HAVE_MEMMEM 1
+    #else
+        #define HAVE_MEMMEM 0
+    #endif
+#elif defined(__has_include)
+    // Compiler with __has_include support
+    #if __has_include(<string.h>) && __has_builtin(memmem)
+        #define HAVE_MEMMEM 1
+    #else
+        #define HAVE_MEMMEM 0
+    #endif
+#else
+    // Check for POSIX.1-2008 compliance which includes memmem
+    #if (_POSIX_C_SOURCE >= 200809L) || defined(_POSIX_VERSION) && (_POSIX_VERSION >= 200809L)
+        #define HAVE_MEMMEM 1
+    #else
+        #define HAVE_MEMMEM 0
+    #endif
+#endif
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -12,9 +43,11 @@ size_t* find_all(const unsigned char *text, size_t n, const unsigned char *patte
     // Not necessary as we check on Python side.
     // if (m == 0 || n == 0 || m > n) return NULL;
 
+#if HAVE_MEMMEM == 0
     // Pass 'm' (size_t) as ptrdiff_t.
     prework p;
     preprocess(pattern, (ptrdiff_t)m, &p);
+#endif
 
     size_t capacity = 1000; // Initial allocation for indices. We can reallocate if more are found.
     size_t *indices = (size_t *)malloc(sizeof(size_t) * capacity);
@@ -24,12 +57,20 @@ size_t* find_all(const unsigned char *text, size_t n, const unsigned char *patte
 
     size_t i = 0;
     while (i <= n - m) { // Ensure there's enough space for the pattern
-        // Pass 'n-i' (size_t) as ptrdiff_t.
-        ptrdiff_t result = two_way(text + i, (ptrdiff_t)(n - i), &p);
-        if (result == -1) {
+#if HAVE_MEMMEM == 1
+        const unsigned char *found = (const unsigned char *)memmem(text + i, n - i, pattern, m);
+        if (!found) {
             break;
         }
-        size_t found = i + (size_t)result;
+        size_t match_idx = (size_t)(found - text);
+#else
+        // Pass 'n-i' (size_t) as ptrdiff_t.
+        ptrdiff_t found = two_way(text + i, (ptrdiff_t)(n - i), &p);
+        if (found == -1) {
+            break;
+        }
+        size_t match_idx = i + (size_t)found;
+#endif
         if (*count_ptr >= capacity) {
             capacity *= 2;
             size_t *new_indices = (size_t *)realloc(indices, sizeof(size_t) * capacity);
@@ -40,16 +81,13 @@ size_t* find_all(const unsigned char *text, size_t n, const unsigned char *patte
             }
             indices = new_indices;
         }
-        indices[*count_ptr] = found;
+        indices[*count_ptr] = match_idx;
         (*count_ptr)++;
 
         if (allow_overlap) {
-            // If m is 0, found + 1 could still lead to issues if not handled above.
-            // But we return NULL for m=0 now.
-            i = found + 1;
+            i = match_idx + 1;
         } else {
-            // If m is 0, found + m is found. Infinite loop if not handled above.
-            i = found + m;
+            i = match_idx + m;
         }
     }
 
