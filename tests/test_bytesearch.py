@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from vernamveil._bytesearch import find_all
 from vernamveil._types import _HAS_C_MODULE
+from vernamveil._types import _HAS_NUMPY, np
 
 
 class TestFindAll(unittest.TestCase):
@@ -94,6 +95,24 @@ class TestFindAll(unittest.TestCase):
         for has_c in self._get_checks():
             with self.subTest(_HAS_C_MODULE=has_c):
                 self.assertEqual(self._run_find_all(haystack, needle, has_c), [2000, 4002])
+
+    def test_numpy_memoryview_support(self):
+        """Should support numpy arrays wrapped with memoryview for search if _HAS_NUMPY is True."""
+        if not _HAS_NUMPY:
+            self.skipTest("Numpy not available")
+        arr_haystack = np.array([97, 98, 99, 97, 98, 99], dtype=np.uint8)  # b"abcabc"
+        arr_needle = np.array([97, 98, 99], dtype=np.uint8)  # b"abc"
+        for has_c in self._get_checks():
+            with self.subTest(_HAS_C_MODULE=has_c):
+                self.assertEqual(
+                    self._run_find_all(arr_haystack.data, b"abc", has_c), [0, 3]
+                )
+                self.assertEqual(
+                    self._run_find_all(b"abcabc", arr_needle.data, has_c), [0, 3]
+                )
+                self.assertEqual(
+                    self._run_find_all(arr_haystack.data, arr_needle.data, has_c), [0, 3]
+                )
 
 
 if __name__ == "__main__":
