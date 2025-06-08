@@ -1,4 +1,5 @@
 *.egg-info/
+*.o
 *.pyc
 *.pyo
 .env
@@ -8,7 +9,6 @@ __pycache__/
 build/
 dist/
 docs-html/
-nphash/*.o
 nphash/_*ffi.*
 reports/
 third_party/blake3/

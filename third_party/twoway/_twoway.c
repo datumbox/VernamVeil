@@ -2,7 +2,7 @@
  * This file is derived from Python's fastsearch.h implementation:
  * https://github.com/python/cpython/blob/8fdbbf8b18f1405abe677d0e04874c1c86ccdb4a/Objects/stringlib/fastsearch.h#L370
  *
- * Copyright (c) 2001-2023 Python Software Foundation.
+ * Copyright (c) 2001-2025 Python Software Foundation.
  * All Rights Reserved.
  *
  * Licensed under the PSF License Agreement; you may not use this file except
