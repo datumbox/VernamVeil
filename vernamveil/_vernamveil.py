@@ -12,7 +12,7 @@ from functools import partial
 from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
 from vernamveil._cypher import _Cypher
-from vernamveil._find import find_all
+from vernamveil._bytesearch import find_all
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
 from vernamveil._types import _HashType as HashType

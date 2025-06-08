@@ -7,6 +7,7 @@ Welcome to the documentation for `VernamVeil <https://github.com/datumbox/Vernam
    :maxdepth: 3
    :caption: API Reference:
 
+   bytesearch
    deniability_utils
    fx_utils
    hash_utils

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from vernamveil._find import find_all
+from vernamveil._bytesearch import find_all
 from vernamveil._types import _HAS_C_MODULE
 
 

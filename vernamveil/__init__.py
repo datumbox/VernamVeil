@@ -3,7 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 from vernamveil._deniability_utils import forge_plausible_fx
-from vernamveil._find import find_all
+from vernamveil._bytesearch import find_all
 from vernamveil._fx_utils import (
     FX,
     OTPFX,
