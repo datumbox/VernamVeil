@@ -4,12 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
-
-try:
-    import numpy as np
-except ImportError:
-    pass
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
 
 
 class TestHashUtils(unittest.TestCase):
