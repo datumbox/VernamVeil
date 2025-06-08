@@ -413,6 +413,14 @@ def main() -> None:
     asm_enabled = not args.no_asm and not no_asm_env
 
     # FFI builders
+    ffibuilder_kmp = FFI()
+    ffibuilder_kmp.cdef(
+        """
+        size_t* find_all_kmp(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
+        void free_indices_kmp(size_t *indices_ptr);
+        """
+    )
+
     ffibuilder_blake2b = FFI()
     ffibuilder_blake2b.cdef(
         """
@@ -433,14 +441,6 @@ def main() -> None:
     ffibuilder_sha256.cdef(
         """
         void numpy_sha256(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
-        """
-    )
-
-    ffibuilder_kmp = FFI()
-    ffibuilder_kmp.cdef(
-        """
-        size_t* find_all_kmp(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr);
-        void free_indices_kmp(size_t *indices_ptr);
         """
     )
 
@@ -617,6 +617,17 @@ def main() -> None:
     library_paths = [str(p) for p in library_dirs]
     object_paths = [str(p) for p in extra_objects]
 
+    ffibuilder_kmp.set_source(
+        "_kmpffi",
+        '#include "_kmp.h"\n',
+        sources=[os.path.relpath(nphash_dir / "_kmp.c", nphash_dir)],
+        include_dirs=include_paths,
+        libraries=libraries_c,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        library_dirs=library_paths,
+    )
+
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
         _get_c_source(nphash_dir / "_npblake2b.c"),
@@ -646,17 +657,6 @@ def main() -> None:
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         include_dirs=include_paths,
-        library_dirs=library_paths,
-    )
-
-    ffibuilder_kmp.set_source(
-        "_kmpffi",
-        '#include "_kmp.h"\n',
-        sources=[os.path.relpath(nphash_dir / "_kmp.c", nphash_dir)],
-        include_dirs=include_paths,
-        libraries=libraries_c,
-        extra_compile_args=extra_compile_args,
-        extra_link_args=extra_link_args,
         library_dirs=library_paths,
     )
 
