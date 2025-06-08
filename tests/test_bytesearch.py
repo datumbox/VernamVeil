@@ -15,7 +15,7 @@ class TestFindAll(unittest.TestCase):
         """Utility to run find_all with or without C module."""
         with (
             patch("vernamveil._types._HAS_C_MODULE", has_c_module),
-            patch("vernamveil._find._HAS_C_MODULE", has_c_module),
+            patch("vernamveil._bytesearch._HAS_C_MODULE", has_c_module),
         ):
             return find_all(haystack, needle)
 
