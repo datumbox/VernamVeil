@@ -35,10 +35,13 @@
 #include "_bytesearch.h"
 
 #define ALPHABET_SIZE 256
+#define BMH_GOOD_SUFFIX_STACK_MAX_M 128
 
 // Structure for BMH preprocessing data
 typedef struct {
     ptrdiff_t skip_table[ALPHABET_SIZE];
+    ptrdiff_t good_suffix_shifts_arr[BMH_GOOD_SUFFIX_STACK_MAX_M + 1];
+    ptrdiff_t *good_suffix_shifts; // Points to good_suffix_shifts_arr or is NULL
     const unsigned char *pattern_ptr;
     size_t pattern_len;
 } bmh_prework_t;
@@ -50,14 +53,56 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t
     p->pattern_len = m;
 
     // Initialize skip table: default shift is pattern length m
+    const ptrdiff_t m_ptrdiff_t = (ptrdiff_t)m;
     for (int i = 0; i < ALPHABET_SIZE; ++i) {
-        p->skip_table[i] = (ptrdiff_t)m;
+        p->skip_table[i] = m_ptrdiff_t;
     }
+
     // For characters in pattern (except the last one), set specific shifts
     // The shift is m - 1 - k, where k is the index of the character pattern[k]
     const size_t m_minus_1 = m - 1;
     for (size_t k = 0; k < m_minus_1; ++k) {
         p->skip_table[pattern[k]] = (ptrdiff_t)(m_minus_1 - k);
+    }
+
+    p->good_suffix_shifts = NULL; // Initialize: GS rule off by default or if m is too large
+    if (m > BMH_GOOD_SUFFIX_STACK_MAX_M) {
+        return; // GS rule not used if m exceeds stack allocation limit
+    }
+
+    // Good Suffix Rule preprocessing can use stack arrays.
+    p->good_suffix_shifts = p->good_suffix_shifts_arr; // Point to the stack array in the struct
+
+    ptrdiff_t *gs = p->good_suffix_shifts;
+    for (size_t i = 0; i <= m; ++i) {
+        gs[i] = m_ptrdiff_t; // Default shift is pattern length
+    }
+
+    ptrdiff_t f_arr[m + 1]; // VLA for f, safe due to m check (m > 0 and m <= BMH_GOOD_SUFFIX_STACK_MAX_M)
+    ptrdiff_t *f = f_arr;   // Use f as a pointer to the stack array f_arr
+
+    // Phase 1 (compute f array - KMP-like borders for reversed pattern)
+    // f[i] stores the starting position of the widest border of pattern[i..m-1]
+    ptrdiff_t j_f = m_ptrdiff_t + 1;
+    f[m] = j_f;
+    for (ptrdiff_t i_f = m_ptrdiff_t - 1; i_f >= 0; --i_f) {
+        while (0 < j_f && j_f <= m_ptrdiff_t && pattern[i_f] != pattern[j_f - 1]) {
+            if (gs[j_f] == m_ptrdiff_t) {
+                gs[j_f] = j_f - 1 - i_f;
+            }
+            j_f = f[j_f];
+        }
+        f[i_f] = --j_f;
+    }
+
+    // Phase 2 (populate remaining gs entries)
+    for (ptrdiff_t k_gs = 0; k_gs <= m_ptrdiff_t; ++k_gs) {
+        if (gs[k_gs] == m_ptrdiff_t) {
+            gs[k_gs] = j_f;
+        }
+        if (k_gs == j_f) {
+            j_f = f[j_f];
+        }
     }
 }
 
@@ -85,10 +130,18 @@ static inline ptrdiff_t bmh_search(const unsigned char * restrict text, size_t n
         if (k < 0) {
             return (ptrdiff_t)i; // Match found at text[i]
         } else {
-            // Mismatch. Calculate shift using the character in text aligned with the *last* char of pattern.
-            // This is text[i + m - 1].
-            const unsigned char char_to_skip_by = text[i + m_minus_1];
-            i += p->skip_table[char_to_skip_by];
+            ptrdiff_t bad_char_shift = p->skip_table[text[i + m_minus_1]];
+            ptrdiff_t good_suffix_shift = 1; // Default shift if GS rule not applicable or not precomputed
+
+            if (p->good_suffix_shifts != NULL) {
+                // k is the index of mismatch in pattern P[0...m-1]
+                // Good suffix is P[k+1 ... m-1]
+                // gs table is indexed by the start of the good suffix (k+1 here)
+                good_suffix_shift = p->good_suffix_shifts[k + 1];
+            }
+
+            // Take the maximum of the two shifts
+            i += (bad_char_shift > good_suffix_shift) ? bad_char_shift : good_suffix_shift;
         }
     }
     return -1; // No match found
