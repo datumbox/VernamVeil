@@ -1,7 +1,9 @@
-from vernamveil._types import _bytesearchffi
+from vernamveil._types import _HAS_C_MODULE, _bytesearchffi
 
 
-def find_all(haystack: bytes | bytearray | memoryview, needle: bytes | bytearray | memoryview) -> list[int]:
+def find_all(
+    haystack: bytes | bytearray | memoryview, needle: bytes | bytearray | memoryview
+) -> list[int]:
     """Finds all occurrences of pattern_bytes in text_bytes using a fast byte search algorithm.
 
     Args:
@@ -19,7 +21,7 @@ def find_all(haystack: bytes | bytearray | memoryview, needle: bytes | bytearray
     if m == 0 or n == 0 or m > n:
         return result_indices
 
-    if _bytesearchffi is None:
+    if not _HAS_C_MODULE:
         # Fallback to Python implementation if C library is not available
         bytes_haystack = haystack.tobytes() if isinstance(haystack, memoryview) else haystack
 
