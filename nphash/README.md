@@ -156,7 +156,7 @@ If any of these are set, the build will skip the corresponding acceleration feat
 To confirm that the C extension is compiled and being used by VernamVeil, you can check the internal boolean `_HAS_C_MODULE`:
 
 ```python
-from vernamveil._hash_utils import _HAS_C_MODULE
+from vernamveil._types import _HAS_C_MODULE
 # True if the C extension is available and in use, False otherwise.
 ```
 
