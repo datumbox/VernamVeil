@@ -29,6 +29,9 @@
     #endif
 #endif
 
+#undef HAVE_MEMMEM
+#define HAVE_MEMMEM 0 // TODO: Disable memmem for now, we implement our own search
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
