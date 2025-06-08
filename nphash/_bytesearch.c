@@ -1,105 +1,66 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include "_bytesearch.h"
+#include "_twoway.h"
 
-// Computes the Longest Proper Prefix which is also Suffix (LPS) array.
-// This is a standard Knuth-Morris-Pratt preprocessing step.
-// Marked static to limit visibility to this file.
-static void compute_lps_array(const unsigned char *pattern, size_t m, size_t *lps) {
-    size_t length = 0; // Length of the previous longest prefix suffix
-    lps[0] = 0;       // lps[0] is always 0
-    size_t i = 1;
-
-    // The loop calculates lps[i] for i = 1 to m-1
-    while (i < m) {
-        if (pattern[i] == pattern[length]) {
-            lps[i++] = ++length;
-        } else {
-            // This is tricky. Consider the example.
-            // AAACAAAA and i = 7. The idea is similar to search step.
-            if (length != 0) {
-                length = lps[length - 1];
-                // Also, note that we do not increment i here
-            } else {
-                lps[i++] = 0;
-            }
-        }
-    }
-}
-
-// Searches for all occurrences of 'pattern' in 'text' using Knuth-Morris-Pratt.
+// Searches for all occurrences of 'pattern' in 'text' using the two-way algorithm.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
 // Caller must free the returned array using free_indices.
-size_t* find_all(const unsigned char *text, size_t n,
-                                const unsigned char *pattern, size_t m,
-                                size_t *count_ptr,
-                                int allow_overlap) {
+size_t* find_all(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m, size_t *count_ptr, int allow_overlap) {
     *count_ptr = 0;
+    // Not necessary as we check on Python side.
+    // if (m == 0 || n == 0 || m > n) return NULL;
 
-    // Allocate LPS array
-    size_t *lps = (size_t *)malloc(sizeof(size_t) * m);
-    if (lps == NULL) {
-        return NULL;
-    }
-    compute_lps_array(pattern, m, lps);
+    // Pass 'm' (size_t) as ptrdiff_t.
+    prework p;
+    preprocess(pattern, (ptrdiff_t)m, &p);
 
-    size_t i = 0; // Index for text[]
-    size_t j = 0; // Index for pattern[]
-
-    // Initial allocation for indices. We can reallocate if more are found.
-    size_t capacity = 1000;
+    size_t capacity = 1000; // Initial allocation for indices. We can reallocate if more are found.
     size_t *indices = (size_t *)malloc(sizeof(size_t) * capacity);
     if (indices == NULL) {
-        free(lps);
         return NULL;
     }
 
-    while (i < n) {
-        if (pattern[j] == text[i]) {
-            ++i;
-            ++j;
+    size_t i = 0;
+    while (i <= n - m) { // Ensure there's enough space for the pattern
+        // Pass 'n-i' (size_t) as ptrdiff_t.
+        ptrdiff_t result = two_way(text + i, (ptrdiff_t)(n - i), &p);
+        if (result == -1) {
+            break;
         }
+        size_t found = i + (size_t)result;
+        if (*count_ptr >= capacity) {
+            capacity *= 2;
+            size_t *new_indices = (size_t *)realloc(indices, sizeof(size_t) * capacity);
+            if (new_indices == NULL) {
+                free(indices);
+                *count_ptr = 0;
+                return NULL;
+            }
+            indices = new_indices;
+        }
+        indices[*count_ptr] = found;
+        (*count_ptr)++;
 
-        if (j == m) {
-            // Found pattern at index (i - j)
-            if (*count_ptr >= capacity) {
-                capacity *= 2;
-                size_t *new_indices = (size_t *)realloc(indices, sizeof(size_t) * capacity);
-                if (new_indices == NULL) {
-                    free(lps);
-                    free(indices);
-                    *count_ptr = 0; // Indicate failure
-                    return NULL;
-                }
-                indices = new_indices;
-            }
-            indices[*count_ptr] = i - j;
-            (*count_ptr)++;
-            if (allow_overlap) {
-                j = lps[j - 1]; // Classic Knuth-Morris-Pratt: allow overlaps
-            } else {
-                j = 0; // Non-overlapping: skip matched region
-            }
-        } else if (i < n && pattern[j] != text[i]) {
-            // Mismatch after j matches
-            // Do not match lps[0..lps[j-1]] characters, they will match anyway
-            if (j != 0) {
-                j = lps[j - 1];
-            } else {
-                ++i;
-            }
+        if (allow_overlap) {
+            // If m is 0, found + 1 could still lead to issues if not handled above.
+            // But we return NULL for m=0 now.
+            i = found + 1;
+        } else {
+            // If m is 0, found + m is found. Infinite loop if not handled above.
+            i = found + m;
         }
     }
-
-    free(lps);
 
     if (*count_ptr == 0) {
         free(indices);
         return NULL;
     }
-    // Shrink to fit if desired, or leave as is for simplicity
+
+    // Shrink to fit, optional because Python side handles this.
     // size_t *final_indices = (size_t *)realloc(indices, sizeof(size_t) * (*count_ptr));
-    // if (final_indices == NULL && *count_ptr > 0) { /* handle error, though unlikely if shrinking */ }
+    // if (final_indices == NULL && *count_ptr > 0) { /* handle error */ }
     // else if (*count_ptr > 0) { indices = final_indices; }
 
     return indices;
@@ -111,5 +72,3 @@ void free_indices(size_t *indices_ptr) {
         free(indices_ptr);
     }
 }
-
-

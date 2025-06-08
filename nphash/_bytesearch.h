@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-// Searches for all occurrences of 'pattern' in 'text' using Knuth-Morris-Pratt.
+// Searches for all occurrences of 'pattern' in 'text' using the two way algorithm.
 // Parameters:
 //   text: The text to search within.
 //   n: The length of the text.

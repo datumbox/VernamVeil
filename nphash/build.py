@@ -571,6 +571,9 @@ def main() -> None:
     _ensure_blake3_sources(blake3_dir, version="1.8.2")
     include_dirs.append(blake3_dir)
 
+    twoway_dir = nphash_dir.parent / "third_party" / "twoway"
+    include_dirs.append(twoway_dir)
+
     c_paths_blake3 = [os.path.relpath(nphash_dir / "_npblake3.c", nphash_dir)]
     core_c_files = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
     if tbb_enabled:
@@ -620,7 +623,10 @@ def main() -> None:
     ffibuilder_bytesearch.set_source(
         "_bytesearchffi",
         '#include "_bytesearch.h"\n',
-        sources=[os.path.relpath(nphash_dir / "_bytesearch.c", nphash_dir)],
+        sources=[
+            os.path.relpath(nphash_dir / "_bytesearch.c", nphash_dir),
+            os.path.relpath(twoway_dir / "_twoway.c", nphash_dir),
+        ],
         include_dirs=include_paths,
         libraries=libraries_c,
         extra_compile_args=extra_compile_args,

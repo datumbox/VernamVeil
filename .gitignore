@@ -11,4 +11,4 @@ docs-html/
 nphash/*.o
 nphash/_*ffi.*
 reports/
-third_party/
+third_party/blake3/
