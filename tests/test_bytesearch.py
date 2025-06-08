@@ -9,7 +9,11 @@ class TestFindAll(unittest.TestCase):
     """Unit tests for the find_all function in _find.py."""
 
     def _get_checks(self):
-        return [False, True]
+        """Utility to get the checks for _HAS_C_MODULE."""
+        checks = [False]
+        if _HAS_C_MODULE:
+            checks.append(True)
+        return checks
 
     def _run_find_all(self, haystack, needle, has_c_module):
         """Utility to run find_all with or without C module."""
