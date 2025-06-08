@@ -44,7 +44,7 @@ typedef struct {
 } bmh_prework_t;
 
 // Preprocesses the pattern for BMH search.
-static void bmh_preprocess(const unsigned char *pattern, size_t m, bmh_prework_t *p) {
+static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t m, bmh_prework_t * restrict p) {
     // m is 0 is handled by Python side. it is assumed that the caller ensures m >= 0.
     p->pattern_ptr = pattern;
     p->pattern_len = m;
@@ -61,10 +61,10 @@ static void bmh_preprocess(const unsigned char *pattern, size_t m, bmh_prework_t
     }
 }
 
-// Searches for pattern in text using BMH algorithm with precomputed data.
-static ptrdiff_t bmh_search(const unsigned char *text, size_t n, const bmh_prework_t *p) {
-    const unsigned char *pattern = p->pattern_ptr;
-    size_t m = p->pattern_len;
+// Searches for pattern in text using Boyer-Moore-Horspool algorithm with precomputed data.
+static inline ptrdiff_t bmh_search(const unsigned char * restrict text, size_t n, const bmh_prework_t * restrict p) {
+    const unsigned char * restrict pattern = p->pattern_ptr;
+    const size_t m = p->pattern_len;
 
     // n is 0 is handled by Python side. it is assumed that the caller ensures n >= 0.
     // if (m == 0) return 0; // Python side handles m=0, bmh_preprocess also handles m=0 for skip_table.
@@ -87,7 +87,7 @@ static ptrdiff_t bmh_search(const unsigned char *text, size_t n, const bmh_prewo
         } else {
             // Mismatch. Calculate shift using the character in text aligned with the *last* char of pattern.
             // This is text[i + m - 1].
-            unsigned char char_to_skip_by = text[i + m_minus_1];
+            const unsigned char char_to_skip_by = text[i + m_minus_1];
             i += p->skip_table[char_to_skip_by];
         }
     }
@@ -125,7 +125,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
     bmh_preprocess(pattern, m, &p_bmh);
 #endif
 
-    size_t capacity = 1000; // Initial allocation for indices. We can reallocate if more are found.
+    size_t capacity = 512; // Initial allocation for indices. We can reallocate if more are found.
     size_t *indices = malloc(sizeof(size_t) * capacity);
     if (indices == NULL) {
         return NULL;
@@ -134,7 +134,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
     size_t i = 0;
     while (i <= n - m) { // Ensure there's enough space for the pattern
 #if HAVE_MEMMEM == 1
-        const unsigned char *found = memmem(text + i, n - i, pattern, m);
+        const unsigned char * restrict found = memmem(text + i, n - i, pattern, m);
         if (!found) {
             break;
         }
