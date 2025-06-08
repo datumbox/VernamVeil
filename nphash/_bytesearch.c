@@ -4,6 +4,9 @@
 #if defined(_GNU_SOURCE) && defined(__GLIBC__)
     // GNU/Linux systems
     #define HAVE_MEMMEM 1
+#elif defined(_MSC_VER)
+    // MSVC provides memmem in string.h (via UCRT)
+    #define HAVE_MEMMEM 1
 #elif defined(__APPLE__)
     // Apple/macOS systems
     #include <AvailabilityMacros.h>
@@ -65,7 +68,8 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t
         p->skip_table[pattern[k]] = (ptrdiff_t)(m_minus_1 - k);
     }
 
-    p->good_suffix_shifts = NULL; // Initialize: GS rule off by default or if m is too large
+    // Initialize: GS rule off by default or if m is too large
+    p->good_suffix_shifts = NULL;
     if (m > BMH_GOOD_SUFFIX_STACK_MAX_M) {
         return; // GS rule not used if m exceeds stack allocation limit
     }
@@ -78,7 +82,7 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, size_t
         gs[i] = m_ptrdiff_t; // Default shift is pattern length
     }
 
-    ptrdiff_t f_arr[m + 1]; // VLA for f, safe due to m check (m > 0 and m <= BMH_GOOD_SUFFIX_STACK_MAX_M)
+    ptrdiff_t f_arr[BMH_GOOD_SUFFIX_STACK_MAX_M + 1]; // VLA for f, fixed-size array for MSVC compatibility
     ptrdiff_t *f = f_arr;   // Use f as a pointer to the stack array f_arr
 
     // Phase 1 (compute f array - KMP-like borders for reversed pattern)
