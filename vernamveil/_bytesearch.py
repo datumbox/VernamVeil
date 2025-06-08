@@ -1,5 +1,61 @@
 from vernamveil._types import _HAS_C_MODULE, _bytesearchffi
 
+__all__ = ["find", "find_all"]
+
+
+def find(
+    haystack: bytes | bytearray | memoryview,
+    needle: bytes | bytearray | memoryview,
+    start: int = 0,
+    end: int | None = None,
+) -> int:
+    """Finds the first occurrence of needle in haystack[start:end] using the fast C byte search, or Python fallback.
+
+    Args:
+        haystack (bytes or bytearray or memoryview): The bytes object to search within.
+        needle (bytes or bytearray or memoryview): The bytes object to search for.
+        start (int): The starting index to search from. Defaults to 0.
+        end (int, optional): The ending index (exclusive) to search to. Defaults to None (end of haystack).
+
+    Returns:
+        int: The 0-based starting index of the first occurrence, or -1 if not found.
+    """
+    n = len(haystack)
+
+    if end is None:
+        end = n
+    if start < 0:
+        start = max(n + start, 0)
+    if end < 0:
+        end = max(n + end, 0)
+
+    m = len(needle)
+    sub_n = end - start
+    if m == 0:
+        # Python's behavior for empty needle
+        if start > n:
+            return -1
+        return start
+    if sub_n <= 0 or m > sub_n:
+        return -1
+
+    if not _HAS_C_MODULE:
+        # Fallback to Python implementation if C library is not available
+        bytes_haystack = haystack.tobytes() if isinstance(haystack, memoryview) else haystack
+        idx = bytes_haystack.find(needle, start, end)
+        return idx
+    else:
+        # Use the C extension for byte search
+        ffi = _bytesearchffi.ffi
+
+        view = haystack if isinstance(haystack, memoryview) else memoryview(haystack)
+        idx = _bytesearchffi.lib.find(
+            ffi.from_buffer(view[start:end]), sub_n, ffi.from_buffer(needle), m
+        )
+        if idx == -1:
+            return -1
+        return int(idx) + start
+
 
 def find_all(
     haystack: bytes | bytearray | memoryview, needle: bytes | bytearray | memoryview

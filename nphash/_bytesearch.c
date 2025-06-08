@@ -35,6 +35,22 @@
 #include "_bytesearch.h"
 #include "_twoway.h"
 
+// Searches for the first occurrence of 'pattern' in 'text'. Returns the index or -1 if not found.
+ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m) {
+    // We don't do the check here because on Python we handle it for all corner-cases.
+    // if (m == 0 || n == 0 || m > n) return -1;
+#if HAVE_MEMMEM == 1
+    const unsigned char *found = memmem(text, n, pattern, m);
+    if (!found) return -1;
+    return (ptrdiff_t)(found - text);
+#else
+    prework p;
+    preprocess(pattern, (ptrdiff_t)m, &p);
+    ptrdiff_t found = two_way(text, (ptrdiff_t)n, &p);
+    return found;
+#endif
+}
+
 // Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
 // Caller must free the returned array using free_indices.
@@ -110,4 +126,3 @@ void free_indices(size_t *indices_ptr) {
         free(indices_ptr);
     }
 }
-

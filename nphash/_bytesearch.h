@@ -3,6 +3,16 @@
 
 #include <stddef.h>
 
+// Searches for the first occurrence of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Parameters:
+//   text: The text to search within.
+//   n: The length of the text.
+//   pattern: The pattern to search for.
+//   m: The length of the pattern.
+// Returns:
+//   The 0-based index of the first occurrence of the pattern in the text, or -1 if not found.
+ptrdiff_t find(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m);
+
 // Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Parameters:
 //   text: The text to search within.

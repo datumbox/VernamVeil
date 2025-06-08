@@ -11,7 +11,7 @@ import time
 from functools import partial
 from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
-from vernamveil._bytesearch import find_all
+from vernamveil._bytesearch import find, find_all
 from vernamveil._cypher import _Cypher
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
@@ -495,17 +495,7 @@ class VernamVeil(_Cypher):
         """
         # Convert to memoryview for efficient slicing
         if isinstance(message, (bytes, bytearray)):
-            msg_bytes = message
             message = memoryview(message)
-        else:
-            # Accessing memoryview.obj can be unsafe if the memoryview is a slice, but in this library, inputs are
-            # always bytes. However, callers might still provide a sliced memoryview over bytes. This code is safe
-            # because msg_bytes is only used to check for the delimiter, so at worst, the check is performed on the
-            # entire underlying array. The expensive tobytes() copy is almost always avoided, unless the caller
-            # provides a memoryview that is not backed by a bytes or bytearray object.
-            msg_bytes = (
-                message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
-            )
 
         # Store the output parts
         output: list[bytes | bytearray] = []
@@ -531,7 +521,7 @@ class VernamVeil(_Cypher):
         delimiter, seed = self._generate_delimiter(seed)
 
         # Delimiter conflict check
-        if msg_bytes.find(delimiter) != -1:
+        if find(message, delimiter) != -1:
             raise ValueError(
                 "The delimiter appears in the message. Consider increasing the delimiter size."
             )

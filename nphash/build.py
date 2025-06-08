@@ -418,6 +418,7 @@ def main() -> None:
         """
         size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m, size_t * restrict count_ptr, int allow_overlap);
         void free_indices(size_t *indices_ptr);
+        ptrdiff_t find(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m);
         """
     )
 
