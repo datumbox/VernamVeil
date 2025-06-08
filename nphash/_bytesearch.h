@@ -1,5 +1,5 @@
-#ifndef NPKMP_H
-#define NPKMP_H
+#ifndef BYTESEARCH_H
+#define BYTESEARCH_H
 
 #include <stddef.h>
 
@@ -24,4 +24,4 @@ size_t* find_all(const unsigned char *text, size_t n,
 // Frees the array of indices allocated by find_all.
 void free_indices(size_t *indices_ptr);
 
-#endif // NPKMP_H
+#endif // BYTESEARCH_H

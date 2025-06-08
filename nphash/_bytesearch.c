@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <stddef.h>
-#include "_kmp.h"
+#include "_bytesearch.h"
 
 // Computes the Longest Proper Prefix which is also Suffix (LPS) array.
-// This is a standard KMP preprocessing step.
+// This is a standard Knuth-Morris-Pratt preprocessing step.
 // Marked static to limit visibility to this file.
 static void compute_lps_array(const unsigned char *pattern, size_t m, size_t *lps) {
     size_t length = 0; // Length of the previous longest prefix suffix
@@ -27,7 +27,7 @@ static void compute_lps_array(const unsigned char *pattern, size_t m, size_t *lp
     }
 }
 
-// Searches for all occurrences of 'pattern' in 'text' using KMP.
+// Searches for all occurrences of 'pattern' in 'text' using Knuth-Morris-Pratt.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
 // Caller must free the returned array using free_indices.
 size_t* find_all(const unsigned char *text, size_t n,
@@ -76,7 +76,7 @@ size_t* find_all(const unsigned char *text, size_t n,
             indices[*count_ptr] = i - j;
             (*count_ptr)++;
             if (allow_overlap) {
-                j = lps[j - 1]; // Classic KMP: allow overlaps
+                j = lps[j - 1]; // Classic Knuth-Morris-Pratt: allow overlaps
             } else {
                 j = 0; // Non-overlapping: skip matched region
             }

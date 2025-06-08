@@ -619,8 +619,8 @@ def main() -> None:
 
     ffibuilder_bytesearch.set_source(
         "_bytesearchffi",
-        '#include "_kmp.h"\n',
-        sources=[os.path.relpath(nphash_dir / "_kmp.c", nphash_dir)],
+        '#include "_bytesearch.h"\n',
+        sources=[os.path.relpath(nphash_dir / "_bytesearch.c", nphash_dir)],
         include_dirs=include_paths,
         libraries=libraries_c,
         extra_compile_args=extra_compile_args,
