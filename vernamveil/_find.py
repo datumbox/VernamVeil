@@ -1,11 +1,11 @@
 from vernamveil._types import _bytesearchffi
 
 
-def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview) -> list[int]:
+def find_all(haystack: bytes | bytearray | memoryview, needle: bytes | bytearray | memoryview) -> list[int]:
     """Finds all occurrences of pattern_bytes in text_bytes using a fast byte search algorithm.
 
     Args:
-        haystack (bytes or bytearray): The bytes object to search within.
+        haystack (bytes or bytearray or memoryview): The bytes object to search within.
         needle (bytes or bytearray or memoryview): The bytes object to search for.
 
     Returns:
@@ -21,10 +21,12 @@ def find_all(haystack: bytes | bytearray, needle: bytes | bytearray | memoryview
 
     if _bytesearchffi is None:
         # Fallback to Python implementation if C library is not available
+        bytes_haystack = haystack.tobytes() if isinstance(haystack, memoryview) else haystack
+
         look_start = 0  # Start position for searching the next needle
         while look_start < n:
             # Search for the next occurrence of the delimiter
-            idx = haystack.find(needle, look_start)
+            idx = bytes_haystack.find(needle, look_start)
             if idx == -1:
                 # No more needle found
                 break
