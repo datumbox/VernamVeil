@@ -33,7 +33,67 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include "_bytesearch.h"
-#include "_twoway.h"
+
+#define ALPHABET_SIZE 256
+
+// Structure for BMH preprocessing data
+typedef struct {
+    ptrdiff_t skip_table[ALPHABET_SIZE];
+    const unsigned char *pattern_ptr;
+    size_t pattern_len;
+} bmh_prework_t;
+
+// Preprocesses the pattern for BMH search.
+static void bmh_preprocess(const unsigned char *pattern, size_t m, bmh_prework_t *p) {
+    // m is 0 is handled by Python side. it is assumed that the caller ensures m >= 0.
+    p->pattern_ptr = pattern;
+    p->pattern_len = m;
+
+    // Initialize skip table: default shift is pattern length m
+    for (int i = 0; i < ALPHABET_SIZE; ++i) {
+        p->skip_table[i] = (ptrdiff_t)m;
+    }
+    // For characters in pattern (except the last one), set specific shifts
+    // The shift is m - 1 - k, where k is the index of the character pattern[k]
+    const size_t m_minus_1 = m - 1;
+    for (size_t k = 0; k < m_minus_1; ++k) {
+        p->skip_table[pattern[k]] = (ptrdiff_t)(m_minus_1 - k);
+    }
+}
+
+// Searches for pattern in text using BMH algorithm with precomputed data.
+static ptrdiff_t bmh_search(const unsigned char *text, size_t n, const bmh_prework_t *p) {
+    const unsigned char *pattern = p->pattern_ptr;
+    size_t m = p->pattern_len;
+
+    // n is 0 is handled by Python side. it is assumed that the caller ensures n >= 0.
+    // if (m == 0) return 0; // Python side handles m=0, bmh_preprocess also handles m=0 for skip_table.
+    // if (m > n) return -1; // Python side handles m > n.
+
+    // Pre-calculate values that are constant within the loop
+    const size_t n_minus_m = n - m;
+    const ptrdiff_t m_minus_1 = (ptrdiff_t)m - 1;
+
+    size_t i = 0; // Current alignment of pattern's start in text
+
+    while (i <= n_minus_m) {
+        ptrdiff_t k = m_minus_1; // Index for pattern (from m-1 down to 0)
+        while (k >= 0 && pattern[k] == text[i + k]) {
+            --k;
+        }
+
+        if (k < 0) {
+            return (ptrdiff_t)i; // Match found at text[i]
+        } else {
+            // Mismatch. Calculate shift using the character in text aligned with the *last* char of pattern.
+            // This is text[i + m - 1].
+            unsigned char char_to_skip_by = text[i + m_minus_1];
+            i += p->skip_table[char_to_skip_by];
+        }
+    }
+    return -1; // No match found
+}
+
 
 // Searches for the first occurrence of 'pattern' in 'text'. Returns the index or -1 if not found.
 ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m) {
@@ -44,9 +104,9 @@ ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned cha
     if (!found) return -1;
     return (ptrdiff_t)(found - text);
 #else
-    prework p;
-    preprocess(pattern, (ptrdiff_t)m, &p);
-    ptrdiff_t found = two_way(text, (ptrdiff_t)n, &p);
+    bmh_prework_t p_bmh;
+    bmh_preprocess(pattern, m, &p_bmh);
+    ptrdiff_t found = bmh_search(text, n, &p_bmh);
     return found;
 #endif
 }
@@ -60,9 +120,9 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
     // if (m == 0 || n == 0 || m > n) return NULL;
 
 #if HAVE_MEMMEM == 0
-    // Pass 'm' (size_t) as ptrdiff_t.
-    prework p;
-    preprocess(pattern, (ptrdiff_t)m, &p);
+    // Preprocess pattern once for BMH
+    bmh_prework_t p_bmh;
+    bmh_preprocess(pattern, m, &p_bmh);
 #endif
 
     size_t capacity = 1000; // Initial allocation for indices. We can reallocate if more are found.
@@ -80,8 +140,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
         }
         size_t match_idx = (size_t)(found - text);
 #else
-        // Pass 'n-i' (size_t) as ptrdiff_t.
-        ptrdiff_t found = two_way(text + i, (ptrdiff_t)(n - i), &p);
+        ptrdiff_t found = bmh_search(text + i, n - i, &p_bmh);
         if (found == -1) {
             break;
         }
