@@ -620,7 +620,9 @@ def main() -> None:
 
     ffibuilder_bytesearch.set_source(
         "_bytesearchffi",
-        '#include "_bytesearch.h"\n',
+        """#include "_bytesearch.h"
+        #include "_bmh.h"
+        """,
         sources=[
             os.path.relpath(nphash_dir / "_bytesearch.c", nphash_dir),
         ],
