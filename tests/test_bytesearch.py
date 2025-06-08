@@ -135,16 +135,22 @@ class TestByteSearch(unittest.TestCase):
                 self.assertEqual(self._run_find_all(arr_haystack_nomatch.data, b"abc", has_c), [])
                 self.assertEqual(self._run_find_all(b"abcabc", arr_needle_nomatch.data, has_c), [])
                 self.assertEqual(
-                    self._run_find_all(arr_haystack_nomatch.data, arr_needle_nomatch.data, has_c), []
+                    self._run_find_all(arr_haystack_nomatch.data, arr_needle_nomatch.data, has_c),
+                    [],
                 )
 
                 # Partial match / different positions
                 arr_haystack_partial = np.array([c for c in b"abcbca"], dtype=np.uint8)
                 arr_needle_partial = np.array([c for c in b"bc"], dtype=np.uint8)
-                self.assertEqual(self._run_find_all(arr_haystack_partial.data, b"bc", has_c), [1, 3])
-                self.assertEqual(self._run_find_all(b"abcbca", arr_needle_partial.data, has_c), [1, 3])
                 self.assertEqual(
-                    self._run_find_all(arr_haystack_partial.data, arr_needle_partial.data, has_c), [1, 3]
+                    self._run_find_all(arr_haystack_partial.data, b"bc", has_c), [1, 3]
+                )
+                self.assertEqual(
+                    self._run_find_all(b"abcbca", arr_needle_partial.data, has_c), [1, 3]
+                )
+                self.assertEqual(
+                    self._run_find_all(arr_haystack_partial.data, arr_needle_partial.data, has_c),
+                    [1, 3],
                 )
 
     def test_find_empty_needle(self):
@@ -160,7 +166,9 @@ class TestByteSearch(unittest.TestCase):
 
                 self.assertEqual(self._run_find(haystack, b"", has_c, start=1), 1)
                 self.assertEqual(self._run_find(haystack, b"", has_c, start=2), 2)
-                self.assertEqual(self._run_find(haystack, b"", has_c, start=len_haystack), len_haystack)
+                self.assertEqual(
+                    self._run_find(haystack, b"", has_c, start=len_haystack), len_haystack
+                )
                 self.assertEqual(self._run_find(haystack, b"", has_c, start=len_haystack + 1), -1)
                 # Negative indices
                 self.assertEqual(self._run_find(haystack, b"", has_c, start=-1), len_haystack - 1)
@@ -264,27 +272,35 @@ class TestByteSearch(unittest.TestCase):
                 # Existing (match at start)
                 self.assertEqual(self._run_find(arr_haystack_orig.data, b"abc", has_c), 0)
                 self.assertEqual(self._run_find(b"abcabc", arr_needle_orig.data, has_c), 0)
-                self.assertEqual(self._run_find(arr_haystack_orig.data, arr_needle_orig.data, has_c), 0)
+                self.assertEqual(
+                    self._run_find(arr_haystack_orig.data, arr_needle_orig.data, has_c), 0
+                )
 
                 # Match not at start
                 arr_haystack_prefix = np.array([c for c in b"xyzabc"], dtype=np.uint8)
                 self.assertEqual(self._run_find(arr_haystack_prefix.data, b"abc", has_c), 3)
                 self.assertEqual(self._run_find(b"xyzabc", arr_needle_orig.data, has_c), 3)
-                self.assertEqual(self._run_find(arr_haystack_prefix.data, arr_needle_orig.data, has_c), 3)
+                self.assertEqual(
+                    self._run_find(arr_haystack_prefix.data, arr_needle_orig.data, has_c), 3
+                )
 
                 # Needle at the end
                 arr_haystack_suffix = np.array([c for c in b"abcxyz"], dtype=np.uint8)
                 arr_needle_suffix = np.array([c for c in b"xyz"], dtype=np.uint8)
                 self.assertEqual(self._run_find(arr_haystack_suffix.data, b"xyz", has_c), 3)
                 self.assertEqual(self._run_find(b"abcxyz", arr_needle_suffix.data, has_c), 3)
-                self.assertEqual(self._run_find(arr_haystack_suffix.data, arr_needle_suffix.data, has_c), 3)
+                self.assertEqual(
+                    self._run_find(arr_haystack_suffix.data, arr_needle_suffix.data, has_c), 3
+                )
 
                 # Not found
                 arr_haystack_nomatch = np.array([c for c in b"def"], dtype=np.uint8)
                 arr_needle_nomatch = np.array([c for c in b"xyz"], dtype=np.uint8)
                 self.assertEqual(self._run_find(arr_haystack_nomatch.data, b"abc", has_c), -1)
                 self.assertEqual(self._run_find(b"abcabc", arr_needle_nomatch.data, has_c), -1)
-                self.assertEqual(self._run_find(arr_haystack_nomatch.data, arr_needle_nomatch.data, has_c), -1)
+                self.assertEqual(
+                    self._run_find(arr_haystack_nomatch.data, arr_needle_nomatch.data, has_c), -1
+                )
 
     # --- Start/end parameter tests ---
     def test_find_start_parameter(self):
