@@ -34,7 +34,7 @@ class FX:
     for use in the VernamVeil cypher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
 
     Attributes:
-        keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes)` and returning
+        keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes | bytearray)` and returning
             `bytes` or `np.ndarray[np.uint8]`.
         block_size (int): The number of bytes returned per call.
         vectorise (bool): Whether the keystream function performs vectorised operations.
@@ -50,7 +50,7 @@ class FX:
 
     def __init__(
         self,
-        keystream_fn: Callable[[_Integer, bytes], _Bytes],
+        keystream_fn: Callable[[_Integer, bytes | bytearray], _Bytes],
         block_size: int,
         vectorise: bool,
         source_code: str = "",
@@ -58,7 +58,7 @@ class FX:
         """Initialise the FX wrapper.
 
         Args:
-            keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes)` and returning
+            keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes | bytearray)` and returning
                 `bytes` or `np.ndarray[np.uint8]`.
             block_size (int): The number of bytes returned per call.
             vectorise (bool): Whether the keystream function performs vectorised operations.
@@ -85,12 +85,12 @@ class FX:
         self.vectorise = vectorise
         self.source_code = source_code
 
-    def __call__(self, i: _Integer, seed: bytes) -> _Bytes:
+    def __call__(self, i: _Integer, seed: bytes | bytearray) -> _Bytes:
         """Generate the keystream for a given index and seed.
 
         Args:
             i (_Integer): The index or array of indices to generate the keystream for.
-            seed (bytes): The seed used for generating the keystream.
+            seed (bytes or bytearray): The seed used for generating the keystream.
 
         Returns:
             _Bytes: The generated keystream bytes or array of bytes.
@@ -176,12 +176,12 @@ class OTPFX(FX):
         )
         super().__init__(self.__call__, block_size, vectorise, source_code=source_code)
 
-    def __call__(self, i: _Integer, _: bytes) -> _Bytes:
+    def __call__(self, i: _Integer, _: bytes | bytearray) -> _Bytes:
         """Generates the next value in the keystream.
 
         Args:
             i (_Integer): The index or array of indices to generate the keystream for.
-            _ (bytes): Unused parameter for compatibility.
+            _ (bytes or bytearray): Unused parameter for compatibility.
 
         Returns:
             _Bytes: The next value in the keystream.
