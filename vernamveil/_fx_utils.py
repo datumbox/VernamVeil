@@ -420,7 +420,8 @@ def check_fx_sanity(
         and outputs.shape == (num_samples, fx.block_size)
     ):
         warnings.warn(
-            f"fx output is not a 2D NumPy array of uint8 with shape (num_samples, fx.block_size): got {type(outputs)}, dtype={getattr(outputs, 'dtype', None)}, shape={getattr(outputs, 'shape', None)}"
+            f"fx output is not a 2D NumPy array of uint8 with shape (num_samples, fx.block_size): got {type(outputs)}, "
+            f"dtype={getattr(outputs, 'dtype', None)}, shape={getattr(outputs, 'shape', None)}"
         )
         passed = False
 
@@ -471,7 +472,8 @@ def check_fx_sanity(
     hamming_distance_bits = np.sum(np.unpackbits(xor_result))
     if hamming_distance_bits < fx.block_size * 2:  # expect at least 2 bits per byte to flip
         warnings.warn(
-            f"Avalanche effect weak: flipping a bit in input changed only {hamming_distance_bits} bits out of {8 * fx.block_size}."
+            f"Avalanche effect weak: flipping a bit in input changed only {hamming_distance_bits} bits out "
+            f"of {8 * fx.block_size}."
         )
         passed = False
 

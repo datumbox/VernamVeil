@@ -48,10 +48,10 @@ decrypted, _ = cypher.decode(encrypted, initial_seed)
 
 **VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
-Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(np.ndarray[tuple[int], np.dtype[np.uint64]], seed: bytes) -> np.ndarray[tuple[int, int], np.dtype[np.uint8]]`:
-- `i`: the index of the block of bytes in the message; an uint64 NumPy array with a continuous enumeration.
+Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(np.ndarray[np.uint64], seed: bytes) -> np.ndarray[np.uint8]`:
+- `i`: the index of the block of bytes in the message; it is a 1D uint64 NumPy array with a continuous enumeration.
 - `seed`: a byte string that provides context and state; should be kept secret.
-- **Output**: uint8 NumPy array representing the key stream values.
+- **Output**: the 2D uint8 NumPy array representing the key stream values.
 
 This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption. If you're curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
 
@@ -171,7 +171,6 @@ Apply a unique transformation to the input index using a function that incorpora
 **Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
 
 Below we provide some example `fx` methods to illustrate these principles in practice:
-```
 
 ### 🏎️ A custom Keyed Hash-based `fx` (not cryptographically standard)
 
