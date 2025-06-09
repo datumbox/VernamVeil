@@ -145,6 +145,22 @@ class VernamVeil(_Cypher):
 
         return secrets.token_bytes(num_bytes)
 
+    def _allocate_array(
+        self, num_bytes: int
+    ) -> "bytearray | np.ndarray[tuple[int], np.dtype[np.uint8]]":
+        """Allocate an empty byte array or numpy array for the given number of bytes.
+
+        Args:
+            num_bytes (int): The number of bytes to allocate.
+
+        Returns:
+            bytearray or np.ndarray: An empty byte array or numpy array of uint8 type.
+        """
+        if self._fx.vectorise:
+            return np.empty(num_bytes, dtype=np.uint8)
+        else:
+            return bytearray(num_bytes)
+
     def _hash(
         self,
         key: bytes | bytearray | memoryview,
@@ -322,7 +338,7 @@ class VernamVeil(_Cypher):
         exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray(exact_size)
+        noisy_blocks = self._allocate_array(exact_size)
         current_rec_loc = 0
         current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
@@ -407,7 +423,7 @@ class VernamVeil(_Cypher):
         )
 
         # Reconstruct and unshuffle the message
-        message = bytearray(exact_size)
+        message = self._allocate_array(exact_size)
         current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
@@ -433,7 +449,7 @@ class VernamVeil(_Cypher):
         """
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
-        result = bytearray(data_len)
+        result = self._allocate_array(data_len)
         if self._fx.vectorise:
             # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
             processed = np.frombuffer(result, dtype=np.uint8)
@@ -543,7 +559,7 @@ class VernamVeil(_Cypher):
             output.append(memoryview(tag))
 
         # Concatenate all parts into a single bytearray
-        result = bytearray(sum(len(part) for part in output))
+        result = self._allocate_array(sum(len(part) for part in output))
         current_loc = 0
         for part in output:
             next_loc = current_loc + len(part)
