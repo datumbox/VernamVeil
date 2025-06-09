@@ -17,14 +17,14 @@ class _Cypher(ABC):
     """Abstract base class for cyphers; provides utils that are common to all subclasses."""
 
     @abstractmethod
-    def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
+    def _generate_delimiter(self, seed: bytes | bytearray) -> tuple[memoryview, bytes | bytearray]:
         """Create a delimiter sequence using the key stream and update the seed.
 
         Args:
-            seed (bytes): Seed used for generating the delimiter.
+            seed (bytes or bytearray): Seed used for generating the delimiter.
 
         Returns:
-            tuple[memoryview, bytes]: The delimiter and the refreshed seed.
+            tuple[memoryview, bytes or bytearray]: The delimiter and the refreshed seed.
         """
         pass
 
@@ -34,7 +34,7 @@ class _Cypher(ABC):
         key: bytes | bytearray | memoryview,
         msg_list: list[bytes | bytearray | memoryview],
         use_hmac: bool = False,
-    ) -> bytes:
+    ) -> bytes | bytearray:
         """Generate a Keyed Hash or Hash-based Message Authentication Code (HMAC).
 
         Each element in `msg_list` is sequentially fed into the Hash as message data.
@@ -45,22 +45,22 @@ class _Cypher(ABC):
             use_hmac (bool): If True, the key is used for HMAC; otherwise, it's a keyed hash. Defaults to False.
 
         Returns:
-            bytes: The resulting hash digest.
+            bytes or bytearray: The resulting hash digest.
         """
         pass
 
     @abstractmethod
     def encode(
-        self, message: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[memoryview, bytes]:
+        self, message: bytes | bytearray | memoryview, seed: bytes | bytearray
+    ) -> tuple[memoryview, bytes | bytearray]:
         """Encrypt a message.
 
         Args:
             message (bytes or bytearray or memoryview): Message to encode.
-            seed (bytes): Initial seed for encryption.
+            seed (bytes or bytearray): Initial seed for encryption.
 
         Returns:
-            tuple[memoryview, bytes]: Encrypted message and final seed.
+            tuple[memoryview, bytes or bytearray]: Encrypted message and final seed.
 
         Raises:
             ValueError: If the delimiter appears in the message.
@@ -69,16 +69,16 @@ class _Cypher(ABC):
 
     @abstractmethod
     def decode(
-        self, cyphertext: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[memoryview, bytes]:
+        self, cyphertext: bytes | bytearray | memoryview, seed: bytes | bytearray
+    ) -> tuple[memoryview, bytes | bytearray]:
         """Decrypt an encoded message.
 
         Args:
             cyphertext (bytes or bytearray or memoryview): Encrypted and obfuscated message.
-            seed (bytes): Initial seed for decryption.
+            seed (bytes or bytearray): Initial seed for decryption.
 
         Returns:
-            tuple[memoryview, bytes]: Decrypted message and final seed.
+            tuple[memoryview, bytes or bytearray]: Decrypted message and final seed.
 
         Raises:
             ValueError: If the authentication tag does not match.
