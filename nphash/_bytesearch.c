@@ -38,8 +38,8 @@ ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned cha
     return (ptrdiff_t)(found - text);
 #else
     bmh_prework_t p_bmh;
-    bmh_preprocess(pattern, m, &p_bmh);
-    ptrdiff_t found = bmh_search(text, n, &p_bmh);
+    bmh_preprocess(pattern, (ptrdiff_t)m, &p_bmh);
+    ptrdiff_t found = bmh_search(text, (ptrdiff_t)n, &p_bmh);
     return found;
 #endif
 }
@@ -55,7 +55,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
 #if HAVE_MEMMEM == 0
     // Preprocess pattern once for BMH
     bmh_prework_t p_bmh;
-    bmh_preprocess(pattern, m, &p_bmh);
+    bmh_preprocess(pattern, (ptrdiff_t)m, &p_bmh);
 #endif
 
     size_t capacity = 512; // Initial allocation for indices. We can reallocate if more are found.
@@ -73,7 +73,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
         }
         size_t match_idx = (size_t)(found - text);
 #else
-        ptrdiff_t found = bmh_search(text + i, n - i, &p_bmh);
+        ptrdiff_t found = bmh_search(text + i, (ptrdiff_t)(n - i), &p_bmh);
         if (found == -1) {
             break;
         }
