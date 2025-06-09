@@ -4,15 +4,6 @@
 #if defined(_GNU_SOURCE) && defined(__GLIBC__)
     // GNU/Linux systems
     #define HAVE_MEMMEM 1
-#elif defined(__APPLE__)
-    // Apple/macOS systems
-    #include <AvailabilityMacros.h>
-    #if defined(MAC_OS_X_VERSION_10_7) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7
-        // macOS has memmem since 10.7
-        #define HAVE_MEMMEM 1
-    #else
-        #define HAVE_MEMMEM 0
-    #endif
 #elif defined(__has_include)
     // Compiler with __has_include support
     #if __has_include(<string.h>) && __has_builtin(memmem)

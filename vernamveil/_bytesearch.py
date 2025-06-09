@@ -20,25 +20,6 @@ def find(
     Returns:
         int: The 0-based starting index of the first occurrence, or -1 if not found.
     """
-    n = len(haystack)
-
-    if end is None:
-        end = n
-    if start < 0:
-        start = max(n + start, 0)
-    if end < 0:
-        end = max(n + end, 0)
-
-    m = len(needle)
-    sub_n = end - start
-    if m == 0:
-        # Python's behavior for empty needle
-        if start > n:
-            return -1
-        return start
-    if sub_n <= 0 or m > sub_n:
-        return -1
-
     if not _HAS_C_MODULE:
         # Fallback to Python implementation if C library is not available
         bytes_haystack = haystack.tobytes() if isinstance(haystack, memoryview) else haystack
@@ -46,6 +27,27 @@ def find(
         return idx
     else:
         # Use the C extension for byte search
+
+        # Validate input types
+        n = len(haystack)
+
+        if end is None:
+            end = n
+        if start < 0:
+            start = max(n + start, 0)
+        if end < 0:
+            end = max(n + end, 0)
+
+        m = len(needle)
+        sub_n = end - start
+        if m == 0:
+            # Python's behavior for empty needle
+            if start > n:
+                return -1
+            return start
+        if sub_n <= 0 or m > sub_n:
+            return -1
+
         ffi = _bytesearchffi.ffi
 
         view = haystack if isinstance(haystack, memoryview) else memoryview(haystack)
