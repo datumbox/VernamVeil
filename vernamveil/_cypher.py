@@ -52,7 +52,7 @@ class _Cypher(ABC):
     @abstractmethod
     def encode(
         self, message: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """Encrypt a message.
 
         Args:
@@ -60,7 +60,7 @@ class _Cypher(ABC):
             seed (bytes): Initial seed for encryption.
 
         Returns:
-            tuple[bytearray, bytes]: Encrypted message and final seed.
+            tuple[memoryview, bytes]: Encrypted message and final seed.
 
         Raises:
             ValueError: If the delimiter appears in the message.
@@ -70,7 +70,7 @@ class _Cypher(ABC):
     @abstractmethod
     def decode(
         self, cyphertext: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """Decrypt an encoded message.
 
         Args:
@@ -78,7 +78,7 @@ class _Cypher(ABC):
             seed (bytes): Initial seed for decryption.
 
         Returns:
-            tuple[bytearray, bytes]: Decrypted message and final seed.
+            tuple[memoryview, bytes]: Decrypted message and final seed.
 
         Raises:
             ValueError: If the authentication tag does not match.
