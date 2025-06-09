@@ -17,17 +17,16 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         pip-dependencies:
           - [dev]
-          - [dev, numpy]
         include:
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
               cd nphash
               python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_notbb'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
@@ -36,7 +35,7 @@ jobs:
               python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_nosimd'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
@@ -45,7 +44,7 @@ jobs:
               python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_noasm'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
@@ -54,7 +53,7 @@ jobs:
               python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_nobmh'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
@@ -63,14 +62,14 @@ jobs:
               python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             build-steps: |
               brew install libomp openssl tbb
               cd nphash
               python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_notbb'
             build-steps: |
               brew install libomp openssl
@@ -79,7 +78,7 @@ jobs:
               python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_nosimd'
             build-steps: |
               brew install libomp openssl tbb
@@ -88,7 +87,7 @@ jobs:
               python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             build-steps: |
               @echo on
               if not exist vcpkg (
@@ -105,7 +104,7 @@ jobs:
               python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_notbb'
             build-steps: |
               @echo on
@@ -116,7 +115,7 @@ jobs:
               python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_nosimd'
             build-steps: |
               @echo on
@@ -135,7 +134,7 @@ jobs:
               python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, numpy, cffi]
+            pip-dependencies: [dev, cffi]
             postfix: '_noasm'
             build-steps: |
               @echo on

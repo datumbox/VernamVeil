@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
+from vernamveil._types import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -22,20 +22,17 @@ class TestVernamVeil(unittest.TestCase):
 
     def _for_all_modes(self, test_func, **cypher_kwargs):
         """Run the given test function for all supported cypher modes."""
-        modes = [("scalar", False, None)]
-        if _HAS_NUMPY:
-            # Always test vectorised
-            modes.append(("vectorised", True, False))
-            # Only test with C if available
-            if _HAS_C_MODULE:
-                modes.append(("vectorised_with_extension", True, True))
+        modes = [("no_extension", False)]
+        # Only test with C if available
+        if _HAS_C_MODULE:
+            modes.append(("with_extension", True))
 
         hash_names = ["blake2b", "sha256"]
         if _HAS_C_MODULE:
             hash_names.append("blake3")
 
         for hash_name in hash_names:
-            for mode, vectorise, use_c_backend in modes:
+            for mode, use_c_backend in modes:
                 if hash_name == "blake3" and not use_c_backend:
                     # Skip blake3 if C extension is not available
                     continue
@@ -47,9 +44,9 @@ class TestVernamVeil(unittest.TestCase):
                         else nullcontext()
                     )
                     with context:
-                        fx = generate_default_fx(vectorise=vectorise)
+                        fx = generate_default_fx()
                         cypher = VernamVeil(fx, hash_name=hash_name, **cypher_kwargs)
-                        test_func(cypher, vectorise)
+                        test_func(cypher)
 
     def test_single_message_encryption(self):
         """Test that a single message can be encrypted and decrypted correctly."""
@@ -57,7 +54,7 @@ class TestVernamVeil(unittest.TestCase):
             "This is a secret message that needs to be protected. Make sure it is hard to break!"
         )
 
-        def test(cypher, _):
+        def test(cypher):
             encrypted, _ = cypher.encode(message.encode(), self.initial_seed)
             decrypted, _ = cypher.decode(encrypted, self.initial_seed)
             self.assertEqual(message, decrypted.decode())
@@ -76,7 +73,7 @@ class TestVernamVeil(unittest.TestCase):
     def test_variable_length_encryption(self):
         """Test encryption and decryption for messages of varying lengths."""
 
-        def test(cypher, _):
+        def test(cypher):
             for i in range(150):
                 msg = "".join(random.choices(string.printable, k=i))
                 encrypted, _ = cypher.encode(msg.encode(), self.initial_seed)
@@ -104,7 +101,7 @@ class TestVernamVeil(unittest.TestCase):
             input_tmp.write(random.randbytes(65536))
             input_tmp.flush()
 
-        def test(cypher, _):
+        def test(cypher):
             cypher.process_file(
                 "encode",
                 input_file,
@@ -145,7 +142,7 @@ class TestVernamVeil(unittest.TestCase):
         """Test that flipping a single bit in the input causes ~50% of output bits to change (avalanche effect)."""
         message = b"This is a test message for avalanche effect!"
 
-        def test(cypher, _):
+        def test(cypher):
             modified = bytearray(message)
             byte_idx = len(modified) // 2
             bit_idx = 0
@@ -192,25 +189,24 @@ class TestVernamVeil(unittest.TestCase):
             auth_encrypt=True,
         )
 
-        for vectorise in (False, True) if _HAS_NUMPY else (False,):
-            # Instantiate the OTPFX with the keystream
-            fx = OTPFX(keystream, block_size, vectorise=vectorise)
+        # Instantiate the OTPFX with the keystream
+        fx = OTPFX(keystream, block_size)
 
-            # Encrypt the message
-            seed = VernamVeil.get_initial_seed()
-            cypher = VernamVeil(fx, **cypher_kwargs)
-            encrypted, _ = cypher.encode(message, seed)
+        # Encrypt the message
+        seed = VernamVeil.get_initial_seed()
+        cypher = VernamVeil(fx, **cypher_kwargs)
+        encrypted, _ = cypher.encode(message, seed)
 
-            # Serialize and reload the OTPFX
-            with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
-                tmp.write(fx.source_code)
-                fx_path = tmp.name
-            fx_loaded = load_fx_from_file(fx_path)
+        # Serialize and reload the OTPFX
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
+            tmp.write(fx.source_code)
+            fx_path = tmp.name
+        fx_loaded = load_fx_from_file(fx_path)
 
-            # Decrypt with the reloaded fx
-            cypher = VernamVeil(fx_loaded, **cypher_kwargs)
-            decrypted, _ = cypher.decode(encrypted, seed)
-            self.assertEqual(message, decrypted)
+        # Decrypt with the reloaded fx
+        cypher = VernamVeil(fx_loaded, **cypher_kwargs)
+        decrypted, _ = cypher.decode(encrypted, seed)
+        self.assertEqual(message, decrypted)
 
     def test_otpfx_reset_and_clip_encryption_decryption(self):
         """Test OTPFX: encryption/decryption with keystream reset and clip."""
@@ -230,22 +226,21 @@ class TestVernamVeil(unittest.TestCase):
             auth_encrypt=True,
         )
 
-        for vectorise in (False, True) if _HAS_NUMPY else (False,):
-            # Instantiate the OTPFX with the keystream
-            fx = OTPFX(keystream, block_size, vectorise=vectorise)
+        # Instantiate the OTPFX with the keystream
+        fx = OTPFX(keystream, block_size)
 
-            # Encrypt the message
-            seed = VernamVeil.get_initial_seed()
-            cypher = VernamVeil(fx, **cypher_kwargs)
-            encrypted, _ = cypher.encode(message, seed)
+        # Encrypt the message
+        seed = VernamVeil.get_initial_seed()
+        cypher = VernamVeil(fx, **cypher_kwargs)
+        encrypted, _ = cypher.encode(message, seed)
 
-            # Clip the keystream and reset the position
-            fx.keystream = fx.keystream[: fx.position]
-            fx.position = 0
+        # Clip the keystream and reset the position
+        fx.keystream = fx.keystream[: fx.position]
+        fx.position = 0
 
-            # Decrypt the message
-            decrypted, _ = cypher.decode(encrypted, seed)
-            self.assertEqual(message, decrypted)
+        # Decrypt the message
+        decrypted, _ = cypher.decode(encrypted, seed)
+        self.assertEqual(message, decrypted)
 
 
 if __name__ == "__main__":

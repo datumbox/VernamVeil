@@ -12,7 +12,7 @@ from typing import IO, Callable, cast
 
 from vernamveil import __version__
 from vernamveil._fx_utils import OTPFX, check_fx_sanity, generate_default_fx, load_fx_from_file
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
+from vernamveil._types import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
 __all__ = [
@@ -151,12 +151,6 @@ def main(args: list[str] | None = None) -> None:
     enc = subparsers.add_parser("encode", help="Encrypt a file.")
     _add_common_args(enc)
     enc.add_argument(
-        "--vectorise",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Vectorise fx when generating a new one (ignored if --fx-file is used).",
-    )
-    enc.add_argument(
         "--check-sanity",
         action="store_true",
         help="Check the loaded/generated fx and seed for appropriateness.",
@@ -215,7 +209,6 @@ def main(args: list[str] | None = None) -> None:
             sys.exit(1)
         fx_obj = generate_default_fx(
             hash_name=parsed_args.hash_name,
-            vectorise=parsed_args.vectorise,
             block_size=512 if parsed_args.hash_name == "blake3" else None,
         )
         fx_py.write_text(fx_obj.source_code)
@@ -307,7 +300,7 @@ def main(args: list[str] | None = None) -> None:
 
     # Print version and platform information
     _vprint(
-        f"VernamVeil CLI v{__version__} (numpy: {_HAS_NUMPY}, nphash: {_HAS_C_MODULE}) | "
+        f"VernamVeil CLI v{__version__} (nphash: {_HAS_C_MODULE}) | "
         f"Python v{sys.version_info.major}.{sys.version_info.minor} | Platform: {sys.platform}",
         "info",
         verbosity,

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
-from vernamveil._types import _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 
@@ -65,7 +64,7 @@ class TestDeniabilityUtils(unittest.TestCase):
         padding_range = (5, 20)
         decoy_ratio = 0.1
 
-        real_fx = generate_default_fx(vectorise=False)
+        real_fx = generate_default_fx()
         real_seed = VernamVeil.get_initial_seed()
         secret_message = b"Sensitive data: the launch code is 12345!"
         cypher = VernamVeil(
@@ -161,7 +160,6 @@ class TestDeniabilityUtils(unittest.TestCase):
         real_fx = OTPFX(
             [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(100)],
             block_size,
-            False,
         )
         try:
             decoy_out, decoy_message = self._run_deniability_test(
@@ -192,30 +190,27 @@ def make_test_func(chunk_size, delimiter_size):
 
     def test_func(self):
         """Test that the deniability function works correctly for a specific combo."""
-        vectorise_options = [True, False] if _HAS_NUMPY else [False]
-        for vectorise in vectorise_options:
-            with self.subTest(vectorise=vectorise):
-                try:
-                    decoy_out, decoy_message = self._run_deniability_test(
-                        real_fx=generate_default_fx(vectorise=vectorise),
-                        chunk_size=chunk_size,
-                        delimiter_size=delimiter_size,
-                        padding_range=(5, 150),
-                        decoy_ratio=0.3,
-                    )
-                    self.assertEqual(decoy_out, decoy_message)
-                except ValueError as e:
-                    msg = str(e)
-                    self.assertTrue(
-                        "Cannot plausibly forge decoy message of length" in msg
-                        or "Could not find obfuscated decoy of length" in msg
-                    )
-                    self.skipTest("Could not find a decoy for this configuration.")
+        try:
+            decoy_out, decoy_message = self._run_deniability_test(
+                real_fx=generate_default_fx(),
+                chunk_size=chunk_size,
+                delimiter_size=delimiter_size,
+                padding_range=(5, 150),
+                decoy_ratio=0.3,
+            )
+            self.assertEqual(decoy_out, decoy_message)
+        except ValueError as e:
+            msg = str(e)
+            self.assertTrue(
+                "Cannot plausibly forge decoy message of length" in msg
+                or "Could not find obfuscated decoy of length" in msg
+            )
+            self.skipTest("Could not find a decoy for this configuration.")
 
     return test_func
 
 
-# Dynamically add a test method for each combo except vectorise
+# Dynamically add a test method for each combo
 for chunk_size, delimiter_size in combos:
     test_name = f"test_deniability_{chunk_size}_{delimiter_size}"
     test_func = make_test_func(chunk_size, delimiter_size)

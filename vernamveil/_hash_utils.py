@@ -4,17 +4,16 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 """
 
 import hashlib
-from typing import Literal
+from typing import Literal, cast
+
+import numpy as np
 
 from vernamveil._types import (
     _HAS_C_MODULE,
-)
-from vernamveil._types import _HashType as HashType
-from vernamveil._types import (
+    HashType,
     _npblake2bffi,
     _npblake3ffi,
     _npsha256ffi,
-    np,
 )
 
 __all__ = ["blake3", "fold_bytes_to_uint64", "hash_numpy"]
@@ -160,9 +159,9 @@ class blake3:
 
 
 def fold_bytes_to_uint64(
-    hashes: "np.ndarray[tuple[int, int], np.dtype[np.uint8]]",
+    hashes: np.ndarray[tuple[int, int], np.dtype[np.uint8]],
     fold_type: Literal["full", "view"] = "view",
-) -> "np.ndarray[tuple[int], np.dtype[np.uint64]]":
+) -> np.ndarray[tuple[int], np.dtype[np.uint64]]:
     """Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).
 
     Args:
@@ -188,7 +187,7 @@ def fold_bytes_to_uint64(
         # Create a view of the first 8 bytes as uint64 (big-endian)
         if cols > 8:
             # If there are more than 8 columns, we only take the first 8
-            hashes = hashes[:, :8]
+            hashes = cast(np.ndarray[tuple[int, int], np.dtype[np.uint8]], hashes[:, :8])
         return hashes.view(np.uint64).reshape(-1).byteswap()
     elif fold_type == "full":
         # Compute the shifts for each byte position (big-endian)
@@ -197,7 +196,7 @@ def fold_bytes_to_uint64(
         # Cast to uint64
         hashes_u64 = hashes.astype(np.uint64, copy=False)
 
-        # Compute folded values in a fully vectorized way
+        # Compute folded values in a fully vectorised way
         result: np.ndarray[tuple[int], np.dtype[np.uint64]] = np.bitwise_or.reduce(
             hashes_u64 << shifts, axis=1
         )
@@ -207,11 +206,11 @@ def fold_bytes_to_uint64(
 
 
 def hash_numpy(
-    i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
+    i: np.ndarray[tuple[int], np.dtype[np.uint64]],
     seed: bytes | None = None,
     hash_name: HashType = "blake2b",
     hash_size: int | None = None,
-) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
+) -> np.ndarray[tuple[int, int], np.dtype[np.uint8]]:
     """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
 
     If no seed is provided, the index is hashed directly.

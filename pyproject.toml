@@ -1,6 +1,6 @@
 [project]
 name = "vernamveil"
-version = "0.1.0"
+version = "0.2.0"
 description = "VernamVeil is a modular, symmetric stream cypher inspired by One-Time Pad. It features customisable keystream generation, synthetic IV seed initialisation, stateful seed evolution for avalanche effects, authenticated encryption, and layered message obfuscation. Supports vectorised operations and optional C-backed hashing for performance. Designed for educational and experimental use."
 authors = [
     { name = "Vasilis Vryniotis", email = "datumbox@github.com" }
@@ -8,6 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
+dependencies = [
+    "numpy>=2.2"
+]
 
 urls = { "Homepage" = "https://github.com/datumbox/vernamveil" }
 
@@ -23,9 +26,6 @@ dev = [
     "sphinx>=8.1",
     "sphinx-autodoc-typehints>=3.0",
     "sphinx_rtd_theme>=3.0",
-]
-numpy = [
-    "numpy>=2.2"
 ]
 cffi = [
     "cffi>=1.17"

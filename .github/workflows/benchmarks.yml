@@ -32,7 +32,7 @@ jobs:
       - name: Install system dependencies and build C modules
         run: |
           sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev libtbb-dev python3-dev
-          python -m pip install -e .[dev,numpy,cffi]
+          python -m pip install -e .[dev,cffi]
           cd nphash
           python build.py
           ls -lh _bytesearchffi.*.* _npblake2bffi.*.* _npblake3ffi.*.* _npsha256ffi.*.*

@@ -1,8 +1,10 @@
 import unittest
 from unittest.mock import patch
 
+import numpy as np
+
 from vernamveil._bytesearch import find, find_all
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
+from vernamveil._types import _HAS_C_MODULE
 
 
 class TestByteSearch(unittest.TestCase):
@@ -116,9 +118,7 @@ class TestByteSearch(unittest.TestCase):
                 self.assertEqual(self._run_find_all(haystack, needle, has_c), [2000, 4002])
 
     def test_find_all_numpy_memoryview_support(self):
-        """Should support numpy arrays wrapped with memoryview for search if _HAS_NUMPY is True."""
-        if not _HAS_NUMPY:
-            self.skipTest("Numpy not available")
+        """Should support numpy arrays wrapped with memoryview for search."""
         arr_haystack = np.array([c for c in b"abcabc"], dtype=np.uint8)
         arr_needle = np.array([c for c in b"abc"], dtype=np.uint8)
         for has_c in self._get_checks():
@@ -261,9 +261,7 @@ class TestByteSearch(unittest.TestCase):
                 self.assertEqual(self._run_find(haystack, needle, has_c), 2000)
 
     def test_find_numpy_memoryview_support(self):
-        """Should support numpy arrays wrapped with memoryview for search if _HAS_NUMPY is True."""
-        if not _HAS_NUMPY:
-            self.skipTest("Numpy not available")
+        """Should support numpy arrays wrapped with memoryview for search."""
         arr_haystack_orig = np.array([c for c in b"abcabc"], dtype=np.uint8)
         arr_needle_orig = np.array([c for c in b"abc"], dtype=np.uint8)
 

@@ -14,25 +14,23 @@
 
 ## 🚀 Quick Start
 
-Minimal Installation (without vectorisation or C extension support):
+Minimal Installation (without C extension support):
 ```bash
 pip install .
 ```
 
 Minimal Example:
 ```python
-import hashlib
-from vernamveil import FX, VernamVeil
+import numpy as np
+from vernamveil import FX, VernamVeil, hash_numpy
 
 
 # Step 1: Define a custom key stream function; remember to store this securely
-def keystream_fn(i: int, seed: bytes) -> bytes:
+def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     # Simple cryptographically safe fx; see below for more examples
-    hasher = hashlib.blake2b(seed)
-    hasher.update(i.to_bytes(8, "big"))
-    return hasher.digest()
+    return hash_numpy(i, seed, "blake2b")
 
-fx = FX(keystream_fn, block_size=64, vectorise=False)
+fx = FX(keystream_fn, block_size=64)
 
 
 # Step 2: Generate a random initial seed for encryption
@@ -50,12 +48,10 @@ decrypted, _ = cypher.decode(encrypted, initial_seed)
 
 **VernamVeil** is an experimental cypher inspired by the **One-Time Pad (OTP)** developed in Python. The name honours **Gilbert Vernam**, who is credited with the theoretical foundation of the OTP.
 
-Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(i: int | np.ndarray[np.uint64], seed: bytes) -> bytes | np.ndarray[np.uint8]`:
-- `i`: the index of the block of bytes in the message; a scalar integer or an uint64 NumPy array with a continuous enumeration for vectorised operations.
+Instead of using a static key, VernamVeil allows the key to be represented by a function `fx(np.ndarray[tuple[int], np.dtype[np.uint64]], seed: bytes) -> np.ndarray[tuple[int, int], np.dtype[np.uint8]]`:
+- `i`: the index of the block of bytes in the message; an uint64 NumPy array with a continuous enumeration.
 - `seed`: a byte string that provides context and state; should be kept secret.
-- **Output**: bytes or uint8 NumPy array representing the key stream values.
-
-_Note: `numpy` is an optional but highly recommended dependency, used to accelerate vectorised operations when available._
+- **Output**: uint8 NumPy array representing the key stream values.
 
 This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption. If you're curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying [blog post](https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/).
 
@@ -75,7 +71,7 @@ This approach enables novel forms of key generation, especially for those who en
 2. **Synthetic IV Seed Initialisation, Stateful Seed Evolution & Avalanche Effects**: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as a keyed hash of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by key-hashing the previous seed with the chunk's plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).
 3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimizing the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
 4. **Modular & Configurable Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs, cryptographic hashes or OTP. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs. 
-5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `vectorise=True`, with a slower pure Python fallback available. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be compiled (with `cffi` and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. BLAKE3, in particular, is only available via this extension and benefits from hardware acceleration, including SIMD and assembly optimisations where supported. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
+5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy`. For even faster `fx` functions, an optional C module (`nphash`) can be compiled (with `cffi` and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. BLAKE3, in particular, is only available via this extension and benefits from hardware acceleration, including SIMD and assembly optimisations where supported. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
 
 ---
 
@@ -164,7 +160,7 @@ When creating your own key stream function (`fx`), it is essential to follow bes
 
 - **Uniform & Non-Constant Output**: Your `fx` should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible. Use a standard cryptographic pseudorandom function (PRF) before returning the output.
 - **Seed Sensitivity**: The output of `fx` must depend on the secret seed. Changing the seed should result in completely different outputs.
-- **Type Correctness**: The function must return a `bytes` or a NumPy `uint8` array in vectorised mode.
+- **Type Correctness**: The function must return a NumPy `uint8` array.
 - **Determinism**: `fx` must be deterministic for the same inputs. Do not use external state or randomness inside your function.
 - **Avoid Data-Dependent Branching or Timing**: Do not introduce data-dependent branching or timing in your `fx`, as this can lead to side-channel attacks.
 - **Performance**: Complex or slow `fx` functions will slow down encryption and decryption. Test performance if speed is important for your use case.
@@ -175,36 +171,9 @@ Apply a unique transformation to the input index using a function that incorpora
 **Always test your custom `fx`** with the provided `check_fx_sanity` utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.
 
 Below we provide some example `fx` methods to illustrate these principles in practice:
-
-### 🧠 A more robust, Keyed Hash-based scalar `fx` (not cryptographically standard)
-
-```python
-import hashlib
-from vernamveil import FX
-
-
-def keystream_fn(i: int, seed: bytes) -> bytes:
-    # Implements a customisable fx function based on a 10-degree polynomial transformation of the index,
-    # followed by a cryptographically secure keyed hash (BLAKE2b) output.
-    # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
-    # The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.
-    weights = [24242, 68652, 77629, 55585, 32284, 78741, 70249, 39611, 54080, 73198, 12426]
-
-    # Transform index i using a polynomial function to introduce uniqueness on fx
-    current_pow = 1
-    result = 0
-    for weight in weights:
-        result = (result + weight * current_pow) & 0xFFFFFFFFFFFFFFFF
-        current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
-
-    # Hash using BLAKE2b
-    return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
-
-
-fx = FX(keystream_fn, block_size=64, vectorise=False)
 ```
 
-### 🏎️ A fast version of the above `fx` that uses NumPy vectorisation and the `nphash` C module
+### 🏎️ A custom Keyed Hash-based `fx` (not cryptographically standard)
 
 ```python
 import numpy as np
@@ -229,10 +198,10 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     return hash_numpy(result, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
-fx = FX(keystream_fn, block_size=64, vectorise=True)
+fx = FX(keystream_fn, block_size=64)
 ```
 
-### 🛡️ A cryptographically strong Keyed Hash BLAKE2b `fx` (vectorised & C-accelerated)
+### 🛡️ A cryptographically strong Keyed Hash BLAKE2b `fx` (C-accelerated)
 
 ```python
 import numpy as np
@@ -249,7 +218,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     return hash_numpy(i, seed, "blake2b")  # uses C module if available, else NumPy fallback
 
 
-fx = FX(keystream_fn, block_size=64, vectorise=True)
+fx = FX(keystream_fn, block_size=64)
 ```
 
 ### 🏁️ A cryptographically strong and Fast Hash BLAKE3 `fx` (only available with C-acceleration)
@@ -270,7 +239,7 @@ def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
     return hash_numpy(i, seed, "blake3", hash_size=512)  # requires the C module
 
 
-fx = FX(keystream_fn, block_size=512, vectorise=True)
+fx = FX(keystream_fn, block_size=512)
 ```
 
 ---
@@ -298,7 +267,7 @@ block_size = 64
 keystream = [get_true_random_bytes(block_size) for _ in range(100)]
 
 # Create a cypher with the OTPFX instance
-fx = OTPFX(keystream, block_size=block_size, vectorise=False)
+fx = OTPFX(keystream, block_size=block_size)
 cypher = VernamVeil(fx)
 
 # Encrypt a message as per usual
@@ -329,8 +298,8 @@ VernamVeil includes helper tools to make working with key stream functions easie
 
 - `OTPFX`: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based `fx`.
 - `check_fx_sanity`: Runs basic sanity checks on your custom `fx` to ensure it produces diverse and seed-sensitive outputs.
-- `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default `fx` for the VernamVeil cypher. The BLAKE3 option is only available with the C extension.
-- `generate_polynomial_fx`: Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (BLAKE2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.
+- `generate_keyed_hash_fx` (same as `generate_default_fx`): Generates a deterministic `fx` function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven `fx`. This is the recommended secure default `fx` for the VernamVeil cypher. The BLAKE3 option is only available with the C extension.
+- `generate_polynomial_fx`: Generates a random `fx` function that first transforms the index using a polynomial with random weights, then applies keyed hashing (BLAKE2b) for cryptographic output.
 - `load_fx_from_file`: Loads a custom `fx` function from a Python file. This is useful for testing and validating your own implementations. It uses `importlib` internally to import the `fx`. **Never use this with files from untrusted sources, as it can run arbitrary code on your system.**
 
 These utilities help you prototype and validate your own key stream functions before using them in encryption.
@@ -340,8 +309,8 @@ Example:
 ```python
 from vernamveil import generate_default_fx, check_fx_sanity
 
-# Generate a vectorised fx function
-fx = generate_default_fx(vectorise=True)
+# Generate a fx function
+fx = generate_default_fx()
 
 # Show the generated function's source code
 print("Generated fx source code:\n", fx.source_code)
@@ -452,24 +421,23 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 ## 🛠️ Technical Details
 
 - **Compact Implementation**: The core cypher implementation (`_vernamveil.py`) is about 200 lines of code, excluding comments, documentation and empty lines.
-- **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
+- **External Dependencies**: Built using Python's standard library, with NumPy being the only core dependency.
 - **Optional C/C++ Module for Fast Hashing and Byte Search**: An optional C/C++ module (`nphash`) is provided, built using [cffi](https://cffi.readthedocs.io/), which enables fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays, and also provides efficient byte search utilities for internal use. BLAKE3 support is exclusive to this extension and benefits from hardware acceleration for optimal performance. Specifically, BLAKE3 uses the [official implementation](https://github.com/BLAKE3-team/BLAKE3) and can utilise SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64), and NEON (on ARM), as well as hand-written assembly, where supported by your hardware and compiler. These acceleration features are detected and enabled automatically during the build process. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, or MSVC) are required to build it. See the [`nphash` README](nphash/README.md) for further details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
 
-To install the library with all optional dependencies (development tools, NumPy for vectorisation, and cffi for the C module):
+To install the library with all optional dependencies (development tools and cffi for the C module):
 ```
-pip install .[dev,numpy,cffi]
+pip install .[dev,cffi]
 ```
 
 - The `[dev]` extra installs development and testing dependencies.
-- The `[numpy]` extra enables fast vectorised operations.
 - The `[cffi]` extra is required for building the `nphash` C extension for accelerated BLAKE2b, BLAKE3 and SHA-256 in NumPy-based `fx` functions. **You need to compile the C extension afterwards. See below.**
 
-### ⚡ Fast Vectorised `fx` Functions
+### ⚡ Fast `fx` Functions
 
-If you want to use fast vectorised key stream functions, install with both `numpy` and `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b, BLAKE3, and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by `generate_default_fx(vectorise=True)` when available. BLAKE3 is only available via the C extension and is hardware-accelerated for maximum speed. If the extension is not present, a slower pure NumPy fallback is used (excluding BLAKE3).
+If you want to use fast key stream functions, install with `cffi` enabled. The included `nphash` C module provides high-performance BLAKE2b, BLAKE3, and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by `generate_default_fx()` when available. BLAKE3 is only available via the C extension and is hardware-accelerated for maximum speed. If the extension is not present, a slower pure NumPy fallback is used (excluding BLAKE3).
 
 **To use the C extension you must build it from source.** For more details, see [`nphash/README.md`](nphash/README.md).
 
@@ -477,7 +445,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 43-59% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 43-59% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -492,7 +460,7 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx` using BLAKE3)
+### 🐢 VernamVeil (C extension + Keyed Hash `fx` using BLAKE3)
 
 **Encoding:**
 ```bash

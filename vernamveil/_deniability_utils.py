@@ -170,6 +170,6 @@ def forge_plausible_fx(
             keystream_values.append(ks)
 
     # 6. Generate the fx function
-    plausible_fx = OTPFX(keystream_values, block_size, cypher._fx.vectorise)
+    plausible_fx = OTPFX(keystream_values, block_size)
 
     return plausible_fx, fake_seed

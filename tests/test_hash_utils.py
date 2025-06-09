@@ -3,8 +3,10 @@ import secrets
 import unittest
 from unittest.mock import patch
 
+import numpy as np
+
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
+from vernamveil._types import _HAS_C_MODULE
 
 
 class TestHashUtils(unittest.TestCase):
@@ -21,7 +23,6 @@ class TestHashUtils(unittest.TestCase):
         else:
             raise ValueError(f"Unsupported hash_name '{hash_name}'.")
 
-    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_correctness(self):
         """Check that hash_numpy output matches expected hash values for a range of inputs, for both fold types."""
         checks = [False]
@@ -71,7 +72,6 @@ class TestHashUtils(unittest.TestCase):
 
                             np.testing.assert_array_equal(expected, output)
 
-    @unittest.skipUnless(_HAS_NUMPY, "NumPy not available")
     def test_hash_numpy_no_seed(self):
         """Check that hash_numpy works with no seed (seed=None), for both fold types."""
         checks = [False]

@@ -59,25 +59,23 @@ class TestVernamVeilCLI(unittest.TestCase):
         self.encfile = self.temp_dir_path / "output.enc"
         self.outfile = self.temp_dir_path / "output.txt"
         self.fx_code = """
+import numpy as np
 from vernamveil import FX
 
 def keystream_fn(i, seed):
-    v = i + 1
-    v &= 0xFFFFFFFFFFFFFFFF
-    return v.to_bytes(8, "big")
+    v = (i + 1)
+    return v[:, None].astype('>u8').view(np.uint8).reshape(-1, 8)
 
-fx = FX(keystream_fn, block_size=8, vectorise=False)
+fx = FX(keystream_fn, block_size=8)
 """
         self.fx_strong_code = """
-import hashlib
-from vernamveil import FX
+import numpy as np
+from vernamveil import FX, hash_numpy
 
 def keystream_fn(i, seed):
-    hasher = hashlib.blake2b(seed)
-    hasher.update(i.to_bytes(8, "big"))
-    return hasher.digest()
+    return hash_numpy(i, seed, "blake2b")
 
-fx = FX(keystream_fn, block_size=64, vectorise=False)
+fx = FX(keystream_fn, block_size=64)
 """
 
     def tearDown(self):
@@ -149,8 +147,6 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             args += extra_args
 
         args = [str(arg) for arg in args]
-        if not any(arg.endswith("vectorise") for arg in args):
-            args += ["--no-vectorise"]
         with self._patch_stdio(infile, outfile, stdin_data) as fake_stdout_buffer:
             main(args)
         return fake_stdout_buffer.getvalue() if fake_stdout_buffer else None
@@ -457,9 +453,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         with self._in_tempdir():
             block_size = 64
             keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(1000)]
-            fx_path = self._create_fx(
-                code=OTPFX(keystream, block_size=block_size, vectorise=False).source_code
-            )
+            fx_path = self._create_fx(code=OTPFX(keystream, block_size=block_size).source_code)
             seed_path = self._create_seed(content=b"long_and_unsecure_seed")
             stderr = StringIO()
             with patch("sys.stderr", stderr):
@@ -803,9 +797,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             keystream = [VernamVeil.get_initial_seed(num_bytes=block_size) for _ in range(150)]
 
             # Write OTPFX definition to fx.py
-            fx_path = self._create_fx(
-                code=OTPFX(keystream, block_size=block_size, vectorise=False).source_code
-            )
+            fx_path = self._create_fx(code=OTPFX(keystream, block_size=block_size).source_code)
 
             # Create a seed
             seed_path = self._create_seed()
