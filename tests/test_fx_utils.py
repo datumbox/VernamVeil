@@ -1,3 +1,4 @@
+import random
 import tempfile
 import unittest
 import warnings
@@ -323,17 +324,19 @@ class TestFxUtils(unittest.TestCase):
 
     def test_otp_fx_source_code_roundtrip(self):
         """Test that OTPFX source code can be saved and loaded, preserving bytes."""
+        vectorise_options = [True, False] if _HAS_NUMPY else [False]
+        for vectorise in vectorise_options:
+            with self.subTest(vectorise=vectorise):
+                test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
+                fx = OTPFX(test_keystream, 2, False)
+                source_code = fx.source_code
 
-        test_keystream = [b"42", b"99", b"12", b"34", b"56", b"71", b"01"]
-        fx = OTPFX(test_keystream, 2, False)
-        source_code = fx.source_code
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "fx_source.py"
-            with open(path, "w") as f:
-                f.write(source_code)
-            loaded_fx: OTPFX = load_fx_from_file(str(path))
-            self.assertEqual(list(loaded_fx.keystream), test_keystream)
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    path = Path(tmpdir) / "fx_source.py"
+                    with open(path, "w") as f:
+                        f.write(source_code)
+                    loaded_fx: OTPFX = load_fx_from_file(str(path))
+                    self.assertEqual(list(loaded_fx.keystream), test_keystream)
 
     def test_otpfx_keystream_exhaustion(self):
         """Test that OTPFX raises IndexError when the keystream is exhausted."""
@@ -348,20 +351,45 @@ class TestFxUtils(unittest.TestCase):
 
     def test_otpfx_large_keystream_roundtrip(self):
         """Test that OTPFX with a large keystream can be saved and loaded, preserving all bytes."""
-        # Create a large keystream
-        block_size = 64
-        num_blocks = 100000
-        test_keystream = [bytes([i % 256] * block_size) for i in range(num_blocks)]
-        fx = OTPFX(test_keystream, block_size, False)
-        source_code = fx.source_code
+        vectorise_options = [True, False] if _HAS_NUMPY else [False]
+        for vectorise in vectorise_options:
+            with self.subTest(vectorise=vectorise):
+                # Create a large keystream
+                block_size = 64
+                num_blocks = 100000
+                test_keystream = [bytes([i % 256] * block_size) for i in range(num_blocks)]
+                fx = OTPFX(test_keystream, block_size, vectorise)
+                source_code = fx.source_code
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "fx_large_source.py"
-            with open(path, "w") as f:
-                f.write(source_code)
-            loaded_fx: OTPFX = load_fx_from_file(path)
-            # Check that the loaded keystream matches the original
-            self.assertEqual(list(loaded_fx.keystream), test_keystream)
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    path = Path(tmpdir) / "fx_large_source.py"
+                    with open(path, "w") as f:
+                        f.write(source_code)
+                    loaded_fx: OTPFX = load_fx_from_file(path)
+                    # Check that the loaded keystream matches the original
+                    self.assertEqual(list(loaded_fx.keystream), test_keystream)
+
+    def test_otpfx_encrypt_decrypt_roundtrip(self):
+        """Test OTPFX encrypts and decrypts a long random message correctly (vectorise True/False)."""
+        block_size = 64
+        message_len = 10000
+        message = random.randbytes(message_len)
+
+        vectorise_options = [True, False] if _HAS_NUMPY else [False]
+        for vectorise in vectorise_options:
+            with self.subTest(vectorise=vectorise):
+                # Generate pseudo-random keystream
+                keystream = [VernamVeil.get_initial_seed(block_size) for _ in range(900)]
+                fx = OTPFX(keystream, block_size, vectorise)
+                cypher = VernamVeil(fx)
+
+                # Encrypt
+                cyphertext, _ = cypher.encode(message, b"seed")
+                # Reset position
+                fx.position = 0
+                # Decrypt
+                decrypted, _ = cypher.decode(cyphertext, b"seed")
+                self.assertEqual(decrypted, message)
 
 
 if __name__ == "__main__":

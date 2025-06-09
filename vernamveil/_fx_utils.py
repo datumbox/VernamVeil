@@ -198,10 +198,9 @@ class OTPFX(FX):
             self.position += 1
 
         if self.vectorise:
-            out = np.empty(n * self.block_size, dtype=np.uint8)
+            out = np.empty((n, self.block_size), dtype=np.uint8)
             for idx, chunk in enumerate(vals):
-                offset = idx * self.block_size
-                out[offset : offset + self.block_size] = np.frombuffer(chunk, dtype=np.uint8)
+                out[idx] = np.frombuffer(chunk, dtype=np.uint8)
             return out
         else:
             return vals[0]
