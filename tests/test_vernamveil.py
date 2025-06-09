@@ -57,7 +57,7 @@ class TestVernamVeil(unittest.TestCase):
         def test(cypher):
             encrypted, _ = cypher.encode(message.encode(), self.initial_seed)
             decrypted, _ = cypher.decode(encrypted, self.initial_seed)
-            self.assertEqual(message, decrypted.decode())
+            self.assertEqual(message, decrypted.tobytes().decode())
 
         # Test with all combinations of siv_seed_initialisation and auth_encrypt
         self._for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
@@ -78,7 +78,7 @@ class TestVernamVeil(unittest.TestCase):
                 msg = "".join(random.choices(string.printable, k=i))
                 encrypted, _ = cypher.encode(msg.encode(), self.initial_seed)
                 decrypted, _ = cypher.decode(encrypted, self.initial_seed)
-                self.assertEqual(msg, decrypted.decode(), f"Failed at length {i}")
+                self.assertEqual(msg, decrypted.tobytes().decode(), f"Failed at length {i}")
 
         # Test with all combinations of siv_seed_initialisation and auth_encrypt
         self._for_all_modes(test, siv_seed_initialisation=True, auth_encrypt=True)
