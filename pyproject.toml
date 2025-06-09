@@ -57,4 +57,4 @@ include = ["vernamveil", "nphash"]
 
 [tool.setuptools.package-data]
 "vernamveil" = ["py.typed"]
-"nphash" = ["py.typed", "_npblake2bffi.*.so", "_npblake3ffi.*.so", "_npsha256ffi.*.so"]
+"nphash" = ["py.typed", "_bytesearchffi.*.so", "_npblake2bffi.*.so", "_npblake3ffi.*.so", "_npsha256ffi.*.so"]

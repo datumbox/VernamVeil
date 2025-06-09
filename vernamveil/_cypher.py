@@ -8,6 +8,8 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import IO, Callable, Literal
 
+from vernamveil._bytesearch import find
+
 __all__: list[str] = []
 
 
@@ -259,7 +261,7 @@ class _Cypher(ABC):
 
                     buffer.extend(block)
                     while exception_queue.empty():
-                        delim_index = buffer.find(block_delimiter, look_start)
+                        delim_index = find(buffer, block_delimiter, look_start)
                         if delim_index == -1:
                             # No delimiter found
                             if not block and buffer:

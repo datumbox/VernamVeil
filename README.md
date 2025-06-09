@@ -453,7 +453,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 
 - **Compact Implementation**: The core cypher implementation (`_vernamveil.py`) is about 200 lines of code, excluding comments, documentation and empty lines.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
-- **Optional C/C++ Module for Fast Hashing**: An optional C/C++ module (`nphash`) is provided, built using [cffi](https://cffi.readthedocs.io/), which enables fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays. BLAKE3 support is exclusive to this extension and benefits from hardware acceleration for optimal performance. Specifically, BLAKE3 uses the [official implementation](https://github.com/BLAKE3-team/BLAKE3) and can utilise SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64), and NEON (on ARM), as well as hand-written assembly, where supported by your hardware and compiler. These acceleration features are detected and enabled automatically during the build process. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, or MSVC) are required to build it. See the [`nphash` README](nphash/README.md) for further details.
+- **Optional C/C++ Module for Fast Hashing and Byte Search**: An optional C/C++ module (`nphash`) is provided, built using [cffi](https://cffi.readthedocs.io/), which enables fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays, and also provides efficient byte search utilities for internal use. BLAKE3 support is exclusive to this extension and benefits from hardware acceleration for optimal performance. Specifically, BLAKE3 uses the [official implementation](https://github.com/BLAKE3-team/BLAKE3) and can utilise SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64), and NEON (on ARM), as well as hand-written assembly, where supported by your hardware and compiler. These acceleration features are detected and enabled automatically during the build process. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, or MSVC) are required to build it. See the [`nphash` README](nphash/README.md) for further details.
 - **Tested with**: Python 3.10 and NumPy 2.2.5.
 
 ### 🔧 Installation
@@ -477,7 +477,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 44-68% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 43-59% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -498,13 +498,13 @@ openssl rand -hex 16 > iv.hex
 ```bash
 vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 4.332s_
+_Time: 4.313s_
 
 **Decoding:**
 ```bash
 vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 4.428s_
+_Time: 4.183s_
 
 ### 🐇 AES-256-CBC (OpenSSL)
 
@@ -524,7 +524,7 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 4.332 s     | 4.428 s     |
+| VernamVeil   | 4.313 s     | 4.183 s     |
 | AES-256-CBC  | 3.007 s     | 2.636 s     |
 
 ---
@@ -546,4 +546,3 @@ Contributions, bug reports, and feature requests are welcome! Please open an iss
 Copyright (C) 2025 [Vasilis Vryniotis](http://blog.datumbox.com/author/bbriniotis/).
 
 The code is licensed under the [Apache License, Version 2.0](https://github.com/datumbox/VernamVeil/blob/main/LICENSE).
-

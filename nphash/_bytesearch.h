@@ -1,0 +1,36 @@
+#ifndef BYTESEARCH_H
+#define BYTESEARCH_H
+
+#include <stddef.h>
+
+// Searches for the first occurrence of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Parameters:
+//   text: The text to search within.
+//   n: The length of the text.
+//   pattern: The pattern to search for.
+//   m: The length of the pattern.
+// Returns:
+//   The 0-based index of the first occurrence of the pattern in the text, or -1 if not found.
+ptrdiff_t find(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m);
+
+// Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Parameters:
+//   text: The text to search within.
+//   n: The length of the text.
+//   pattern: The pattern to search for.
+//   m: The length of the pattern.
+//   count_ptr: Out-parameter, will be filled with the number of occurrences found.
+//   allow_overlap: If non-zero, allows overlapping occurrences of the pattern.
+// Returns:
+//   A dynamically allocated array of integers containing the 0-based starting
+//   indices of all occurrences. The caller is responsible for freeing this array
+//   using free_indices. Returns NULL if no occurrences are found or if memory allocation fails.
+size_t* find_all(const unsigned char *text, size_t n,
+                                   const unsigned char *pattern, size_t m,
+                                   size_t *count_ptr,
+                                   int allow_overlap);
+
+// Frees the array of indices allocated by find_all.
+void free_indices(size_t *indices_ptr);
+
+#endif // BYTESEARCH_H

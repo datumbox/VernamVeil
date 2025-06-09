@@ -2,6 +2,8 @@
 
 This project provides an optional C extension called `nphash` to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method `hash_numpy` can be used in `fx` methods to quickly produce required keyed hashing in vectorised implementations. We also provide a `blake3` class, which offers a hashlib-style BLAKE3 hash object using the C backend. **The `blake3` implementation is only available when the C extension is built.**
 
+In addition to hashing, the extension provides a fast byte search capability for efficiently finding all occurrences of a byte pattern within a buffer. This is exposed via the `find` and `find_all` methods in the C extension and is used internally by VernamVeil for pattern and delimiter detection in binary data. When imported, the `find` and `find_all` methods will automatically use the C extension for maximum performance if available, otherwise falling back to a pure Python implementation.
+
 The C and C++ code is compiled and wrapped for Python using the [cffi](https://cffi.readthedocs.io/en/latest/) library.
 
 > **Note:** The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).
@@ -95,7 +97,7 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    python build.py
    ```
 
-   This will compile the C code and generate libraries named `_npblake2bffi.*.so`, `_npblake3ffi.*.so`  and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
+   This will compile the C code and generate libraries named `_bytesearchffi.*.so`, `_npblake2bffi.*.so`, `_npblake3ffi.*.so`  and `_npsha256ffi.*.so` (the exact filenames depend on your platform and Python version).
 
 4. **Reinstall the library**
 
@@ -105,16 +107,20 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    pip install .
    ```
 
-## Disabling BLAKE3 Acceleration (TBB, SIMD, Assembly)
+## Advanced Configuration
 
-By default, the build enables all available hardware and threading acceleration for BLAKE3, including:
-- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multi-threaded hashing
-- SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON)
-- Hand-written assembly acceleration (platform-specific .S/.asm files)
+By default, the build enables all available hardware and threading acceleration for optimal performance. This includes features for BLAKE3 hashing and the choice of algorithm for byte searching.
 
-If you encounter issues installing these dependencies or want a simpler build (at the cost of reduced performance), you can disable any of these features individually:
+The BLAKE3 implementation benefits from:
+- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multi-threaded hashing.
+- SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON).
+- Hand-written assembly acceleration (platform-specific .S/.asm files).
 
-- **Disable TBB (multithreading):**
+For byte searching, by default we use our custom Boyer-Moore-Horspool (BMH) implementation, which is fast, consistent and portable. However, you can opt to use the `memmem` if preferred.
+
+If you encounter issues installing dependencies for these features, or wish to use alternative algorithms for specific functionalities, you can disable or change them individually:
+
+- **Disable TBB (multithreading) for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_TBB=1
@@ -125,7 +131,7 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-tbb
     ```
 
-- **Disable SIMD C acceleration (SSE/AVX/NEON):**
+- **Disable SIMD C acceleration (SSE/AVX/NEON) for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_SIMD=1
@@ -136,7 +142,7 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-simd
     ```
 
-- **Disable assembly acceleration:**
+- **Disable assembly acceleration for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_ASM=1
@@ -147,7 +153,18 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-asm
     ```
 
-If any of these are set, the build will skip the corresponding acceleration features. This is useful for platforms where these features are difficult to install or cause build issues. **Note:** Disabling any acceleration is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
+- **Use `memmem` instead of BMH for byte searching:**
+  - Using an environment variable:
+    ```bash
+    export BYTESEARCH_NO_BMH=1
+    python build.py
+    ```
+  - Or using a command-line flag:
+    ```bash
+    python build.py --no-bmh
+    ```
+
+If any of these are set, the build will adjust the corresponding features. **Note:** Disabling acceleration features is not recommended unless necessary, as it will reduce performance for the affected operations.
 
 ## Usage
 
@@ -161,13 +178,13 @@ from vernamveil._types import _HAS_C_MODULE
 After building, you can use the extension from Python code:
 
 ```python
-from vernamveil import blake3, hash_numpy
+from vernamveil import blake3, find, find_all, hash_numpy
 # The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.
-# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback.
-# All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
+# The `find` and `find_all` methods will use the C extension for fast byte search if available, otherwise a pure Python fallback.
+# The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback. All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.
 ```
 
-If the C extension is not built or importable, `hash_numpy` will transparently fall back to a slower pure NumPy implementation. No code changes are needed.
+If the C extension is not built or importable, `find`, `find_all` and `hash_numpy` will transparently fall back to slower pure Python/NumPy implementations. No code changes are needed.
 
 ## Notes
 

@@ -11,6 +11,7 @@ import time
 from functools import partial
 from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
+from vernamveil._bytesearch import find, find_all
 from vernamveil._cypher import _Cypher
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
@@ -373,25 +374,13 @@ class VernamVeil(_Cypher):
         """
         # Estimate the ranges of all chunks
         delimiter_len = len(delimiter)
-        all_chunk_ranges: list[tuple[int, int]] = []
-        prev_idx = None  # Tracks the index of the previous delimiter found
-        look_start = 0  # Start position for searching the next delimiter
-        while True:
-            # Search for the next occurrence of the delimiter
-            idx = noisy.find(delimiter, look_start)
-            if idx == -1:
-                # No more delimiters found
-                break
-            if prev_idx is not None:
-                # We have found a pair of delimiters:
-                # The chunk starts after the previous delimiter and ends at the current one
-                all_chunk_ranges.append((prev_idx + delimiter_len, idx))
-                prev_idx = None  # Reset to look for the next pair
-            else:
-                # Store the index of the first delimiter in the pair
-                prev_idx = idx
-            # Move the search start past the current delimiter
-            look_start = idx + delimiter_len
+        locations = find_all(noisy, delimiter)
+        all_chunk_ranges = [
+            # Take a pair of delimiter locations.
+            # The chunk starts after the first delimiter and ends at the second one
+            (locations[i] + delimiter_len, locations[i + 1])
+            for i in range(0, len(locations) - 1, 2)
+        ]
 
         # Determine the number of real chunks
         total_count = len(all_chunk_ranges)
@@ -506,17 +495,7 @@ class VernamVeil(_Cypher):
         """
         # Convert to memoryview for efficient slicing
         if isinstance(message, (bytes, bytearray)):
-            msg_bytes = message
             message = memoryview(message)
-        else:
-            # Accessing memoryview.obj can be unsafe if the memoryview is a slice, but in this library, inputs are
-            # always bytes. However, callers might still provide a sliced memoryview over bytes. This code is safe
-            # because msg_bytes is only used to check for the delimiter, so at worst, the check is performed on the
-            # entire underlying array. The expensive tobytes() copy is almost always avoided, unless the caller
-            # provides a memoryview that is not backed by a bytes or bytearray object.
-            msg_bytes = (
-                message.obj if isinstance(message.obj, (bytes, bytearray)) else message.tobytes()
-            )
 
         # Store the output parts
         output: list[bytes | bytearray] = []
@@ -542,7 +521,7 @@ class VernamVeil(_Cypher):
         delimiter, seed = self._generate_delimiter(seed)
 
         # Delimiter conflict check
-        if msg_bytes.find(delimiter) != -1:
+        if find(message, delimiter) != -1:
             raise ValueError(
                 "The delimiter appears in the message. Consider increasing the delimiter size."
             )

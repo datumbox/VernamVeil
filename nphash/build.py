@@ -1,13 +1,13 @@
 """Build script for the nphash CFFI extension.
 
-This script uses cffi to compile the _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast, parallelised
-BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
+This script uses cffi to compile the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256ffi C extensions that provide fast byte search
+and fast, parallelised BLAKE2b, BLAKE3 and SHA-256 based hashing functions for NumPy arrays. The C implementations leverage OpenMP for
 multithreading and OpenSSL for cryptographic hashing.
 
 Usage:
     python build.py
 
-This will generate the _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
+This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
 import argparse
@@ -402,17 +402,33 @@ def main() -> None:
         action="store_true",
         help="Disable assembly acceleration for BLAKE3 (platform-specific .S/.asm files)",
     )
+    parser.add_argument(
+        "--no-bmh",
+        action="store_true",
+        help="Disable BMH algorithm for byte search and use memmem instead.",
+    )
     args = parser.parse_args()
 
     on_values = {"1", "true", "yes", "on", "enabled"}
     no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "0").strip().lower() in on_values
     no_simd_env = os.environ.get("NPBLAKE3_NO_SIMD", "0").strip().lower() in on_values
     no_asm_env = os.environ.get("NPBLAKE3_NO_ASM", "0").strip().lower() in on_values
+    no_bmh_env = os.environ.get("BYTESEARCH_NO_BMH", "0").strip().lower() in on_values
     tbb_enabled = not args.no_tbb and not no_tbb_env
     simd_enabled = not args.no_simd and not no_simd_env
     asm_enabled = not args.no_asm and not no_asm_env
+    memmem_enabled = args.no_bmh or no_bmh_env
 
     # FFI builders
+    ffibuilder_bytesearch = FFI()
+    ffibuilder_bytesearch.cdef(
+        """
+        size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m, size_t * restrict count_ptr, int allow_overlap);
+        void free_indices(size_t *indices_ptr);
+        ptrdiff_t find(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m);
+        """
+    )
+
     ffibuilder_blake2b = FFI()
     ffibuilder_blake2b.cdef(
         """
@@ -609,6 +625,21 @@ def main() -> None:
     library_paths = [str(p) for p in library_dirs]
     object_paths = [str(p) for p in extra_objects]
 
+    ffibuilder_bytesearch.set_source(
+        "_bytesearchffi",
+        """#include "_bytesearch.h"
+        #include "_bmh.h"
+        """,
+        sources=[
+            os.path.relpath(nphash_dir / "_bytesearch.c", nphash_dir),
+        ],
+        include_dirs=include_paths,
+        libraries=libraries_c,
+        extra_compile_args=extra_compile_args + [f"-DUSE_MEMMEM={int(memmem_enabled)}"],
+        extra_link_args=extra_link_args,
+        library_dirs=library_paths,
+    )
+
     ffibuilder_blake2b.set_source(
         "_npblake2bffi",
         _get_c_source(nphash_dir / "_npblake2b.c"),
@@ -657,6 +688,7 @@ def main() -> None:
         # Using setattr avoids mypy errors and keeps the patch local to this build process.
         setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
 
+    ffibuilder_bytesearch.compile(verbose=True)
     ffibuilder_blake2b.compile(verbose=True)
     ffibuilder_blake3.compile(verbose=True)
     ffibuilder_sha256.compile(verbose=True)
