@@ -8,6 +8,9 @@
 #define ALPHABET_SIZE 256
 #define BMH_GOOD_SUFFIX_STACK_MAX_M 128
 
+#undef HAVE_MEMMEM
+#define HAVE_MEMMEM 0 // TODO: disable memmem for benchmarks
+
 // Structure for BMH preprocessing data
 typedef struct {
     ptrdiff_t skip_table[ALPHABET_SIZE];
