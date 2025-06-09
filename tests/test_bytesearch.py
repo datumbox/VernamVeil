@@ -6,7 +6,7 @@ from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
 
 
 class TestByteSearch(unittest.TestCase):
-    """Unit tests for the bytesearch methods in _find.py."""
+    """Unit tests for the methods in _bytesearch.py."""
 
     def _get_checks(self):
         """Utility to get the checks for _HAS_C_MODULE."""
@@ -302,7 +302,6 @@ class TestByteSearch(unittest.TestCase):
                     self._run_find(arr_haystack_nomatch.data, arr_needle_nomatch.data, has_c), -1
                 )
 
-    # --- Start/end parameter tests ---
     def test_find_start_parameter(self):
         """Should return the index of the first occurrence starting from the specified index."""
         for has_c in self._get_checks():

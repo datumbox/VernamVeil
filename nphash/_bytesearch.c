@@ -41,14 +41,13 @@ ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned cha
 #else
     bmh_prework_t p_bmh;
     bmh_preprocess(pattern, (ptrdiff_t)m, &p_bmh);
-    ptrdiff_t found = bmh_search(text, (ptrdiff_t)n, &p_bmh);
-    return found;
+    return bmh_search(text, (ptrdiff_t)n, &p_bmh);
 #endif
 }
 
 // Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
-// Caller must free the returned array using free_indices.
+// Caller must free the returned array using the free_indices() function.
 size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m, size_t * restrict count_ptr, int allow_overlap) {
     *count_ptr = 0;
     // Not necessary as we check on Python side.
@@ -60,7 +59,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
     bmh_preprocess(pattern, (ptrdiff_t)m, &p_bmh);
 #endif
 
-    size_t capacity = 512; // Initial allocation for indices. We can reallocate if more are found.
+    size_t capacity = 512; // Initial allocation for indices. We reallocate if more are found.
     size_t *indices = malloc(sizeof(size_t) * capacity);
     if (indices == NULL) {
         return NULL;
@@ -91,8 +90,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
             }
             indices = new_indices;
         }
-        indices[*count_ptr] = match_idx;
-        ++(*count_ptr);
+        indices[(*count_ptr)++] = match_idx;
 
         if (allow_overlap) {
             i = match_idx + 1;

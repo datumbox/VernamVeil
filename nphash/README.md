@@ -116,7 +116,7 @@ The BLAKE3 implementation benefits from:
 - SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON).
 - Hand-written assembly acceleration (platform-specific .S/.asm files).
 
-For byte searching, the default implementation uses our custom Boyer-Moore-Horspool (BMH) implementation, which is fast, consistent and portable. However, you can opt to use the `memmem` function if preferred.
+For byte searching, by default we use our custom Boyer-Moore-Horspool (BMH) implementation, which is fast, consistent and portable. However, you can opt to use the `memmem` if preferred.
 
 If you encounter issues installing dependencies for these features, or wish to use alternative algorithms for specific functionalities, you can disable or change them individually:
 

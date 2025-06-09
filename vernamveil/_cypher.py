@@ -261,7 +261,7 @@ class _Cypher(ABC):
 
                     buffer.extend(block)
                     while exception_queue.empty():
-                        delim_index = find(buffer, block_delimiter, start=look_start)
+                        delim_index = find(buffer, block_delimiter, look_start)
                         if delim_index == -1:
                             # No delimiter found
                             if not block and buffer:

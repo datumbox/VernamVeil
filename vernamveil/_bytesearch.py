@@ -31,20 +31,20 @@ def find(
         # Validate input types
         n = len(haystack)
 
-        if end is None:
-            end = n
         if start < 0:
             start = max(n + start, 0)
-        if end < 0:
+        if end is None:
+            end = n
+        elif end < 0:
             end = max(n + end, 0)
 
         m = len(needle)
-        sub_n = end - start
         if m == 0:
             # Python's behavior for empty needle
             if start > n:
                 return -1
             return start
+        sub_n = end - start
         if sub_n <= 0 or m > sub_n:
             return -1
 
@@ -62,7 +62,7 @@ def find(
 def find_all(
     haystack: bytes | bytearray | memoryview, needle: bytes | bytearray | memoryview
 ) -> list[int]:
-    """Finds all occurrences of pattern_bytes in text_bytes using a fast byte search algorithm.
+    """Finds all occurrences of needle in haystack using a fast byte search algorithm.
 
     Args:
         haystack (bytes or bytearray or memoryview): The bytes object to search within.
@@ -105,7 +105,7 @@ def find_all(
         count = count_ptr[0]
 
         if indices_ptr is not ffi.NULL and count > 0:
-            # convert the C array of size_t to a Python list in one go
+            # convert the C array to a Python list in one go
             result_indices = ffi.unpack(indices_ptr, count)
             _bytesearchffi.lib.free_indices(indices_ptr)
 

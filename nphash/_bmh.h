@@ -19,11 +19,11 @@ typedef struct {
 
 // Preprocesses the pattern for BMH search.
 static inline void bmh_preprocess(const unsigned char * restrict pattern, ptrdiff_t m, bmh_prework_t * restrict p) {
-    // m is 0 is handled by Python side. it is assumed that the caller ensures m >= 0.
+    // The m == 0 is handled on Python side. It is assumed that the caller ensures m > 0.
     p->pattern_ptr = pattern;
     p->pattern_len = m;
 
-    // Initialize skip table: default shift is pattern length m
+    // Initialise skip table: default shift is pattern length m
     ptrdiff_t * const skip_table = p->skip_table;
     for (int i = 0; i < ALPHABET_SIZE; ++i) {
         skip_table[i] = m;
@@ -36,7 +36,7 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, ptrdif
         skip_table[pattern[k]] = m_minus_1 - k;
     }
 
-    // Initialize: GS rule off by default or if m is too large
+    // Initialise: GS rule off by default or if m is too large
     if (m > BMH_GOOD_SUFFIX_STACK_MAX_M) {
         p->has_good_suffix_shifts = false;
         return; // GS rule not used if m exceeds stack allocation limit
@@ -49,8 +49,7 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, ptrdif
         gs[i] = m; // Default shift is pattern length
     }
 
-    ptrdiff_t f_arr[BMH_GOOD_SUFFIX_STACK_MAX_M + 1]; // fixed-size array for MSVC compatibility
-    ptrdiff_t *f = f_arr;   // Use f as a pointer to the stack array f_arr
+    ptrdiff_t f[BMH_GOOD_SUFFIX_STACK_MAX_M + 1]; // fixed-size array for MSVC compatibility
 
     // Phase 1 (compute f array - KMP-like borders for reversed pattern)
     // f[i] stores the starting position of the widest border of pattern[i..m-1]
@@ -79,9 +78,9 @@ static inline void bmh_preprocess(const unsigned char * restrict pattern, ptrdif
 
 // Searches for pattern in text using Boyer-Moore-Horspool algorithm with precomputed data.
 static inline ptrdiff_t bmh_search(const unsigned char * restrict text, ptrdiff_t n, const bmh_prework_t * restrict p) {
-    // if (n == 0) return -1; // Python side handles n >= 0.
-    // if (m == 0) return 0; // Python side handles m=0, bmh_preprocess also handles m=0 for skip_table.
-    // if (m > n) return -1; // Python side handles m > n.
+    // if (n == 0) return -1; // Python side ensures n > 0.
+    // if (m == 0) return 0; // Python side ensures m > 0.
+    // if (m > n) return -1; // Python side ensures m <= n.
 
     // Pre-calculate values that are constant within the loop
     const unsigned char * restrict pattern = p->pattern_ptr;
