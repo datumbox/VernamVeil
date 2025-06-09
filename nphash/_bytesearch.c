@@ -22,6 +22,18 @@
   #endif
 #endif
 
+#if USE_MEMMEM == 1
+// This declaration ensures the compiler is aware of the correct signature for `memmem`
+// (specifically, its `void*` return type) when `USE_MEMMEM` is active.
+// Without this, if system headers fail to provide the prototype (e.g., due to
+// missing feature-test macros like `_GNU_SOURCE`), the compiler might make an
+// implicit declaration, typically assuming `memmem` returns an `int`. This can
+// lead to incorrect behaviour, particularly on 64-bit systems where pointer
+// sizes differ from `int`, as the returned pointer address could be truncated
+// or misinterpreted.
+void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);
+#endif
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

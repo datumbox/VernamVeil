@@ -55,7 +55,7 @@ jobs:
 
           - os: ubuntu-latest
             pip-dependencies: [dev, numpy, cffi]
-            postfix: '_memmem'
+            postfix: '_nobmh'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
               cd nphash
