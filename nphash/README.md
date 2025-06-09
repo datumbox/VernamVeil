@@ -107,16 +107,20 @@ Supported platforms: Linux, macOS, and Windows (with suitable build tools).
    pip install .
    ```
 
-## Disabling BLAKE3 Acceleration (TBB, SIMD, Assembly)
+## Advanced Configuration
 
-By default, the build enables all available hardware and threading acceleration for BLAKE3, including:
-- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multi-threaded hashing
-- SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON)
-- Hand-written assembly acceleration (platform-specific .S/.asm files)
+By default, the build enables all available hardware and threading acceleration for optimal performance. This includes features for BLAKE3 hashing and the choice of algorithm for byte searching.
 
-If you encounter issues installing these dependencies or want a simpler build (at the cost of reduced performance), you can disable any of these features individually:
+The BLAKE3 implementation benefits from:
+- [oneAPI Threading Building Blocks (oneTBB)](https://uxlfoundation.github.io/oneTBB/) for multi-threaded hashing.
+- SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON).
+- Hand-written assembly acceleration (platform-specific .S/.asm files).
 
-- **Disable TBB (multithreading):**
+For byte searching, the default implementation uses our custom Boyer-Moore-Horspool (BMH) implementation, which is fast, consistent and portable. However, you can opt to use the `memmem` function if preferred.
+
+If you encounter issues installing dependencies for these features, or wish to use alternative algorithms for specific functionalities, you can disable or change them individually:
+
+- **Disable TBB (multithreading) for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_TBB=1
@@ -127,7 +131,7 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-tbb
     ```
 
-- **Disable SIMD C acceleration (SSE/AVX/NEON):**
+- **Disable SIMD C acceleration (SSE/AVX/NEON) for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_SIMD=1
@@ -138,7 +142,7 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-simd
     ```
 
-- **Disable assembly acceleration:**
+- **Disable assembly acceleration for BLAKE3:**
   - Using an environment variable:
     ```bash
     export NPBLAKE3_NO_ASM=1
@@ -149,7 +153,18 @@ If you encounter issues installing these dependencies or want a simpler build (a
     python build.py --no-asm
     ```
 
-If any of these are set, the build will skip the corresponding acceleration features. This is useful for platforms where these features are difficult to install or cause build issues. **Note:** Disabling any acceleration is not recommended unless necessary, as it will reduce BLAKE3 hashing performance for large data.
+- **Use `memmem` instead of BMH for byte searching:**
+  - Using an environment variable:
+    ```bash
+    export BYTESEARCH_NO_BMH=1
+    python build.py
+    ```
+  - Or using a command-line flag:
+    ```bash
+    python build.py --no-bmh
+    ```
+
+If any of these are set, the build will adjust the corresponding features. **Note:** Disabling acceleration features is not recommended unless necessary, as it will reduce performance for the affected operations.
 
 ## Usage
 

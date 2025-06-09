@@ -402,15 +402,22 @@ def main() -> None:
         action="store_true",
         help="Disable assembly acceleration for BLAKE3 (platform-specific .S/.asm files)",
     )
+    parser.add_argument(
+        "--no-bmh",
+        action="store_true",
+        help="Disable BMH algorithm for byte search and use memmem instead.",
+    )
     args = parser.parse_args()
 
     on_values = {"1", "true", "yes", "on", "enabled"}
     no_tbb_env = os.environ.get("NPBLAKE3_NO_TBB", "0").strip().lower() in on_values
     no_simd_env = os.environ.get("NPBLAKE3_NO_SIMD", "0").strip().lower() in on_values
     no_asm_env = os.environ.get("NPBLAKE3_NO_ASM", "0").strip().lower() in on_values
+    no_bmh_env = os.environ.get("BYTESEARCH_NO_BMH", "0").strip().lower() in on_values
     tbb_enabled = not args.no_tbb and not no_tbb_env
     simd_enabled = not args.no_simd and not no_simd_env
     asm_enabled = not args.no_asm and not no_asm_env
+    memmem_enabled = args.no_bmh or no_bmh_env
 
     # FFI builders
     ffibuilder_bytesearch = FFI()
@@ -628,7 +635,7 @@ def main() -> None:
         ],
         include_dirs=include_paths,
         libraries=libraries_c,
-        extra_compile_args=extra_compile_args,
+        extra_compile_args=extra_compile_args + [f"-DUSE_MEMMEM={int(memmem_enabled)}"],
         extra_link_args=extra_link_args,
         library_dirs=library_paths,
     )

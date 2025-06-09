@@ -1,23 +1,25 @@
 #include <string.h>
 
 // MEMMEM availability check
-#if defined(_GNU_SOURCE) && defined(__GLIBC__)
-    // GNU/Linux systems
-    #define HAVE_MEMMEM 1
-#elif defined(__has_include)
-    // Compiler with __has_include support
-    #if __has_include(<string.h>) && __has_builtin(memmem)
-        #define HAVE_MEMMEM 1
-    #else
-        #define HAVE_MEMMEM 0
-    #endif
-#else
-    // Check for POSIX.1-2008 compliance which includes memmem
-    #if (_POSIX_C_SOURCE >= 200809L) || defined(_POSIX_VERSION) && (_POSIX_VERSION >= 200809L)
-        #define HAVE_MEMMEM 1
-    #else
-        #define HAVE_MEMMEM 0
-    #endif
+#ifndef USE_MEMMEM
+  #if defined(_GNU_SOURCE) && defined(__GLIBC__)
+      // GNU/Linux systems
+      #define USE_MEMMEM 1
+  #elif defined(__has_include)
+      // Compiler with __has_include support
+      #if __has_include(<string.h>) && __has_builtin(memmem)
+          #define USE_MEMMEM 1
+      #else
+          #define USE_MEMMEM 0
+      #endif
+  #else
+      // Check for POSIX.1-2008 compliance which includes memmem
+      #if (_POSIX_C_SOURCE >= 200809L) || defined(_POSIX_VERSION) && (_POSIX_VERSION >= 200809L)
+          #define USE_MEMMEM 1
+      #else
+          #define USE_MEMMEM 0
+      #endif
+  #endif
 #endif
 
 #include <stdbool.h>
@@ -32,7 +34,7 @@
 ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m) {
     // We don't do the check here because on Python we handle it for all corner-cases.
     // if (m == 0 || n == 0 || m > n) return -1;
-#if HAVE_MEMMEM == 1
+#if USE_MEMMEM == 1
     const unsigned char *found = memmem(text, n, pattern, m);
     if (!found) return -1;
     return (ptrdiff_t)(found - text);
@@ -52,7 +54,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
     // Not necessary as we check on Python side.
     // if (m == 0 || n == 0 || m > n) return NULL;
 
-#if HAVE_MEMMEM == 0
+#if USE_MEMMEM == 0
     // Preprocess pattern once for BMH
     bmh_prework_t p_bmh;
     bmh_preprocess(pattern, (ptrdiff_t)m, &p_bmh);
@@ -66,7 +68,7 @@ size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned c
 
     size_t i = 0;
     while (i <= n - m) { // Ensure there's enough space for the pattern
-#if HAVE_MEMMEM == 1
+#if USE_MEMMEM == 1
         const unsigned char * restrict found = memmem(text + i, n - i, pattern, m);
         if (!found) {
             break;

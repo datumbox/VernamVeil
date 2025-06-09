@@ -53,6 +53,15 @@ jobs:
               export NPBLAKE3_NO_ASM=1
               python build.py
 
+          - os: ubuntu-latest
+            pip-dependencies: [dev, numpy, cffi]
+            postfix: '_memmem'
+            build-steps: |
+              sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
+              cd nphash
+              export BYTESEARCH_NO_BMH=1
+              python build.py
+
           - os: macos-latest
             pip-dependencies: [dev, numpy, cffi]
             build-steps: |
