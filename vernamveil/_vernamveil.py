@@ -148,13 +148,15 @@ class VernamVeil(_Cypher):
     def _allocate_array(
         self, num_bytes: int
     ) -> "bytearray | np.ndarray[tuple[int], np.dtype[np.uint8]]":
-        """Allocate an empty byte array or numpy array for the given number of bytes.
+        """Allocate an empty bytearray or numpy array for the given number of bytes.
+
+        This method checks if the FX is vectorised and allocates the appropriate type.
 
         Args:
             num_bytes (int): The number of bytes to allocate.
 
         Returns:
-            bytearray or np.ndarray: An empty byte array or numpy array of uint8 type.
+            bytearray or np.ndarray: An empty bytearray or numpy array of uint8 type.
         """
         if self._fx.vectorise:
             return np.empty(num_bytes, dtype=np.uint8)
