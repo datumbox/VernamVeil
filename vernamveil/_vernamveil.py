@@ -145,6 +145,24 @@ class VernamVeil(_Cypher):
 
         return secrets.token_bytes(num_bytes)
 
+    def _allocate_array(
+        self, num_bytes: int
+    ) -> "bytearray | np.ndarray[tuple[int], np.dtype[np.uint8]]":
+        """Allocate an empty bytearray or numpy array for the given number of bytes.
+
+        This method checks if the FX is vectorised and allocates the appropriate type.
+
+        Args:
+            num_bytes (int): The number of bytes to allocate.
+
+        Returns:
+            bytearray or np.ndarray: An empty bytearray or numpy array of uint8 type.
+        """
+        if self._fx.vectorise:
+            return np.empty(num_bytes, dtype=np.uint8)
+        else:
+            return bytearray(num_bytes)
+
     def _hash(
         self,
         key: bytes | bytearray | memoryview,
@@ -322,7 +340,7 @@ class VernamVeil(_Cypher):
         exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = bytearray(exact_size)
+        noisy_blocks = self._allocate_array(exact_size)
         current_rec_loc = 0
         current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
@@ -361,16 +379,16 @@ class VernamVeil(_Cypher):
 
         return memoryview(noisy_blocks)
 
-    def _deobfuscate(self, noisy: bytearray, seed: bytes, delimiter: memoryview) -> bytearray:
+    def _deobfuscate(self, noisy: memoryview, seed: bytes, delimiter: memoryview) -> memoryview:
         """Remove noise and extract real chunks from a shuffled noisy message.
 
         Args:
-            noisy (bytearray): Decrypted and obfuscated message.
+            noisy (memoryview): Decrypted and obfuscated message.
             seed (bytes): Seed for deterministic chunk deshuffling.
             delimiter (memoryview): Delimiter used to detect chunks.
 
         Returns:
-            bytearray: Original message reconstructed from real chunks.
+            memoryview: Original message reconstructed from real chunks.
         """
         # Estimate the ranges of all chunks
         delimiter_len = len(delimiter)
@@ -407,21 +425,20 @@ class VernamVeil(_Cypher):
         )
 
         # Reconstruct and unshuffle the message
-        message = bytearray(exact_size)
-        view = memoryview(noisy)
+        message = self._allocate_array(exact_size)
         current_loc = 0
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
 
             next_loc = current_loc + end - start
-            message[current_loc:next_loc] = view[start:end]
+            message[current_loc:next_loc] = noisy[start:end]
             current_loc = next_loc
 
-        return message
+        return memoryview(message)
 
     def _xor_with_key(
         self, data: memoryview, seed: bytes, is_encode: bool
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """Encrypt or decrypt data using XOR with the generated keystream.
 
         Args:
@@ -430,11 +447,11 @@ class VernamVeil(_Cypher):
             is_encode (bool): True for encryption, False for decryption.
 
         Returns:
-            tuple[bytearray, bytes]: Processed data and the final seed.
+            tuple[memoryview, bytes]: Processed data and the final seed.
         """
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
-        result = bytearray(data_len)
+        result = self._allocate_array(data_len)
         if self._fx.vectorise:
             # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
             processed = np.frombuffer(result, dtype=np.uint8)
@@ -463,7 +480,7 @@ class VernamVeil(_Cypher):
             # Refresh the seed differently for encoding and decoding
             seed = self._hash(seed, [plaintext_data])
 
-        return result, seed
+        return memoryview(result), seed
 
     def _generate_delimiter(self, seed: bytes) -> tuple[memoryview, bytes]:
         """Create a delimiter sequence using the key stream and update the seed.
@@ -480,7 +497,7 @@ class VernamVeil(_Cypher):
 
     def encode(
         self, message: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """Encrypt a message.
 
         Args:
@@ -488,7 +505,7 @@ class VernamVeil(_Cypher):
             seed (bytes): Initial seed for encryption.
 
         Returns:
-            tuple[bytearray, bytes]: Encrypted message and final seed.
+            tuple[memoryview, bytes]: Encrypted message and final seed.
 
         Raises:
             ValueError: If the delimiter appears in the message.
@@ -498,7 +515,7 @@ class VernamVeil(_Cypher):
             message = memoryview(message)
 
         # Store the output parts
-        output: list[bytes | bytearray] = []
+        output: list[memoryview] = []
 
         # SIV seed initialisation: Encrypt and prepend a synthetic IV (SIV) derived from the seed and message.
         # This prevents deterministic keystreams on the first block and makes the scheme resilient to seed reuse.
@@ -508,7 +525,7 @@ class VernamVeil(_Cypher):
             siv_hash = self._hash(seed, [timestamp, message])
             # Encrypt the synthetic IV and evolve the seed with it
             encrypted_siv_hash, seed = self._xor_with_key(memoryview(siv_hash), seed, True)
-            # Use the encrypted SIV hash bytearray as the output; this puts it in front
+            # Put the encrypted SIV hash in front
             output.append(encrypted_siv_hash)
 
             # Note: The SIV is not reused for MAC computation, ensuring separation
@@ -541,21 +558,21 @@ class VernamVeil(_Cypher):
         if self._auth_encrypt:
             # The tag is computed over the configuration of the cypher and the cyphertext.
             tag = self._hash(auth_seed, [str(self).encode(), cyphertext], use_hmac=True)
-            output.append(tag)
+            output.append(memoryview(tag))
 
         # Concatenate all parts into a single bytearray
-        result = bytearray(sum(len(part) for part in output))
+        result = self._allocate_array(sum(len(part) for part in output))
         current_loc = 0
         for part in output:
             next_loc = current_loc + len(part)
             result[current_loc:next_loc] = part
             current_loc = next_loc
 
-        return result, last_seed
+        return memoryview(result), last_seed
 
     def decode(
         self, cyphertext: bytes | bytearray | memoryview, seed: bytes
-    ) -> tuple[bytearray, bytes]:
+    ) -> tuple[memoryview, bytes]:
         """Decrypt an encoded message.
 
         Args:
@@ -563,7 +580,7 @@ class VernamVeil(_Cypher):
             seed (bytes): Initial seed for decryption.
 
         Returns:
-            tuple[bytearray, bytes]: Decrypted message and final seed.
+            tuple[memoryview, bytes]: Decrypted message and final seed.
 
         Raises:
             ValueError: If the authentication tag does not match.

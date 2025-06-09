@@ -52,7 +52,7 @@ class TestDeniabilityUtils(unittest.TestCase):
             auth_encrypt=False,
         )
         decoy_out, _ = fake_cypher.decode(cyphertext, fake_seed)
-        return decoy_out.decode(), decoy_message.decode()
+        return decoy_out, decoy_message
 
     def _combo_name(self, chunk_size, delimiter_size, padding_range, decoy_ratio):
         """Produce a string name for the test combo."""
