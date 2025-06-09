@@ -33,8 +33,9 @@ class FX:
     for use in the VernamVeil cypher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
 
     Attributes:
-        keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[tuple[int], np.dtype[np.uint64]], bytes)` and returning
-            `bytes` or `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
+        keystream_fn (Callable): Keystream function
+            accepting `(int | np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray)` and
+            returning `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
         block_size (int): The number of bytes returned per call.
         source_code (str): The source code of the keystream function.
 
@@ -49,7 +50,7 @@ class FX:
     def __init__(
         self,
         keystream_fn: Callable[
-            [np.ndarray[tuple[int], np.dtype[np.uint64]], bytes],
+            [np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray],
             np.ndarray[tuple[int, int], np.dtype[np.uint8]],
         ],
         block_size: int,
@@ -58,8 +59,8 @@ class FX:
         """Initialise the FX wrapper.
 
         Args:
-            keystream_fn (Callable): Keystream function accepting `(np.ndarray[tuple[int], np.dtype[np.uint64]], bytes)` and returning
-                `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
+            keystream_fn (Callable): Keystream function accepting `(np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray)`
+                and returning `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
             block_size (int): The number of bytes returned per call.
             source_code (str): The source code of the keystream function.
         """
@@ -72,13 +73,13 @@ class FX:
         self.source_code = source_code
 
     def __call__(
-        self, i: np.ndarray[tuple[int], np.dtype[np.uint64]], seed: bytes
+        self, i: np.ndarray[tuple[int], np.dtype[np.uint64]], seed: bytes | bytearray
     ) -> np.ndarray[tuple[int, int], np.dtype[np.uint8]]:
         """Generate the keystream for a given index and seed.
 
         Args:
             i (np.ndarray[tuple[int], np.dtype[np.uint64]]): The index or array of indices to generate the keystream for.
-            seed (bytes): The seed used for generating the keystream.
+            seed (bytes or bytearray): The seed used for generating the keystream.
 
         Returns:
             np.ndarray[tuple[int, int], np.dtype[np.uint8]]: The generated keystream bytes or array of bytes.
@@ -161,13 +162,13 @@ class OTPFX(FX):
         super().__init__(self.__call__, block_size, source_code=source_code)
 
     def __call__(
-        self, i: np.ndarray[tuple[int], np.dtype[np.uint64]], _: bytes
+        self, i: np.ndarray[tuple[int], np.dtype[np.uint64]], _: bytes | bytearray
     ) -> np.ndarray[tuple[int, int], np.dtype[np.uint8]]:
         """Generates the next value in the keystream.
 
         Args:
             i (np.ndarray[tuple[int], np.dtype[np.uint64]]): The index or array of indices to generate the keystream for.
-            _ (bytes): Unused parameter for compatibility.
+            _ (bytes or bytearray): Unused parameter for compatibility.
 
         Returns:
             np.ndarray[tuple[int, int], np.dtype[np.uint8]]: The next value in the keystream.
