@@ -333,13 +333,12 @@ class VernamVeil(_Cypher):
         if pad_max != pad_min:
             pad_width = pad_max - pad_min + 1
             byteorder: Literal["little", "big"] = "big"
-            # Generate bytes_per_number * pad_count random bytes and interpret them as integers
-            bytes_per_number = 4  # 32-bit uint should be enough for all cases
-            random_pad_bytes = secrets.token_bytes(bytes_per_number * pad_count)
+            # Generate 8 * pad_count random bytes and interpret them as integers
+            num_bytes = 8 * pad_count
+            random_num_bytes = memoryview(secrets.token_bytes(num_bytes))
             pad_lens = [
-                (int.from_bytes(random_pad_bytes[i : i + bytes_per_number], byteorder) % pad_width)
-                + pad_min
-                for i in range(0, len(random_pad_bytes), bytes_per_number)
+                (int.from_bytes(random_num_bytes[i : i + 8], byteorder) % pad_width) + pad_min
+                for i in range(0, num_bytes, 8)
             ]
         else:
             pad_lens = [pad_min for _ in range(pad_count)]
@@ -479,7 +478,7 @@ class VernamVeil(_Cypher):
             if self._fx.vectorise:
                 # Store the slicing to avoid duplicate ops
                 data_slice = data[start:end]
-                processed_slice = result[start:end]
+                processed_slice: np.ndarray = result[start:end]
                 # Writing to slices modifies the original data
                 np.bitwise_xor(data_slice, keystream, out=processed_slice)
                 plaintext_data = data_slice if is_encode else processed_slice.data
