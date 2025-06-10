@@ -465,11 +465,10 @@ class VernamVeil(_Cypher):
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
         result = self._allocate_array(data_len)
-        if self._fx.vectorise:
-            # Create a numpy array on top of the bytearray to vectorise and still have access to original bytearray
-            processed = np.frombuffer(result, dtype=np.uint8)
-        else:
-            processed = memoryview(result)
+
+        # The memoryview of the result points to the same data as result array.
+        # It can be used for efficient slicing for non-vectorised operations. It's also returned to the caller.
+        view = memoryview(result)
 
         for start, end in self._generate_chunk_ranges(data_len):
             # Generate a key using fx
@@ -480,7 +479,7 @@ class VernamVeil(_Cypher):
             if self._fx.vectorise:
                 # Store the slicing to avoid duplicate ops
                 data_slice = data[start:end]
-                processed_slice = processed[start:end]
+                processed_slice = result[start:end]
                 # Writing to slices modifies the original data
                 np.bitwise_xor(data_slice, keystream, out=processed_slice)
                 plaintext_data = data_slice if is_encode else processed_slice.data
@@ -488,12 +487,12 @@ class VernamVeil(_Cypher):
                 for i in range(chunk_len):
                     pos = start + i
                     result[pos] = data[pos] ^ keystream[i]
-                plaintext_data = data[start:end] if is_encode else processed[start:end]
+                plaintext_data = data[start:end] if is_encode else view[start:end]
 
             # Refresh the seed differently for encoding and decoding
             seed = self._hash(seed, [plaintext_data])
 
-        return memoryview(result), seed
+        return view, seed
 
     def _generate_delimiter(self, seed: bytes | bytearray) -> tuple[memoryview, bytes | bytearray]:
         """Create a delimiter sequence using the key stream and update the seed.
