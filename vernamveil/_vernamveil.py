@@ -67,6 +67,7 @@ class VernamVeil(_Cypher):
             ValueError: If `decoy_ratio` is negative.
             ValueError: If `hash_name` is not "blake2b", "blake3" or "sha256".
         """
+        super().__init__(fx)
         # Validate input
         if chunk_size < 8:
             raise ValueError("chunk_size must be at least 8 bytes.")
@@ -88,7 +89,6 @@ class VernamVeil(_Cypher):
             raise ValueError("hash_name must be either 'blake2b', 'blake3' or 'sha256'.")
 
         # Initialise instance variables
-        self._fx = fx
         self._chunk_size = chunk_size
         self._delimiter_size = delimiter_size
         self._padding_range = padding_range

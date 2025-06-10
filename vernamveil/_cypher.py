@@ -9,12 +9,23 @@ from pathlib import Path
 from typing import IO, Callable, Literal
 
 from vernamveil._bytesearch import find
+from vernamveil._fx_utils import FX
+from vernamveil._types import np
 
 __all__: list[str] = []
 
 
 class _Cypher(ABC):
     """Abstract base class for cyphers; provides utils that are common to all subclasses."""
+
+    def __init__(self, fx: FX) -> None:
+        """Initialise a cypher instance.
+
+        Args:
+            fx (FX): A callable object that generates keystream bytes. This function is critical for the
+                encryption process and should be carefully designed to ensure cryptographic security.
+        """
+        self._fx = fx
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes | bytearray) -> tuple[memoryview, bytes | bytearray]:
@@ -225,6 +236,7 @@ class _Cypher(ABC):
             block_delimiter, current_seed = self._generate_delimiter(current_seed)
             delimiter_size = len(block_delimiter)
 
+            vectorise = self._fx.vectorise
             if mode == "encode":
                 first_block = True
                 while exception_queue.empty():
@@ -243,6 +255,9 @@ class _Cypher(ABC):
                         first_block = False
 
                     # Encode the content block
+                    if vectorise:
+                        # Wrap in a vectorised memoryview
+                        block = np.frombuffer(block, dtype=np.uint8).data
                     processed_block, current_seed = self.encode(block, current_seed)
 
                     # Write the processed block to the output file
@@ -254,24 +269,30 @@ class _Cypher(ABC):
                         progress_callback(bytes_processed, total_size)
             elif mode == "decode":
                 last_block = False
-                buffer = bytearray()
+                buffer = np.empty(0, dtype=np.uint8) if vectorise else bytearray()
                 look_start = 0  # Start position for searching the next delimiter
                 while exception_queue.empty():
                     block = queue_get(read_q)
+                    block_len = len(block)
 
-                    buffer.extend(block)
+                    # Append the block to the buffer
+                    if isinstance(buffer, bytearray):
+                        buffer.extend(block)
+                    else:
+                        buffer = np.concatenate((buffer, np.frombuffer(block, dtype=np.uint8)))
                     while exception_queue.empty():
                         delim_index = find(buffer, block_delimiter, look_start)
                         if delim_index == -1:
                             # No delimiter found
-                            if not block and buffer:
+                            buffer_len = len(buffer)
+                            if block_len == 0 and buffer_len > 0:
                                 # This is EOF, set delim_index to the end of the buffer
-                                delim_index = len(buffer)
+                                delim_index = buffer_len
                                 last_block = True
                             else:
                                 # Adjust look_start for the next find attempt after more data is appended.
                                 # This ensures a delimiter spanning the boundary can be found.
-                                look_start = max(0, len(buffer) - delimiter_size + 1)
+                                look_start = max(0, buffer_len - delimiter_size + 1)
                                 break  # No complete block in buffer yet or EOF handled
 
                         # Extract the complete block up to the delimiter
@@ -283,7 +304,12 @@ class _Cypher(ABC):
                             break
 
                         if last_block:
-                            buffer = bytearray()  # Clear buffer
+                            # Reset buffer
+                            buffer = (
+                                bytearray()
+                                if isinstance(buffer, bytearray)
+                                else np.empty(0, dtype=np.uint8)
+                            )
                             break
 
                         # Remove the processed block and delimiter from the buffer
@@ -293,12 +319,12 @@ class _Cypher(ABC):
                         # Refresh block delimiter
                         block_delimiter, current_seed = self._generate_delimiter(current_seed)
 
-                    if progress_callback and block:
-                        bytes_processed += len(block)
+                    if progress_callback and block_len > 0:
+                        bytes_processed += block_len
                         progress_callback(bytes_processed, total_size)
 
                     if (
-                        not block and not buffer
+                        block_len == 0 and len(buffer) == 0
                     ):  # End of file with nothing left to process or exception occurred
                         break
             else:
