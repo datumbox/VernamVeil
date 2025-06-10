@@ -329,12 +329,21 @@ class VernamVeil(_Cypher):
         # Precompute all pre/post pad lengths and generate all random bytes
         chunk_size = self._chunk_size
         pad_min, pad_max = self._padding_range
-        pad_width = pad_max - pad_min + 1
         pad_count = 2 * total_count
-        pad_lens = [
-            secrets.randbelow(pad_width) + pad_min if pad_max != pad_min else pad_min
-            for _ in range(pad_count)
-        ]  # the order of padding lengths is not important; we pop in reverse order
+        if pad_max != pad_min:
+            pad_width = pad_max - pad_min + 1
+            byteorder: Literal["little", "big"] = "big"
+            # Generate bytes_per_number * pad_count random bytes and interpret them as integers
+            bytes_per_number = 4  # 32-bit uint should be enough for all cases
+            random_pad_bytes = secrets.token_bytes(bytes_per_number * pad_count)
+            pad_lens = [
+                (int.from_bytes(random_pad_bytes[i : i + bytes_per_number], byteorder) % pad_width)
+                + pad_min
+                for i in range(0, len(random_pad_bytes), bytes_per_number)
+            ]
+        else:
+            pad_lens = [pad_min for _ in range(pad_count)]
+        # Note: the order of padding lengths is not important; we pop in reverse order
         random_size = sum(pad_lens) + decoy_count * chunk_size
         random_bytes = memoryview(secrets.token_bytes(random_size))
 
