@@ -189,7 +189,8 @@ def fold_bytes_to_uint64(
         if cols > 8:
             # If there are more than 8 columns, we only take the first 8
             hashes = hashes[:, :8]
-        return hashes.view(np.uint64).reshape(-1).byteswap()
+        dt_u64_big_endian = np.dtype(np.uint64).newbyteorder(">")
+        return hashes.view(dtype=dt_u64_big_endian).reshape(-1, copy=False)
     elif fold_type == "full":
         # Compute the shifts for each byte position (big-endian)
         shifts = np.arange(8 * cols - 8, -1, -8, dtype=np.uint64)

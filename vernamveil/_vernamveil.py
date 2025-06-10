@@ -226,7 +226,9 @@ class VernamVeil(_Cypher):
             raw_bytes = hash_numpy(i_arr, seed, self._hash_name, self._HASH_LENGTH)
 
             # Truncate the raw bytes to the exact total number of bytes needed for the uint64s.
-            truncated_bytes = raw_bytes.ravel()[:num_bytes_needed].reshape(num_uint64_needed, 8)
+            truncated_bytes = raw_bytes.ravel()[:num_bytes_needed].reshape(
+                (num_uint64_needed, 8), copy=False
+            )
 
             # Fold these bytes into an array of uint64s.
             random_ints = fold_bytes_to_uint64(truncated_bytes)
@@ -332,14 +334,22 @@ class VernamVeil(_Cypher):
         pad_count = 2 * total_count
         if pad_max != pad_min:
             pad_width = pad_max - pad_min + 1
-            byteorder: Literal["little", "big"] = "big"
-            # Generate 8 * pad_count random bytes and interpret them as integers
+            # Generate 8 * pad_count random bytes
             num_bytes = 8 * pad_count
             random_num_bytes = memoryview(secrets.token_bytes(num_bytes))
-            pad_lens = [
-                (int.from_bytes(random_num_bytes[i : i + 8], byteorder) % pad_width) + pad_min
-                for i in range(0, num_bytes, 8)
-            ]
+            # Interpret them as integers
+            if self._fx.vectorise:
+                dt_u64_big_endian = np.dtype(np.uint64).newbyteorder(">")
+                random_uint64s = np.frombuffer(random_num_bytes, dtype=dt_u64_big_endian)
+                pad_lens_np = random_uint64s % pad_width
+                pad_lens_np += pad_min
+                pad_lens = pad_lens_np.tolist()
+            else:
+                byteorder: Literal["little", "big"] = "big"
+                pad_lens = [
+                    (int.from_bytes(random_num_bytes[i : i + 8], byteorder) % pad_width) + pad_min
+                    for i in range(0, num_bytes, 8)
+                ]
         else:
             pad_lens = [pad_min for _ in range(pad_count)]
         # Note: the order of padding lengths is not important; we pop in reverse order
