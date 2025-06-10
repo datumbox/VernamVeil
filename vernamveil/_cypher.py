@@ -281,7 +281,11 @@ class _Cypher(ABC):
                     else:
                         buffer = np.concatenate((buffer, np.frombuffer(block, dtype=np.uint8)))
                     while exception_queue.empty():
-                        delim_index = find(buffer, block_delimiter, look_start)
+                        delim_index = find(
+                            buffer if isinstance(buffer, bytearray) else memoryview(buffer),
+                            block_delimiter,
+                            look_start,
+                        )
                         if delim_index == -1:
                             # No delimiter found
                             buffer_len = len(buffer)
