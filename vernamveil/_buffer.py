@@ -17,13 +17,13 @@ class _Buffer:
     buffer needs to grow, it uses `bytearray.extend` or `numpy.concatenate`.
     """
 
-    def __init__(self, size: int = 0, vectorised: bool = False) -> None:
+    def __init__(self, size: int = 0, use_numpy: bool = False) -> None:
         """Initialise the _DynamicBuffer.
 
         Args:
             size (int): The initial size to pre-allocate for the buffer.
                 Defaults to 0 (an empty buffer).
-            vectorised (bool): If True, a NumPy array (np.uint8) is used as the
+            use_numpy (bool): If True, a NumPy array (np.uint8) is used as the
                 internal buffer. If False, a bytearray is used. Defaults to False.
 
         Raises:
@@ -32,14 +32,14 @@ class _Buffer:
         """
         if not isinstance(size, int) or size < 0:
             raise ValueError("size must be a non-negative integer.")
-        if not isinstance(vectorised, bool):
-            raise TypeError("vectorised must be a boolean.")
+        if not isinstance(use_numpy, bool):
+            raise TypeError("use_numpy must be a boolean.")
 
         self._current_pos: int = 0
         self._capacity: int = size
 
         self._buffer: np.ndarray[tuple[int], np.dtype[np.uint8]] | bytearray
-        if vectorised:
+        if use_numpy:
             self._buffer = np.empty(size, dtype=np.uint8)
         else:
             self._buffer = bytearray(size)
@@ -121,3 +121,38 @@ class _Buffer:
             f"capacity={self._capacity}, "
             f"type={type(self._buffer).__name__})"
         )
+
+    def truncate(self, start: int, end: int | None = None) -> None:
+        """Truncates the buffer in-place to keep only its logical content from `start` to `end`.
+
+        The buffer's content is replaced with a copy of the specified slice of its
+        previous logical content.
+
+        Args:
+            start (int): The starting logical index of the content to keep.
+            end (int | None): The ending logical index (exclusive) of the content to keep.
+                              If None, keeps content until the current logical end.
+                              Defaults to None.
+
+        Raises:
+            ValueError: If `start` or `end` indices are invalid (e.g., negative, out of bounds of the current logical content, or end < start).
+        """
+        if not isinstance(start, int) or start < 0:
+            raise ValueError("start must be a non-negative integer.")
+        elif start > self._current_pos:
+            raise ValueError("start index is out of bounds of current logical content.")
+        if end is None:
+            end = self._current_pos
+        elif not isinstance(end, int) or end < 0:
+            raise ValueError("end must be a non-negative integer if provided.")
+        elif end > self._current_pos:
+            raise ValueError("end index is out of bounds of current logical content.")
+        elif end < start:
+            raise ValueError("end index must be greater than or equal to start index.")
+
+        # Slice the buffer to keep only the specified range.
+        self._buffer = self._buffer[start:end]
+
+        # Update current position and capacity to reflect the new content.
+        self._current_pos = len(self._buffer)
+        self._capacity = self._current_pos
