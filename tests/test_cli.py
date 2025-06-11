@@ -101,8 +101,8 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         return self._write_file("fx.py", code.encode(), mode="wb")
 
     def _create_seed(self, content=b"myseed"):
-        """Create a seed.bin file with given content."""
-        return self._write_file("seed.bin", content)
+        """Create a seed.hex file with given content."""
+        return self._write_file("seed.hex", content.hex(), mode="w")
 
     @contextmanager
     def _in_tempdir(self):
@@ -240,7 +240,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             self._encode(self.infile, self.encfile)
             self.assertTrue(self.encfile.exists())
             self.assertTrue((self.temp_dir_path / "fx.py").exists())
-            self.assertTrue((self.temp_dir_path / "seed.bin").exists())
+            self.assertTrue((self.temp_dir_path / "seed.hex").exists())
 
     def test_encode_generates_fx_and_seed_file_to_stdout(self):
         """Test encoding with auto-generated fx and seed, file-to-stdout mode."""
@@ -270,7 +270,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
             fx_path = self._create_fx()
             self._encode(self.infile, self.encfile, fx_file=fx_path)
             self.assertTrue(self.encfile.exists())
-            self.assertTrue((self.temp_dir_path / "seed.bin").exists())
+            self.assertTrue((self.temp_dir_path / "seed.hex").exists())
 
     def test_encode_with_custom_fx_file_to_stdout(self):
         """Test encoding with custom fx, file-to-stdout mode."""
@@ -521,7 +521,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
         self._assert_encode_refuses_to_overwrite(fx_path)
 
     def test_encode_refuses_to_overwrite_existing_seed(self):
-        """Test that encoding refuses to overwrite an existing seed.bin file."""
+        """Test that encoding refuses to overwrite an existing seed.hex file."""
         seed_path = self._create_seed()
         self._assert_encode_refuses_to_overwrite(seed_path)
 
@@ -559,7 +559,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
                 stderr.getvalue(),
             )
             self.assertIn(
-                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
+                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.hex').resolve()}.",
                 stderr.getvalue(),
             )
             self.assertIn("The 'encode' step", stderr.getvalue())
@@ -587,7 +587,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
                 stderr.getvalue(),
             )
             self.assertIn(
-                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.bin').resolve()}.",
+                f"Warning: Generated a seed-file in {(self.temp_dir_path / 'seed.hex').resolve()}.",
                 stderr.getvalue(),
             )
             self.assertNotIn("The 'encode' step", stderr.getvalue())
@@ -780,7 +780,7 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
     def test_missing_seed_file(self):
         """Test that providing a missing seed file prints an error and exits."""
         with self._in_tempdir():
-            missing_seed = self.temp_dir_path / "doesnotexist_seed.bin"
+            missing_seed = self.temp_dir_path / "doesnotexist_seed.hex"
             stderr = StringIO()
             with patch("sys.stderr", stderr), self.assertRaises(SystemExit):
                 self._encode(self.infile, self.encfile, seed_file=missing_seed)
@@ -833,13 +833,13 @@ fx = FX(keystream_fn, block_size=64, vectorise=False)
                     encfile = self.temp_dir_path / f"output_{hash_name}.enc"
                     decfile = self.temp_dir_path / f"output_{hash_name}.dec"
                     fx_file = self.temp_dir_path / "fx.py"
-                    seed_file = self.temp_dir_path / "seed.bin"
+                    seed_file = self.temp_dir_path / "seed.hex"
                     self._encode(infile, encfile, extra_args=["--hash-name", hash_name])
                     self._decode(
                         encfile,
                         decfile,
                         fx_file="fx.py",
-                        seed_file="seed.bin",
+                        seed_file="seed.hex",
                         extra_args=["--hash-name", hash_name],
                     )
                     self._assert_decoded_matches_input(infile, decfile)

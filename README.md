@@ -396,8 +396,8 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 ### ⚙️ Features
 
 - **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed.
-- **Auto-generate `fx.py` and `seed.bin`** during encoding if not provided; these files are saved in the current working directory.
-- **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.bin` for both encoding and decoding.
+- **Auto-generate `fx.py` and `seed.hex`** during encoding if not provided; these files are saved in the current working directory.
+- **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.hex` for both encoding and decoding.
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more. Set `--verbosity info` to see progress information (off by default).
 - **Sanity checks**: Optionally verify that your `fx` function is suitable for cryptographic use. These checks are automatically skipped for `OTPFX` to avoid consuming the keystream.
 
@@ -408,17 +408,17 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 vernamveil encode --infile plain.txt --outfile encrypted.dat
 
 # Encrypt a file with a custom fx function and seed
-vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.bin
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.hex
 
 # Decrypt a file (requires the same fx and seed used for encryption)
-vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.bin
+vernamveil decode --infile encrypted.dat --outfile decrypted.txt --fx-file fx.py --seed-file seed.hex
 
 # Encrypt and Decrypt from stdin to stdout (using - or omitting the argument)
-vernamveil encode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < plain.txt > encrypted.dat
-vernamveil decode --infile - --outfile - --fx-file fx.py --seed-file seed.bin < encrypted.dat > decrypted.txt
+vernamveil encode --infile - --outfile - --fx-file fx.py --seed-file seed.hex < plain.txt > encrypted.dat
+vernamveil decode --infile - --outfile - --fx-file fx.py --seed-file seed.hex < encrypted.dat > decrypted.txt
 
 # Enable sanity check for fx and seed during encryption
-vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.bin --check-sanity
+vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --seed-file seed.hex --check-sanity
 ```
 
 > ⚠️ **Warning: CLI Parameter Consistency**
@@ -429,7 +429,7 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 >
 > ```bash
 > vernamveil encode --infile plain.txt --outfile encrypted.dat --chunk-size 2048
-> vernamveil decode --infile encrypted.dat --outfile decrypted.txt --chunk-size 1024 --fx-file fx.py --seed-file seed.bin
+> vernamveil decode --infile encrypted.dat --outfile decrypted.txt --chunk-size 1024 --fx-file fx.py --seed-file seed.hex
 > ```
 >
 > **Always use identical parameters for both encoding and decoding.** Any mismatch will result in decryption failure. The only exception is the `--buffer-size` parameter, which can be different for encoding and decoding.
@@ -437,9 +437,9 @@ vernamveil encode --infile plain.txt --outfile encrypted.dat --fx-file fx.py --s
 ### 🗄️ File Handling
 
 - For both `--infile` and `--outfile`, passing `-` or omitting the argument means `stdin`/`stdout` will be used. This allows for piping and streaming data directly.
-- When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.bin` in the current working directory. The absolute paths to these files are displayed after generation. **Store these files securely**; they are required for decryption.
+- When encoding **without** `--fx-file` or `--seed-file`, the CLI generates `fx.py` and `seed.hex` in the current working directory. The absolute paths to these files are displayed after generation. **Store these files securely**; they are required for decryption.
 - When decoding, you **must** provide both `--fx-file` and `--seed-file` pointing to the originals used for encryption.
-- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.bin`. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does **not** apply when outputting to `stdout`.
+- For safety, the CLI will **not overwrite** existing output files, `fx.py`, or `seed.hex`. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does **not** apply when outputting to `stdout`.
 
 > ⚠️ **Warning: Binary Output to Terminals**
 >
@@ -496,13 +496,13 @@ openssl rand -hex 16 > iv.hex
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.bin --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.hex --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
 _Time: 3.309s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.bin --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.hex --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
 _Time: 3.322s_
 

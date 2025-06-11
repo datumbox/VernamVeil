@@ -57,7 +57,7 @@ jobs:
             total_enc=0
             total_dec=0
             for i in $(seq 1 $NUM_RUNS); do
-              rm -f fx.py seed.bin output.enc output.dec
+              rm -f fx.py seed.hex output.enc output.dec
 
               start_enc=$(date +%s%N)
               vernamveil encode --infile input.bin --outfile output.enc --hash-name blake3 --verbosity error
@@ -67,7 +67,7 @@ jobs:
               total_enc=$((total_enc + enc_time))
 
               start_dec=$(date +%s%N)
-              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.bin --hash-name blake3 --verbosity error
+              vernamveil decode --infile output.enc --outfile output.dec --fx-file fx.py --seed-file seed.hex --hash-name blake3 --verbosity error
               end_dec=$(date +%s%N)
               dec_time=$((end_dec - start_dec))
               dec_time_s=$(awk "BEGIN {printf \"%.3f\", $dec_time / 1000000000}")

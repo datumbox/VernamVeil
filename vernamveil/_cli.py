@@ -244,21 +244,21 @@ def main(args: list[str] | None = None) -> None:
                 verbosity,
             )
             sys.exit(1)
-        seed = seed_file.read_bytes()
+        seed = bytes.fromhex(seed_file.read_text().strip())
     elif parsed_args.command == "encode":
-        seed_bin = Path("seed.bin")
-        if seed_bin.exists():
+        seed_hex = Path("seed.hex")
+        if seed_hex.exists():
             _vprint(
-                f"Error: {seed_bin.resolve()} already exists. Refusing to overwrite. "
-                "Move or rename the existing seed.bin file to proceed.",
+                f"Error: {seed_hex.resolve()} already exists. Refusing to overwrite. "
+                "Move or rename the existing seed.hex file to proceed.",
                 "error",
                 verbosity,
             )
             sys.exit(1)
         seed = VernamVeil.get_initial_seed()
-        seed_bin.write_bytes(seed)
+        seed_hex.write_text(seed.hex())
         _vprint(
-            f"Warning: Generated a seed-file in {seed_bin.resolve()}. "
+            f"Warning: Generated a seed-file in {seed_hex.resolve()}. "
             "Store securely, this file contains your encryption seed.",
             "warning",
             verbosity,
