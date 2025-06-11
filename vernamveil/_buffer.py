@@ -35,14 +35,26 @@ class _Buffer:
         if not isinstance(use_numpy, bool):
             raise TypeError("use_numpy must be a boolean.")
 
-        self._current_pos: int = 0
-        self._capacity: int = size
+        self._current_pos = 0
+        self._capacity = size
+        self._buffer = self.build_array(size, use_numpy)
 
-        self._buffer: np.ndarray[tuple[int], np.dtype[np.uint8]] | bytearray
-        if use_numpy:
-            self._buffer = np.empty(size, dtype=np.uint8)
-        else:
-            self._buffer = bytearray(size)
+    @classmethod
+    def build_array(
+        cls, size: int = 0, use_numpy: bool = False
+    ) -> "np.ndarray[tuple[int], np.dtype[np.uint8]] | bytearray":
+        """Builds a bytearray or NumPy array of the specified size.
+
+        Args:
+            size (int): The initial size to pre-allocate for the buffer.
+                Defaults to 0 (an empty buffer).
+            use_numpy (bool): If True, a NumPy array (np.uint8) is used as the
+                internal buffer. If False, a bytearray is used. Defaults to False.
+
+        Returns:
+            np.ndarray[tuple[int], np.dtype[np.uint8]] | bytearray: The created buffer.
+        """
+        return np.empty(size, dtype=np.uint8) if use_numpy else bytearray(size)
 
     def extend(self, data_to_add: bytes | bytearray | memoryview) -> None:
         """Extend the buffer with the given data.
