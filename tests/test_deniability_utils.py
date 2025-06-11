@@ -102,8 +102,8 @@ class TestDeniabilityUtils(unittest.TestCase):
             # Store real fx, plausible fx, real seed, fake seed, cyphertext
             real_fx_path = tmpdir_path / "real_fx.py"
             plausible_fx_path = tmpdir_path / "plausible_fx.py"
-            real_seed_path = tmpdir_path / "real_seed.bin"
-            fake_seed_path = tmpdir_path / "fake_seed.bin"
+            real_seed_path = tmpdir_path / "real_seed.hex"
+            fake_seed_path = tmpdir_path / "fake_seed.hex"
             cyphertext_path = tmpdir_path / "cyphertext.bin"
 
             # Save everything to disk
