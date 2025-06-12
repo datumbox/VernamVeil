@@ -12,9 +12,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Callable
 
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, _Bytes
+from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY
 from vernamveil._types import _HashType as HashType
-from vernamveil._types import _Integer, np
+from vernamveil._types import np
 
 __all__ = [
     "FX",
@@ -50,7 +50,7 @@ class FX:
 
     def __init__(
         self,
-        keystream_fn: Callable[[_Integer, bytes | bytearray], _Bytes],
+        keystream_fn: "Callable[[int | np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray], bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]]",
         block_size: int,
         vectorise: bool,
         source_code: str = "",
@@ -85,15 +85,17 @@ class FX:
         self.vectorise = vectorise
         self.source_code = source_code
 
-    def __call__(self, i: _Integer, seed: bytes | bytearray) -> _Bytes:
+    def __call__(
+        self, i: "int | np.ndarray[tuple[int], np.dtype[np.uint64]]", seed: bytes | bytearray
+    ) -> "bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
         """Generate the keystream for a given index and seed.
 
         Args:
-            i (_Integer): The index or array of indices to generate the keystream for.
+            i (int | np.ndarray[tuple[int], np.dtype[np.uint64]]): The index or array of indices to generate the keystream for.
             seed (bytes or bytearray): The seed used for generating the keystream.
 
         Returns:
-            _Bytes: The generated keystream bytes or array of bytes.
+            bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]: The generated keystream bytes or array of bytes.
         """
         return self.keystream_fn(i, seed)
 
@@ -176,20 +178,22 @@ class OTPFX(FX):
         )
         super().__init__(self.__call__, block_size, vectorise, source_code=source_code)
 
-    def __call__(self, i: _Integer, _: bytes | bytearray) -> _Bytes:
+    def __call__(
+        self, i: "int | np.ndarray[tuple[int], np.dtype[np.uint64]]", _: bytes | bytearray
+    ) -> "bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
         """Generates the next value in the keystream.
 
         Args:
-            i (_Integer): The index or array of indices to generate the keystream for.
+            i (int | np.ndarray[tuple[int], np.dtype[np.uint64]]): The index or array of indices to generate the keystream for.
             _ (bytes or bytearray): Unused parameter for compatibility.
 
         Returns:
-            _Bytes: The next value in the keystream.
+            bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]: The next value in the keystream.
 
         Raises:
             IndexError: If the keystream is exhausted and no more values are available.
         """
-        n = len(i) if self.vectorise else 1
+        n = 1 if isinstance(i, int) else len(i)
         vals = []
         for __ in range(n):
             if self.position >= len(self.keystream):
@@ -500,7 +504,7 @@ def check_fx_sanity(
     # 1. Type and output size check
     if fx.vectorise:
         arr = np.arange(num_samples, dtype=np.uint64)
-        outputs = fx(arr, seed)
+        outputs: np.ndarray[tuple[int, int], np.dtype[np.uint8]] = fx(arr, seed)
         if not (
             isinstance(outputs, np.ndarray)
             and outputs.dtype == np.uint8
@@ -574,10 +578,10 @@ def check_fx_sanity(
         test_idx = 42
         if fx.vectorise:
             arr = np.array([test_idx], dtype=np.uint64)
-            orig = fx(arr, seed)[0]
+            orig = bytes(fx(arr, seed)[0])
             # Flip the least significant bit of the index
             arr_flipped = np.array([test_idx ^ 1], dtype=np.uint64)
-            flipped = fx(arr_flipped, seed)[0]
+            flipped = bytes(fx(arr_flipped, seed)[0])
         else:
             orig = fx(test_idx, seed)
             flipped = fx(test_idx ^ 1, seed)

@@ -251,7 +251,7 @@ class VernamVeil(_Cypher):
             n_uint64 = math.ceil(length / self._fx.block_size)
             indices = np.arange(n_uint64, dtype=np.uint64)
             # Generate uint8 for bytes
-            keystream = self._fx(indices, seed)
+            keystream: np.ndarray[tuple[int, int], np.dtype[np.uint8]] = self._fx(indices, seed)
             # Flatten the array to 1D and slice to the required length
             keystream = keystream.ravel()
             memview: memoryview = keystream[:length].data

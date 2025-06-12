@@ -4,21 +4,14 @@ from typing import Any, Literal
 
 __all__: list[str] = []
 
-# Vectorisation types and imports
 np: Any
-_Integer: Any
-_Bytes: Any
 try:
     import numpy
 
     np = numpy
-    _Integer = int | np.ndarray[tuple[int], np.dtype[np.uint64]]
-    _Bytes = bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]
     _HAS_NUMPY = True
 except ImportError:
     np = None
-    _Integer = int
-    _Bytes = bytes
     _HAS_NUMPY = False
 
 # C module types and imports
