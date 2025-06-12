@@ -11,6 +11,7 @@ import time
 from functools import partial
 from typing import Any, Callable, Iterator, Literal, Sequence, cast
 
+from vernamveil._buffer import _Buffer
 from vernamveil._bytesearch import find, find_all
 from vernamveil._cypher import _Cypher
 from vernamveil._fx_utils import FX
@@ -144,24 +145,6 @@ class VernamVeil(_Cypher):
             raise ValueError("num_bytes must be a positive integer.")
 
         return secrets.token_bytes(num_bytes)
-
-    def _allocate_array(
-        self, num_bytes: int
-    ) -> "bytearray | np.ndarray[tuple[int], np.dtype[np.uint8]]":
-        """Allocate an empty bytearray or numpy array for the given number of bytes.
-
-        This method checks if the FX is vectorised and allocates the appropriate type.
-
-        Args:
-            num_bytes (int): The number of bytes to allocate.
-
-        Returns:
-            bytearray or np.ndarray: An empty bytearray or numpy array of uint8 type.
-        """
-        if self._fx.vectorise:
-            return np.empty(num_bytes, dtype=np.uint8)
-        else:
-            return bytearray(num_bytes)
 
     def _hash(
         self,
@@ -360,44 +343,35 @@ class VernamVeil(_Cypher):
         exact_size = pad_count * self._delimiter_size + random_size + message_len
 
         # Build the noisy message by combining fake and shuffled real chunks
-        noisy_blocks = self._allocate_array(exact_size)
-        current_rec_loc = 0
+        noisy_blocks = _Buffer(exact_size, use_numpy=self._fx.vectorise)
         current_rnd_loc = 0
         for chunk_range in shuffled_chunk_ranges:
-            record = []
-
             # Pre-pad
             pre_pad_len = pad_lens.pop()
             if pre_pad_len > 0:
                 next_rnd_loc = current_rnd_loc + pre_pad_len
-                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                noisy_blocks.extend(random_bytes[current_rnd_loc:next_rnd_loc])
                 current_rnd_loc = next_rnd_loc
-            record.append(delimiter)
+            noisy_blocks.extend(delimiter)
 
             # Actual data
             if chunk_range is not None:
                 start, end = chunk_range
-                record.append(message[start:end])
+                noisy_blocks.extend(message[start:end])
             else:
                 next_rnd_loc = current_rnd_loc + chunk_size
-                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                noisy_blocks.extend(random_bytes[current_rnd_loc:next_rnd_loc])
                 current_rnd_loc = next_rnd_loc
 
             # Post-pad
-            record.append(delimiter)
+            noisy_blocks.extend(delimiter)
             post_pad_len = pad_lens.pop()
             if post_pad_len > 0:
                 next_rnd_loc = current_rnd_loc + post_pad_len
-                record.append(random_bytes[current_rnd_loc:next_rnd_loc])
+                noisy_blocks.extend(random_bytes[current_rnd_loc:next_rnd_loc])
                 current_rnd_loc = next_rnd_loc
 
-            # Add the record to the noisy blocks
-            for part in record:
-                next_rec_loc = current_rec_loc + len(part)
-                noisy_blocks[current_rec_loc:next_rec_loc] = part
-                current_rec_loc = next_rec_loc
-
-        return memoryview(noisy_blocks)
+        return noisy_blocks.data
 
     def _deobfuscate(
         self, noisy: memoryview, seed: bytes | bytearray, delimiter: memoryview
@@ -447,16 +421,12 @@ class VernamVeil(_Cypher):
         )
 
         # Reconstruct and unshuffle the message
-        message = self._allocate_array(exact_size)
-        current_loc = 0
+        message = _Buffer(exact_size, use_numpy=self._fx.vectorise)
         for pos in shuffled_positions:
             start, end = all_chunk_ranges[pos]
+            message.extend(noisy[start:end])
 
-            next_loc = current_loc + end - start
-            message[current_loc:next_loc] = noisy[start:end]
-            current_loc = next_loc
-
-        return memoryview(message)
+        return message.data
 
     def _xor_with_key(
         self, data: memoryview, seed: bytes | bytearray, is_encode: bool
@@ -473,7 +443,7 @@ class VernamVeil(_Cypher):
         """
         # Preallocate memory and avoid copying when slicing
         data_len = len(data)
-        result = self._allocate_array(data_len)
+        result = _Buffer.build_array(data_len, use_numpy=self._fx.vectorise)
 
         # The memoryview of the result points to the same data as result array.
         # It can be used for efficient slicing for non-vectorised operations. It's also returned to the caller.
@@ -582,14 +552,11 @@ class VernamVeil(_Cypher):
             output.append(memoryview(tag))
 
         # Concatenate all parts into a single bytearray
-        result = self._allocate_array(sum(len(part) for part in output))
-        current_loc = 0
+        result = _Buffer(sum(len(part) for part in output), use_numpy=self._fx.vectorise)
         for part in output:
-            next_loc = current_loc + len(part)
-            result[current_loc:next_loc] = part
-            current_loc = next_loc
+            result.extend(part)
 
-        return memoryview(result), last_seed
+        return result.data, last_seed
 
     def decode(
         self, cyphertext: bytes | bytearray | memoryview, seed: bytes | bytearray

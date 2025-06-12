@@ -1,3 +1,9 @@
+"""Provides fast byte search functionalities.
+
+Offers `find` and `find_all` operations, utilising a C extension for performance
+when available, with a Python fallback mechanism.
+"""
+
 from vernamveil._types import _HAS_C_MODULE, _bytesearchffi
 
 __all__ = ["find", "find_all"]

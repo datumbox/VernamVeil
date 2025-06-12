@@ -73,7 +73,7 @@ This approach enables novel forms of key generation, especially for those who en
 
 1. **Function-Based, Symmetric Cypher with OTP Support**: VernamVeil uses a user-defined function `fx` and an `initial_seed` (both secret) to dynamically generate the key stream. This approach is symmetric: identical secrets and encryption configuration are required for both encryption and decryption, making the process fully reversible. VernamVeil also offers the `OTPFX` callable wrapper that allows it to operate in one-time pad (OTP) mode when provided with a truly random, externally sourced keystream.
 2. **Synthetic IV Seed Initialisation, Stateful Seed Evolution & Avalanche Effects**: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as a keyed hash of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by [RFC 5297](https://datatracker.ietf.org/doc/html/rfc5297)). For each chunk, the seed is further evolved by key-hashing the previous seed with the chunk's plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).
-3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimizing the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
+3. **Message Obfuscation, Zero Metadata & Authenticated Encryption**: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimising the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the `fx`, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.
 4. **Modular & Configurable Keystream Design**: The `fx` function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs, cryptographic hashes or OTP. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs. 
 5. **Vectorisation & Optional C-backed Fast Hashing**: All operations are vectorised using `numpy` when `vectorise=True`, with a slower pure Python fallback available. For even faster vectorised `fx` functions, an optional C module (`nphash`) can be compiled (with `cffi` and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. BLAKE3, in particular, is only available via this extension and benefits from hardware acceleration, including SIMD and assembly optimisations where supported. This is supported both in user-defined `fx` methods and automatically by helpers like `generate_default_fx`. See [`nphash/README.md`](nphash/README.md) for details.
 
@@ -395,7 +395,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 
 ### ⚙️ Features
 
-- **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed.
+- **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed represented in hex.
 - **Auto-generate `fx.py` and `seed.hex`** during encoding if not provided; these files are saved in the current working directory.
 - **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.hex` for both encoding and decoding.
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more. Set `--verbosity info` to see progress information (off by default).
@@ -477,7 +477,7 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 10-20% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
+VernamVeil prioritises educational value and cryptographic experimentation over raw speed. As expected, it is about 7-16% slower than highly optimised, hardware-accelerated cyphers like AES-256-CBC. This is due to its Python implementation and focus on flexibility rather than production-grade speed or safety. The following benchmarks compare VernamVeil (using its fastest configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same Ubuntu Linux machine.
 
 ### ‍💻 Benchmark Setup
 
@@ -498,13 +498,13 @@ openssl rand -hex 16 > iv.hex
 ```bash
 vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.hex --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 3.309s_
+_Time: 3.218s_
 
 **Decoding:**
 ```bash
 vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.hex --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 3.322s_
+_Time: 3.064s_
 
 ### 🐇 AES-256-CBC (OpenSSL)
 
@@ -524,7 +524,7 @@ _Time: 2.636s_
 
 | Algorithm    | Encode Time | Decode Time |
 |--------------|-------------|-------------|
-| VernamVeil   | 3.299 s     | 3.158 s     |
+| VernamVeil   | 3.218 s     | 3.064 s     |
 | AES-256-CBC  | 3.007 s     | 2.636 s     |
 
 ---

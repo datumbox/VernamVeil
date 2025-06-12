@@ -176,7 +176,7 @@ class TestVernamVeil(unittest.TestCase):
         self._for_all_modes(test, siv_seed_initialisation=False, auth_encrypt=False)
 
     def test_otpfx_roundtrip_encryption_decryption(self):
-        """Test OTPFX: roundtrip encryption/decryption with keystream serialization and reload."""
+        """Test OTPFX: roundtrip encryption/decryption with keystream serialisation and reload."""
 
         # Generate a large enough pseudo-random keystream
         block_size = 64
@@ -202,7 +202,7 @@ class TestVernamVeil(unittest.TestCase):
             cypher = VernamVeil(fx, **cypher_kwargs)
             encrypted, _ = cypher.encode(message, seed)
 
-            # Serialize and reload the OTPFX
+            # Serialise and reload the OTPFX
             with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tmp:
                 tmp.write(fx.source_code)
                 fx_path = tmp.name

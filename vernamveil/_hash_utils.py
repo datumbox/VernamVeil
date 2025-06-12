@@ -198,7 +198,7 @@ def fold_bytes_to_uint64(
         # Cast to uint64
         hashes_u64 = hashes.astype(np.uint64, copy=False)
 
-        # Compute folded values in a fully vectorized way
+        # Compute folded values in a fully vectorised way
         result: np.ndarray[tuple[int], np.dtype[np.uint64]] = np.bitwise_or.reduce(
             hashes_u64 << shifts, axis=1
         )

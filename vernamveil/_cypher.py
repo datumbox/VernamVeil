@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import IO, Callable, Literal
 
+from vernamveil._buffer import _Buffer
 from vernamveil._bytesearch import find
 from vernamveil._fx_utils import FX
 from vernamveil._types import np
@@ -269,20 +270,18 @@ class _Cypher(ABC):
                         progress_callback(bytes_processed, total_size)
             elif mode == "decode":
                 last_block = False
-                buffer = np.empty(0, dtype=np.uint8) if vectorise else bytearray()
+                buffer = _Buffer(size=buffer_size, use_numpy=vectorise)
                 look_start = 0  # Start position for searching the next delimiter
                 while exception_queue.empty():
                     block = queue_get(read_q)
                     block_len = len(block)
 
                     # Append the block to the buffer
-                    if isinstance(buffer, bytearray):
-                        buffer.extend(block)
-                    else:
-                        buffer = np.concatenate((buffer, np.frombuffer(block, dtype=np.uint8)))
+                    buffer.extend(block)
+
                     while exception_queue.empty():
                         delim_index = find(
-                            buffer if isinstance(buffer, bytearray) else memoryview(buffer),
+                            buffer.data,
                             block_delimiter,
                             look_start,
                         )
@@ -300,7 +299,7 @@ class _Cypher(ABC):
                                 break  # No complete block in buffer yet or EOF handled
 
                         # Extract the complete block up to the delimiter
-                        complete_block = memoryview(buffer)[:delim_index]
+                        complete_block = buffer.data[:delim_index]
 
                         # Decode the complete block
                         processed_block, current_seed = self.decode(complete_block, current_seed)
@@ -309,15 +308,11 @@ class _Cypher(ABC):
 
                         if last_block:
                             # Reset buffer
-                            buffer = (
-                                bytearray()
-                                if isinstance(buffer, bytearray)
-                                else np.empty(0, dtype=np.uint8)
-                            )
+                            buffer.truncate(0, 0)
                             break
 
                         # Remove the processed block and delimiter from the buffer
-                        buffer = buffer[delim_index + delimiter_size :]
+                        buffer.truncate(start=delim_index + delimiter_size)
                         look_start = 0
 
                         # Refresh block delimiter
