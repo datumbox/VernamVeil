@@ -270,7 +270,7 @@ class _Cypher(ABC):
                         progress_callback(bytes_processed, total_size)
             elif mode == "decode":
                 last_block = False
-                buffer = _Buffer(use_numpy=vectorise)
+                buffer = _Buffer(size=buffer_size, use_numpy=vectorise)
                 look_start = 0  # Start position for searching the next delimiter
                 while exception_queue.empty():
                     block = queue_get(read_q)

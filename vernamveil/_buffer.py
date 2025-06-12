@@ -1,7 +1,7 @@
 """Implements a dynamic buffer for bytearray or NumPy arrays.
 
-Provides a specialized data structure for efficient, dynamic management of
-bytearray or NumPy array buffers, supporting pre-allocation and optimized
+Provides a specialised data structure for efficient, dynamic management of
+bytearray or NumPy array buffers, supporting pre-allocation and optimised
 extend operations.
 """
 

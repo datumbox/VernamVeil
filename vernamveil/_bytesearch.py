@@ -1,6 +1,6 @@
 """Provides fast byte search functionalities.
 
-Offers `find` and `find_all` operations, utilizing a C extension for performance
+Offers `find` and `find_all` operations, utilising a C extension for performance
 when available, with a Python fallback mechanism.
 """
 
