@@ -2,6 +2,8 @@
 
 from typing import Any, Literal
 
+__all__: list[str] = []
+
 # Vectorisation types and imports
 np: Any
 _Integer: Any

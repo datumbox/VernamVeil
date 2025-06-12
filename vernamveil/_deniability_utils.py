@@ -12,9 +12,7 @@ import math
 from vernamveil._fx_utils import FX, OTPFX
 from vernamveil._vernamveil import VernamVeil
 
-__all__ = [
-    "forge_plausible_fx",
-]
+__all__ = ["forge_plausible_fx"]
 
 
 def _find_obfuscated_decoy_message(

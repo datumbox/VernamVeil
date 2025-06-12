@@ -7,6 +7,8 @@ extend operations.
 
 from vernamveil._types import np
 
+__all__: list[str] = []
+
 
 class _Buffer:
     """A dynamic buffer that can use either a bytearray or a NumPy array.
