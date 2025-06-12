@@ -12,8 +12,8 @@ try:
     import numpy
 
     np = numpy
-    _Integer = int | np.ndarray[np.uint64]
-    _Bytes = bytes | np.ndarray[np.uint8]
+    _Integer = int | np.ndarray[tuple[int], np.dtype[np.uint64]]
+    _Bytes = bytes | np.ndarray[tuple[int, int], np.dtype[np.uint8]]
     _HAS_NUMPY = True
 except ImportError:
     np = None
