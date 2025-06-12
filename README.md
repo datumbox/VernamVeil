@@ -395,7 +395,7 @@ VernamVeil provides a convenient CLI for file encryption and decryption. The CLI
 
 ### ⚙️ Features
 
-- **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed.
+- **Encrypt and decrypt files or streams** using a user-defined or auto-generated `fx` function and seed represented in hex.
 - **Auto-generate `fx.py` and `seed.hex`** during encoding if not provided; these files are saved in the current working directory.
 - **Custom `fx` and seed support**: Supply your own `fx.py` and `seed.hex` for both encoding and decoding.
 - **Configurable parameters**: Adjust chunk size, delimiter size, padding, decoy ratio, and more. Set `--verbosity info` to see progress information (off by default).
