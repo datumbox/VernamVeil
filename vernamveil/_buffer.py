@@ -128,7 +128,7 @@ class _Buffer:
             memoryview: A memoryview of the used portion of the buffer.
         """
         data: memoryview = (
-            self._buffer.data if isinstance(self._buffer, np.ndarray) else memoryview(self._buffer)
+            memoryview(self._buffer) if isinstance(self._buffer, bytearray) else self._buffer.data
         )
         if self._capacity == self._current_pos:
             return data
