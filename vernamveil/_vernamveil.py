@@ -458,7 +458,7 @@ class VernamVeil(_Cypher):
             if self._fx.vectorise:
                 # Store the slicing to avoid duplicate ops
                 data_slice = data[start:end]
-                processed_slice: np.ndarray = result[start:end]
+                processed_slice: np.ndarray[tuple[int], np.dtype[np.uint8]] = result[start:end]
                 # Writing to slices modifies the original data
                 np.bitwise_xor(data_slice, keystream, out=processed_slice)
                 plaintext_data = data_slice if is_encode else processed_slice.data

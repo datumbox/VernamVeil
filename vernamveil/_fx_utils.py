@@ -34,8 +34,9 @@ class FX:
     for use in the VernamVeil cypher. The wrapped function must be deterministic, seed-sensitive, and type-correct.
 
     Attributes:
-        keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes | bytearray)` and returning
-            `bytes` or `np.ndarray[np.uint8]`.
+        keystream_fn (Callable): Keystream function accepting
+            `(int | np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray)` and returning
+            `bytes` or `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
         block_size (int): The number of bytes returned per call.
         vectorise (bool): Whether the keystream function performs vectorised operations.
         source_code (str): The source code of the keystream function.
@@ -58,8 +59,9 @@ class FX:
         """Initialise the FX wrapper.
 
         Args:
-            keystream_fn (Callable): Keystream function accepting `(int | np.ndarray[np.uint64], bytes | bytearray)` and returning
-                `bytes` or `np.ndarray[np.uint8]`.
+            keystream_fn (Callable): Keystream function accepting
+                `(int | np.ndarray[tuple[int], np.dtype[np.uint64]], bytes | bytearray)` and returning
+                `bytes` or `np.ndarray[tuple[int, int], np.dtype[np.uint8]]`.
             block_size (int): The number of bytes returned per call.
             vectorise (bool): Whether the keystream function performs vectorised operations.
             source_code (str): The source code of the keystream function.
@@ -485,7 +487,7 @@ def check_fx_sanity(
     """Perform basic sanity checks on a user-supplied fx function for use as a key stream generator.
 
     Checks performed:
-        1. Type and output size check: All outputs should be `bytes` of length `fx.block_size` (scalar) or `np.ndarray[np.uint8]` of shape (num_samples, fx.block_size) (vectorised).
+        1. Type and output size check: All outputs should be `bytes` of length `fx.block_size` (scalar) or `np.ndarray[tuple[int, int], np.dtype[np.uint8]]` of shape (num_samples, fx.block_size) (vectorised).
         2. Non-constant output: fx should return diverse values for varying i.
         3. Seed sensitivity: fx output should change if the seed changes.
         4. Basic uniformity: No single byte value should dominate.
