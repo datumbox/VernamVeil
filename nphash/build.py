@@ -23,7 +23,7 @@ from nphash._build_utils._blake3_builder import (
     _detect_blake3_simd_support,
     _ensure_blake3_sources,
 )
-from nphash._build_utils._build_config import _get_build_config
+from nphash._build_utils._config_builder import _get_build_config
 from nphash._build_utils._ffi_builders import (
     _build_ext_with_cpp11,
     _get_bytesearch_ffi,
