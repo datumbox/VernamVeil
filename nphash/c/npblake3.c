@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "_npblake3.h"
+#include "npblake3.h"
 
 #include "blake3.h"
 
