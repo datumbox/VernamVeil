@@ -8,17 +8,6 @@ SIMD instruction sets (SSE2, SSE4.1, AVX2, AVX512, NEON), and compiling
 the relevant C or assembly files into object files. These object files can
 then be linked into the main CFFI extension for BLAKE3.
 """
-import os
-import sys
-
-# This hack ensures the project root is always on sys.path when any module in
-# nphash._build_utils is imported. It is required because setuptools and CFFI
-# may attempt to import build utility modules before the nphash package is installed,
-# leading to import errors. By adding the project root to sys.path here, we guarantee
-# that absolute imports of nphash and its submodules will work reliably during builds,
-# both locally and in continuous integration environments.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
 
 import shutil
 import subprocess

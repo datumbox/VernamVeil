@@ -20,59 +20,75 @@ jobs:
           - [dev, numpy]
         include:
           - os: ubuntu-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
+              cd nphash
+              python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_notbb'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev
-              echo "NPBLAKE3_NO_TBB=1" >> $GITHUB_ENV
+              cd nphash
+              export NPBLAKE3_NO_TBB=1
+              python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_nosimd'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
-              echo "NPBLAKE3_NO_SIMD=1" >> $GITHUB_ENV
+              cd nphash
+              export NPBLAKE3_NO_SIMD=1
+              python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_noasm'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
-              echo "NPBLAKE3_NO_ASM=1" >> $GITHUB_ENV
+              cd nphash
+              export NPBLAKE3_NO_ASM=1
+              python build.py
 
           - os: ubuntu-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_nobmh'
             build-steps: |
               sudo apt-get update && sudo apt-get install -y build-essential libssl-dev python3-dev g++ libtbb-dev
-              echo "BYTESEARCH_NO_BMH=1" >> $GITHUB_ENV
+              cd nphash
+              export BYTESEARCH_NO_BMH=1
+              python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               brew install libomp openssl tbb
+              cd nphash
+              python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_notbb'
             build-steps: |
               brew install libomp openssl
-              echo "NPBLAKE3_NO_TBB=1" >> $GITHUB_ENV
+              cd nphash
+              export NPBLAKE3_NO_TBB=1
+              python build.py
 
           - os: macos-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_nosimd'
             build-steps: |
               brew install libomp openssl tbb
-              echo "NPBLAKE3_NO_SIMD=1" >> $GITHUB_ENV
+              cd nphash
+              export NPBLAKE3_NO_SIMD=1
+              python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             build-steps: |
               @echo on
               if not exist vcpkg (
@@ -85,18 +101,22 @@ jobs:
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
               choco install openssl visualstudio2022buildtools --no-progress -y
               call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+              cd nphash
+              python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_notbb'
             build-steps: |
               @echo on
               choco install openssl visualstudio2022buildtools --no-progress -y
               call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-              echo "NPBLAKE3_NO_TBB=1" >> $GITHUB_ENV
+              cd nphash
+              set NPBLAKE3_NO_TBB=1
+              python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_nosimd'
             build-steps: |
               @echo on
@@ -110,10 +130,12 @@ jobs:
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
               choco install openssl visualstudio2022buildtools --no-progress -y
               call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-              echo "NPBLAKE3_NO_SIMD=1" >> $GITHUB_ENV
+              cd nphash
+              set NPBLAKE3_NO_SIMD=1
+              python build.py
 
           - os: windows-latest
-            pip-dependencies: [dev, c_ext]
+            pip-dependencies: [dev, numpy, cffi]
             postfix: '_noasm'
             build-steps: |
               @echo on
@@ -127,7 +149,9 @@ jobs:
               set LIB=%CD%\vcpkg\installed\x64-windows\lib;%LIB%
               choco install openssl visualstudio2022buildtools --no-progress -y
               call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-              echo "NPBLAKE3_NO_ASM=1" >> $GITHUB_ENV
+              cd nphash
+              set NPBLAKE3_NO_ASM=1
+              python build.py
 
     name: test_${{ matrix.os }}_${{ join(matrix.pip-dependencies, '_') }}${{ matrix.postfix || '' }}
     runs-on: ${{ matrix.os }}
@@ -161,6 +185,9 @@ jobs:
           path: vcpkg
           key: vcpkg_windows-latest
 
+      - name: Install Python dependencies and library
+        run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
+
       - name: Build/package steps (Windows)
         if: matrix.build-steps != '' && matrix.os == 'windows-latest'
         run: ${{ matrix.build-steps }}
@@ -170,9 +197,6 @@ jobs:
         if: matrix.build-steps != '' && matrix.os != 'windows-latest'
         run: ${{ matrix.build-steps }}
         shell: bash
-
-      - name: Install Python dependencies and library
-        run: python -m pip install -e .[${{ join(matrix.pip-dependencies, ',') }}]
 
 #      - name: Setup tmate session (for interactive SSH debugging)
 #        if: matrix.os == 'windows-latest'

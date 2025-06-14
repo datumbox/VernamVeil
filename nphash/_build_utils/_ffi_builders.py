@@ -6,17 +6,6 @@ designed to correctly compile C and C++ sources, including those requiring
 specific compiler flags for features like OpenMP and C++11, particularly
 for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
-import os
-import sys
-
-# This hack ensures the project root is always on sys.path when any module in
-# nphash._build_utils is imported. It is required because setuptools and CFFI
-# may attempt to import build utility modules before the nphash package is installed,
-# leading to import errors. By adding the project root to sys.path here, we guarantee
-# that absolute imports of nphash and its submodules will work reliably during builds,
-# both locally and in continuous integration environments.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-
 
 import os
 from distutils.command.build_ext import build_ext as _build_ext
@@ -52,7 +41,7 @@ def _set_source_and_print_details(
         print(f"  {key}: {value!r}")
     print("-----------------------------------------------------------")
 
-    ffibuilder.set_source(module_name=module_name, source=source, py_limited_api=True, **kwargs)
+    ffibuilder.set_source(module_name=module_name, source=source, **kwargs)
 
 
 def _get_c_source(path: Path) -> str:
@@ -66,15 +55,6 @@ def _get_c_source(path: Path) -> str:
     """
     with path.open() as f:
         return f.read()
-
-
-def _is_setuptools_build() -> bool:
-    """Check if the current build is being run by setuptools.
-
-    Returns:
-        bool: True if the build is being run by setuptools, False otherwise.
-    """
-    return os.environ.get("SETUPTOOLS_BUILD") == "1"
 
 
 class _build_ext_with_cpp11(_build_ext):
@@ -142,7 +122,7 @@ def _get_bytesearch_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for bytesearch.
     """
-    config = _get_build_config([])
+    config = _get_build_config(None)
 
     nphash_dir = Path(__file__).parent.parent.resolve()
     build_dir = nphash_dir / "build"
@@ -160,7 +140,7 @@ def _get_bytesearch_ffi() -> FFI:
     nphash_dir = Path(__file__).parent.parent.resolve()
     _set_source_and_print_details(
         ffibuilder,
-        module_name="nphash._bytesearchffi",
+        module_name="_bytesearchffi",
         source=_get_c_source(nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
@@ -179,7 +159,7 @@ def _get_npblake2b_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npblake2b.
     """
-    config = _get_build_config([])
+    config = _get_build_config(None)
 
     nphash_dir = Path(__file__).parent.parent.resolve()
 
@@ -192,7 +172,7 @@ def _get_npblake2b_ffi() -> FFI:
 
     _set_source_and_print_details(
         ffibuilder,
-        module_name="nphash._npblake2bffi",
+        module_name="_npblake2bffi",
         source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
@@ -210,14 +190,13 @@ def _get_npblake3_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npblake3.
     """
-    config = _get_build_config([])
+    config = _get_build_config()
 
     nphash_dir = Path(__file__).parent.parent.resolve()
-    project_root = nphash_dir.parent
     build_dir = nphash_dir / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
 
-    blake3_source_dir = project_root / "third_party" / "blake3"
+    blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
     _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
 
     # BLAKE3 C/C++ source files for FFI
@@ -288,27 +267,20 @@ def _get_npblake3_ffi() -> FFI:
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
-    # Change to relative or absolute paths based on the build context
-    if _is_setuptools_build():
-        # Use relative paths for setuptools/pip
-        sources = [os.path.relpath(p, project_root) for p in blake3_c_source_files]
-        extra_objects = [os.path.relpath(p, project_root) for p in blake3_extra_objects]
-    else:
-        # Use absolute paths for manual nphash/build.py builds
-        sources = [str(p) for p in blake3_c_source_files]
-        extra_objects = [str(p) for p in blake3_extra_objects]
+    # Convert Path objects to relative strings for CFFI sources list
+    c_paths_blake3 = [os.path.relpath(p, build_dir) for p in blake3_c_source_files]
 
     _set_source_and_print_details(
         ffibuilder,
-        module_name="nphash._npblake3ffi",
+        module_name="_npblake3ffi",
         source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
-        sources=sources,
+        sources=c_paths_blake3,
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=config.extra_link_args,
         include_dirs=config.include_dirs + [str(blake3_source_dir)],
         library_dirs=config.library_dirs,
-        extra_objects=extra_objects,
+        extra_objects=blake3_extra_objects,
     )
 
     return ffibuilder
@@ -320,7 +292,7 @@ def _get_npsha256_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npsha256.
     """
-    config = _get_build_config([])
+    config = _get_build_config(None)
 
     nphash_dir = Path(__file__).parent.parent.resolve()
 
@@ -333,8 +305,8 @@ def _get_npsha256_ffi() -> FFI:
 
     _set_source_and_print_details(
         ffibuilder,
-        module_name="nphash._npsha256ffi",
         source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
+        module_name="_npsha256ffi",
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,
