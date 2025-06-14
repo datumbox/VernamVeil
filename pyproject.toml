@@ -27,15 +27,13 @@ dev = [
 numpy = [
     "numpy>=2.2"
 ]
-cffi = [
-    "cffi>=1.17"
-]
+c_ext = ["vernamveil[numpy]", "cffi>=1.17"]
 
 [project.scripts]
 vernamveil = "vernamveil._cli:main"
 
 [build-system]
-requires = ["setuptools>=68.1", "wheel"]
+requires = ["setuptools>=68.1", "wheel", "cffi>=1.17"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
