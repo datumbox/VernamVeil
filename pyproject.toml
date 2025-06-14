@@ -27,7 +27,7 @@ dev = [
 numpy = [
     "numpy>=2.2"
 ]
-c_ext = ["vernamveil[numpy]", "cffi>=1.17"]
+c_ext = ["vernamveil[numpy]", "cffi>=1.17", "nphash-c-ext-trigger @ file:./nphash_c_ext_trigger"]
 
 [project.scripts]
 vernamveil = "vernamveil._cli:main"
