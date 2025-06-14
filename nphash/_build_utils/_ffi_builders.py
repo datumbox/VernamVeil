@@ -6,6 +6,17 @@ designed to correctly compile C and C++ sources, including those requiring
 specific compiler flags for features like OpenMP and C++11, particularly
 for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
+import os
+import sys
+
+# This hack ensures the project root is always on sys.path when any module in
+# nphash._build_utils is imported. It is required because setuptools and CFFI
+# may attempt to import build utility modules before the nphash package is installed,
+# leading to import errors. By adding the project root to sys.path here, we guarantee
+# that absolute imports of nphash and its submodules will work reliably during builds,
+# both locally and in continuous integration environments.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 
 import os
 from distutils.command.build_ext import build_ext as _build_ext

@@ -1,4 +1,5 @@
 import os
+
 from setuptools import setup
 
 os.environ["SETUPTOOLS_BUILD"] = "1"
