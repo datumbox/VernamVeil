@@ -7,6 +7,7 @@ specific compiler flags for features like OpenMP and C++11, particularly
 for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
 
+import os
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 from typing import Any, List
@@ -104,6 +105,10 @@ def _get_bytesearch_ffi() -> FFI:
     """
     config = _get_build_config(None)
 
+    nphash_dir = Path(__file__).parent.parent.resolve()
+    build_dir = nphash_dir / "build"
+    build_dir.mkdir(parents=True, exist_ok=True)
+
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -120,7 +125,7 @@ def _get_bytesearch_ffi() -> FFI:
             #include "bytesearch.h"
             #include "bmh.h"
         """,
-        sources=[str(nphash_dir / "c" / "bytesearch.c")],
+        sources=[os.path.relpath(nphash_dir / "c" / "bytesearch.c", build_dir)],
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args
@@ -140,6 +145,8 @@ def _get_npblake2b_ffi() -> FFI:
     """
     config = _get_build_config(None)
 
+    nphash_dir = Path(__file__).parent.parent.resolve()
+
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -147,7 +154,6 @@ def _get_npblake2b_ffi() -> FFI:
         """
     )
 
-    nphash_dir = Path(__file__).parent.parent.resolve()
     ffibuilder.set_source(
         module_name="_npblake2bffi",
         source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
@@ -170,8 +176,10 @@ def _get_npblake3_ffi() -> FFI:
     config = _get_build_config()
 
     nphash_dir = Path(__file__).parent.parent.resolve()
-    blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
+    build_dir = nphash_dir / "build"
+    build_dir.mkdir(parents=True, exist_ok=True)
 
+    blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
     _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
 
     # BLAKE3 C/C++ source files for FFI
@@ -186,10 +194,6 @@ def _get_npblake3_ffi() -> FFI:
     blake3_extra_objects: list[str] = []
     blake3_specific_defines: list[str] = []
     asm_implemented_flags: set[str] = set()
-
-    # Define a output directory for all build artifacts
-    build_dir = nphash_dir / "build"
-    build_dir.mkdir(parents=True, exist_ok=True)
 
     # BLAKE3 hardware acceleration detection and compilation
     if config.asm_enabled:
@@ -248,8 +252,8 @@ def _get_npblake3_ffi() -> FFI:
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
-    # Convert absolute Path objects to strings for CFFI sources list
-    c_paths_blake3 = [str(p) for p in blake3_c_source_files]
+    # Convert Path objects to relative strings for CFFI sources list
+    c_paths_blake3 = [os.path.relpath(p, build_dir) for p in blake3_c_source_files]
 
     ffibuilder.set_source(
         module_name="_npblake3ffi",
@@ -274,6 +278,8 @@ def _get_npsha256_ffi() -> FFI:
     """
     config = _get_build_config(None)
 
+    nphash_dir = Path(__file__).parent.parent.resolve()
+
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -281,7 +287,6 @@ def _get_npsha256_ffi() -> FFI:
         """
     )
 
-    nphash_dir = Path(__file__).parent.parent.resolve()
     ffibuilder.set_source(
         source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
         module_name="_npsha256ffi",
