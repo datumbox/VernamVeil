@@ -11,6 +11,7 @@ This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256
 """
 
 import distutils.command.build_ext  # For setattr patch
+import os
 from distutils.dist import Distribution
 from pathlib import Path
 
@@ -30,6 +31,9 @@ def main() -> None:
 
     Sets up platform-specific build options, reads C source files, and compiles the extensions.
     """
+    # Ensure the script runs from the directory where it is located
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     # Define the build directories
     nphash_dir = Path(__file__).parent.resolve()
     build_dir = nphash_dir / "build"

@@ -41,7 +41,7 @@ def _set_source_and_print_details(
         print(f"  {key}: {value!r}")
     print("-----------------------------------------------------------")
 
-    ffibuilder.set_source(module_name=module_name, source=source, **kwargs)
+    ffibuilder.set_source(module_name=module_name, source=source, py_limited_api=True, **kwargs)
 
 
 def _get_c_source(path: Path) -> str:
@@ -55,6 +55,15 @@ def _get_c_source(path: Path) -> str:
     """
     with path.open() as f:
         return f.read()
+
+
+def _is_setuptools_build() -> bool:
+    """Check if the current build is being run by setuptools.
+
+    Returns:
+        bool: True if the build is being run by setuptools, False otherwise.
+    """
+    return os.environ.get("SETUPTOOLS_BUILD") == "1"
 
 
 class _build_ext_with_cpp11(_build_ext):
@@ -140,7 +149,7 @@ def _get_bytesearch_ffi() -> FFI:
     nphash_dir = Path(__file__).parent.parent.resolve()
     _set_source_and_print_details(
         ffibuilder,
-        module_name="_bytesearchffi",
+        module_name="nphash._bytesearchffi",
         source=_get_c_source(nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
@@ -172,7 +181,7 @@ def _get_npblake2b_ffi() -> FFI:
 
     _set_source_and_print_details(
         ffibuilder,
-        module_name="_npblake2bffi",
+        module_name="nphash._npblake2bffi",
         source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
@@ -268,17 +277,27 @@ def _get_npblake3_ffi() -> FFI:
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
+    # Change to relative or absolute paths based on the build context
+    if _is_setuptools_build():
+        # Use relative paths for setuptools/pip
+        sources = [os.path.relpath(p, project_root) for p in blake3_c_source_files]
+        extra_objects = [os.path.relpath(p, project_root) for p in blake3_extra_objects]
+    else:
+        # Use absolute paths for manual nphash/build.py builds
+        sources = [str(p) for p in blake3_c_source_files]
+        extra_objects = [str(p) for p in blake3_extra_objects]
+
     _set_source_and_print_details(
         ffibuilder,
-        module_name="_npblake3ffi",
+        module_name="nphash._npblake3ffi",
         source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
-        sources=[os.path.relpath(p, project_root) for p in blake3_c_source_files],
+        sources=sources,
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=config.extra_link_args,
         include_dirs=config.include_dirs + [str(blake3_source_dir)],
         library_dirs=config.library_dirs,
-        extra_objects=[os.path.relpath(p, project_root) for p in blake3_extra_objects],
+        extra_objects=extra_objects,
     )
 
     return ffibuilder
@@ -303,8 +322,8 @@ def _get_npsha256_ffi() -> FFI:
 
     _set_source_and_print_details(
         ffibuilder,
+        module_name="nphash._npsha256ffi",
         source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
-        module_name="_npsha256ffi",
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,

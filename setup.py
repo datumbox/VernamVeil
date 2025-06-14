@@ -1,4 +1,7 @@
+import os
 from setuptools import setup
+
+os.environ["SETUPTOOLS_BUILD"] = "1"
 
 setup(
     cffi_modules=[
