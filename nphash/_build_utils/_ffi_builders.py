@@ -122,7 +122,7 @@ def _get_bytesearch_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for bytesearch.
     """
-    config = _get_build_config(None)
+    config = _get_build_config([])
 
     nphash_dir = Path(__file__).parent.parent.resolve()
     build_dir = nphash_dir / "build"
@@ -159,7 +159,7 @@ def _get_npblake2b_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npblake2b.
     """
-    config = _get_build_config(None)
+    config = _get_build_config([])
 
     nphash_dir = Path(__file__).parent.parent.resolve()
 
@@ -190,13 +190,14 @@ def _get_npblake3_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npblake3.
     """
-    config = _get_build_config()
+    config = _get_build_config([])
 
     nphash_dir = Path(__file__).parent.parent.resolve()
+    project_root = nphash_dir.parent
     build_dir = nphash_dir / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
 
-    blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
+    blake3_source_dir = project_root / "third_party" / "blake3"
     _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
 
     # BLAKE3 C/C++ source files for FFI
@@ -267,20 +268,17 @@ def _get_npblake3_ffi() -> FFI:
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
-    # Convert Path objects to relative strings for CFFI sources list
-    c_paths_blake3 = [os.path.relpath(p, build_dir) for p in blake3_c_source_files]
-
     _set_source_and_print_details(
         ffibuilder,
         module_name="_npblake3ffi",
         source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
-        sources=c_paths_blake3,
+        sources=[os.path.relpath(p, project_root) for p in blake3_c_source_files],
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=config.extra_link_args,
         include_dirs=config.include_dirs + [str(blake3_source_dir)],
         library_dirs=config.library_dirs,
-        extra_objects=blake3_extra_objects,
+        extra_objects=[os.path.relpath(p, project_root) for p in blake3_extra_objects],
     )
 
     return ffibuilder
@@ -292,7 +290,7 @@ def _get_npsha256_ffi() -> FFI:
     Returns:
         FFI: The configured CFFI FFI instance for npsha256.
     """
-    config = _get_build_config(None)
+    config = _get_build_config([])
 
     nphash_dir = Path(__file__).parent.parent.resolve()
 
