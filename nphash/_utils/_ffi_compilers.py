@@ -76,7 +76,7 @@ class _build_ext_with_cpp11(_build_ext):
             if src.endswith(".cpp"):
                 # Check if a C++ standard is already specified in existing flags
                 if all("std=c++" not in arg for arg in extra_postargs_copy):
-                    if any(arg.startswith("/") for arg in extra_postargs_copy):
+                    if self.compiler.compiler_type == "msvc":
                         # Use /std:c++14 for MSVC for C++11 features
                         extra_postargs_copy.append("/std:c++14")
                     else:
