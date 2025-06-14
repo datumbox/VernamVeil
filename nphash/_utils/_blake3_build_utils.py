@@ -1,4 +1,13 @@
-"""Utility functions for building BLAKE3 with SIMD support."""
+"""Build utilities specific to the BLAKE3 cryptographic hash function.
+
+This module provides functions for managing BLAKE3 C source files and for
+detecting and compiling its various SIMD (Single Instruction, Multiple Data)
+and assembly language implementations. It handles cloning the official BLAKE3
+repository if sources are not found, detecting compiler support for different
+SIMD instruction sets (SSE2, SSE4.1, AVX2, AVX512, NEON), and compiling
+the relevant C or assembly files into object files. These object files can
+then be linked into the main CFFI extension for BLAKE3.
+"""
 
 import shutil
 import subprocess

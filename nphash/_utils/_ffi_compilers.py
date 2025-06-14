@@ -1,4 +1,11 @@
-"""FFI compiler utilities for nphash."""
+"""Compiler utilities for building CFFI extensions for the nphash library.
+
+This module provides specialised CFFI (C Foreign Function Interface) setup
+functions and a custom distutils build_ext command. These components are
+designed to correctly compile C and C++ sources, including those requiring
+specific compiler flags for features like OpenMP and C++11, particularly
+for the BLAKE3 TBB (Threading Building Blocks) integration.
+"""
 
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
@@ -178,7 +185,7 @@ def _get_npblake3_ffi(
 
     # Do NOT specify -std=c99 or -std=c++11. This avoids errors related to C++11 features in C code.
     blake3_compile_args = [
-        arg for arg in config.extra_compile_args if not arg.startswith("-std=c99")
+        arg for arg in config.extra_compile_args if not arg.startswith(("-std=", "/std="))
     ]
 
     # Add TBB-specific defines if TBB is enabled

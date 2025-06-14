@@ -1,4 +1,13 @@
-"""Configuration and build utilities for nphash extensions."""
+"""Build configuration utilities for the nphash library's CFFI extensions.
+
+This module is responsible for detecting the build environment, including
+operating system, CPU architecture, and available compilers. It parses
+command-line arguments and environment variables to determine which optional
+features (like TBB, SIMD, ASM) should be enabled or disabled. Finally, it
+assembles a comprehensive build configuration object containing all necessary
+compiler flags, linker flags, include directories, and library paths required
+to build the CFFI extensions across different platforms (Linux, macOS, Windows).
+"""
 
 import argparse
 import os
