@@ -32,10 +32,8 @@ jobs:
       - name: Install system dependencies and build C modules
         run: |
           sudo apt-get update && sudo apt-get install -y build-essential g++ libssl-dev libtbb-dev python3-dev
-          python -m pip install -e .[dev,numpy,cffi]
-          cd nphash
-          python build.py
-          ls -lh _bytesearchffi.*.* _npblake2bffi.*.* _npblake3ffi.*.* _npsha256ffi.*.*
+          python -m pip install -e .[c_ext]
+          ls -lh nphash/_bytesearchffi.*.* nphash/_npblake2bffi.*.* nphash/_npblake3ffi.*.* nphash/_npsha256ffi.*.*
           python -c "from vernamveil._types import _HAS_C_MODULE; assert _HAS_C_MODULE; print('The C module is importable')"
         shell: bash
 
