@@ -185,28 +185,15 @@ def _detect_and_compile_blake3_asm(
                 obj_path = output_dir / (asm_path.stem + ".obj")
                 print(f"Compiling assembly (ml64): {asm_path} -> {obj_path}")
                 subprocess.run(
-                    [
-                        "ml64",
-                        "/c",  # Compile without linking
-                        str(asm_path),  # Absolute path to source .asm file
-                        f"/Fo{obj_path.name}",  # Output filename (will be in cwd)
-                    ],
+                    ["ml64", "/c", str(asm_path), f"/Fo{obj_path.name}"],
                     check=True,
                     cwd=str(output_dir),
                 )
             else:
-                obj_path = output_dir / (
-                    asm_path.stem + ".o"
-                )  # Object file path in the output directory
+                obj_path = output_dir / (asm_path.stem + ".o")
                 print(f"Compiling assembly: {asm_path} -> {obj_path}")
                 subprocess.run(
-                    [
-                        config.compiler,
-                        "-c",
-                        str(asm_path),
-                        "-o",
-                        str(obj_path),
-                    ],
+                    [config.compiler, "-c", str(asm_path), "-o", str(obj_path)],
                     check=True,
                 )
             asm_objects.append(obj_path)

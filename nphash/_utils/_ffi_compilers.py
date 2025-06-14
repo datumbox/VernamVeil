@@ -185,7 +185,7 @@ def _get_npblake3_ffi(
 
     # Do NOT specify -std=c99 or -std=c++11. This avoids errors related to C++11 features in C code.
     blake3_compile_args = [
-        arg for arg in config.extra_compile_args if not arg.startswith(("-std=", "/std="))
+        arg for arg in config.extra_compile_args if not arg.startswith(("-std", "/std"))
     ]
 
     # Add TBB-specific defines if TBB is enabled
