@@ -25,6 +25,25 @@ from nphash._build_utils._config_builder import _get_build_config, _supports_fla
 __all__: list[str] = []
 
 
+def _set_source_and_print_details(
+    ffibuilder: FFI, module_name: str, source: str, **kwargs: Any
+) -> None:
+    """Print a summary of the build configuration and set the source for the CFFI module.
+
+    Args:
+        ffibuilder (FFI): The FFI instance to configure.
+        module_name (str): Name of the CFFI module.
+        source (str): Inline C source code.
+        **kwargs: Additional keyword arguments for FFI configuration.
+    """
+    print(f"\n--- Configuring CFFI module: {module_name} via set_source ---")
+    for key, value in kwargs.items():
+        print(f"  {key}: {value!r}")
+    print("-----------------------------------------------------------")
+
+    ffibuilder.set_source(module_name=module_name, source=source, **kwargs)
+
+
 def _get_c_source(path: Path) -> str:
     """Read and return the contents of a C source file.
 
@@ -119,7 +138,8 @@ def _get_bytesearch_ffi() -> FFI:
     )
 
     nphash_dir = Path(__file__).parent.parent.resolve()
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_bytesearchffi",
         source=_get_c_source(nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
@@ -150,7 +170,8 @@ def _get_npblake2b_ffi() -> FFI:
         """
     )
 
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_npblake2bffi",
         source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
         libraries=config.libraries_c,
@@ -249,7 +270,8 @@ def _get_npblake3_ffi() -> FFI:
     # Convert Path objects to relative strings for CFFI sources list
     c_paths_blake3 = [os.path.relpath(p, build_dir) for p in blake3_c_source_files]
 
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_npblake3ffi",
         source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
         sources=c_paths_blake3,
@@ -281,7 +303,8 @@ def _get_npsha256_ffi() -> FFI:
         """
     )
 
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
         module_name="_npsha256ffi",
         libraries=config.libraries_c,

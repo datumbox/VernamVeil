@@ -11,8 +11,6 @@ This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256
 """
 
 import distutils.command.build_ext  # For setattr patch
-import platform
-import sys
 from distutils.dist import Distribution
 from pathlib import Path
 
@@ -25,45 +23,6 @@ from nphash._build_utils._ffi_builders import (
 )
 
 __all__ = ["main"]
-
-
-def _print_build_summary(
-    libraries_c: list[str],
-    libraries_cpp: list[str],
-    extra_compile_args: list[str],
-    extra_link_args: list[str],
-    include_dirs: list[str],
-    library_dirs: list[str],
-    extra_objects: list[str],
-) -> None:
-    """Print a summary of the build configuration.
-
-    Args:
-        libraries_c (list): C Libraries to link against.
-        libraries_cpp (list): C++ libraries to link against.
-        extra_compile_args (list): Extra compiler arguments.
-        extra_link_args (list): Extra linker arguments.
-        include_dirs (list): Include directories.
-        library_dirs (list): Library directories.
-        extra_objects (list): Extra object files to link.
-    """
-    print("Build configuration summary:")
-    print("Platform:")
-    print(f"  OS: {sys.platform}")
-    print(f"  Machine: {platform.machine()}")
-    print(f"  Architecture: {platform.architecture()[0]}")
-    print(
-        f"  Python: {platform.python_implementation()} {platform.python_version()} ({platform.python_compiler()})"
-    )
-    print(f"  Uname: {platform.uname()}")
-    print("Build options:")
-    print(f"  C Libraries: {libraries_c}")
-    print(f"  C++ Libraries: {libraries_cpp}")
-    print(f"  Extra compile args: {extra_compile_args}")
-    print(f"  Extra link args: {extra_link_args}")
-    print(f"  Include dirs: {include_dirs}")
-    print(f"  Library dirs: {library_dirs}")
-    print(f"  Extra objects: {extra_objects}")
 
 
 def main() -> None:
@@ -82,21 +41,10 @@ def main() -> None:
     ffibuilder_npblake3 = _get_npblake3_ffi()
     ffibuilder_sha256 = _get_npsha256_ffi()
 
-    # _print_build_summary(
-    #     config.libraries_c,
-    #     config.libraries_cpp,
-    #     config.extra_compile_args,
-    #     config.extra_link_args,
-    #     config.include_dirs,
-    #     config.library_dirs,
-    #     blake3_extra_object_files,
-    # )
-
-    if True:  # config.tbb_enabled:
-        # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
-        # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
-        # Using setattr avoids mypy errors and keeps the patch local to this build process.
-        setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
+    # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
+    # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
+    # Using setattr avoids mypy errors and keeps the patch local to this build process.
+    setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
 
     # Compile FFI Modules with target and temp dir
     print("Compiling CFFI extensions...")
