@@ -39,8 +39,8 @@ void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "_bmh.h"
-#include "_bytesearch.h"
+#include "bmh.h"
+#include "bytesearch.h"
 
 // Searches for the first occurrence of 'pattern' in 'text'. Returns the index or -1 if not found.
 ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m) {
