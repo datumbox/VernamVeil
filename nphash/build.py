@@ -17,14 +17,14 @@ import tempfile
 from distutils.dist import Distribution
 from pathlib import Path
 
-from nphash._utils._blake3_build_utils import (
+from nphash._build_utils._blake3_builder import (
     _compile_blake3_simd_objects,
     _detect_and_compile_blake3_asm,
     _detect_blake3_simd_support,
     _ensure_blake3_sources,
 )
-from nphash._utils._build_config import _get_build_config
-from nphash._utils._ffi_compilers import (
+from nphash._build_utils._build_config import _get_build_config
+from nphash._build_utils._ffi_builders import (
     _build_ext_with_cpp11,
     _get_bytesearch_ffi,
     _get_npblake2b_ffi,

@@ -13,7 +13,7 @@ from typing import Any, List
 
 from cffi import FFI
 
-from nphash._utils._build_config import _BuildConfig, _supports_flag
+from nphash._build_utils._build_config import _BuildConfig, _supports_flag
 
 __all__: list[str] = []
 

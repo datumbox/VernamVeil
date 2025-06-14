@@ -16,7 +16,7 @@ from collections import namedtuple
 from pathlib import Path
 from typing import Tuple
 
-from nphash._utils._build_config import _BuildConfig, _supports_flag
+from nphash._build_utils._build_config import _BuildConfig, _supports_flag
 
 __all__: list[str] = []
 
