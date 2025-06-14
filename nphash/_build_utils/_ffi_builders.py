@@ -121,11 +121,7 @@ def _get_bytesearch_ffi() -> FFI:
     nphash_dir = Path(__file__).parent.parent.resolve()
     ffibuilder.set_source(
         module_name="_bytesearchffi",
-        source="""
-            #include "bytesearch.h"
-            #include "bmh.h"
-        """,
-        sources=[os.path.relpath(nphash_dir / "c" / "bytesearch.c", build_dir)],
+        source=_get_c_source(nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args
@@ -183,7 +179,7 @@ def _get_npblake3_ffi() -> FFI:
     _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
 
     # BLAKE3 C/C++ source files for FFI
-    blake3_c_source_files: list[Path] = [nphash_dir / "c" / "npblake3.c"]
+    blake3_c_source_files: list[Path] = []
     core_blake3_c_files_names = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
     if config.tbb_enabled:
         core_blake3_c_files_names.append("blake3_tbb.cpp")
@@ -257,7 +253,7 @@ def _get_npblake3_ffi() -> FFI:
 
     ffibuilder.set_source(
         module_name="_npblake3ffi",
-        source='#include "npblake3.h"',
+        source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
         sources=c_paths_blake3,
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,

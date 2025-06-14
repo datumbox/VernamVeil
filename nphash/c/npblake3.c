@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include "npblake3.h"
 
 #include "blake3.h"
 
@@ -69,7 +68,15 @@ void numpy_blake3(const uint64_t* arr, size_t n, const char* seed, size_t seedle
 // Hashes multiple data chunks with BLAKE3, outputs variable-length hash
 // - If a seed is provided, the keyed mode is used by setting the key (up to 32 bytes, zero-padded if shorter)
 // - Output is a uint8 array of length hash_size
-void bytes_multi_chunk_blake3(const uint8_t* const* data_chunks, const size_t* data_lengths, size_t num_chunks, const char* seed, size_t seedlen, uint8_t* out, size_t hash_size) {
+void bytes_multi_chunk_blake3(
+    const uint8_t* const* data_chunks, // Array of pointers to data buffers
+    const size_t* data_lengths,        // Array of lengths for each buffer
+    size_t num_chunks,                 // Number of chunks
+    const char* seed,                  // Key for keyed hashing (optional)
+    size_t seedlen,                    // Key length
+    uint8_t* out,                      // Output buffer for the digest
+    size_t hash_size                   // Desired digest length
+) {
     // Input: data_chunks is an array of pointers to data buffers that are to be hashed.
     blake3_hasher hasher;
     bool seeded = seed != NULL && seedlen > 0;
