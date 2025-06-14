@@ -41,7 +41,8 @@ void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_
 
 #include "bmh.h"
 
-// Searches for the first occurrence of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Searches for the first occurrence of 'pattern' in 'text'. Returns the index or -1 if not found.
+// It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Parameters:
 //   text: The text to search within.
 //   n: The length of the text.
@@ -64,6 +65,8 @@ ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned cha
 }
 
 // Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Returns a dynamically allocated array of indices, and sets count_ptr.
+// Caller must free the returned array using the free_indices() function.
 // Parameters:
 //   text: The text to search within.
 //   n: The length of the text.
