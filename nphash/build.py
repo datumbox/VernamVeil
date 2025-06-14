@@ -13,7 +13,6 @@ This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256
 import distutils.command.build_ext  # For setattr patch
 import platform
 import sys
-import tempfile
 from distutils.dist import Distribution
 from pathlib import Path
 
@@ -72,12 +71,10 @@ def main() -> None:
 
     Sets up platform-specific build options, reads C source files, and compiles the extensions.
     """
-
+    # Define the build directories
     nphash_dir = Path(__file__).parent.resolve()
     build_dir = nphash_dir / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
-
-
 
     # Get FFI Builder Instances
     ffibuilder_bytesearch = _get_bytesearch_ffi()
@@ -95,7 +92,7 @@ def main() -> None:
     #     blake3_extra_object_files,
     # )
 
-    if True: # config.tbb_enabled:
+    if True:  # config.tbb_enabled:
         # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
         # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
         # Using setattr avoids mypy errors and keeps the patch local to this build process.

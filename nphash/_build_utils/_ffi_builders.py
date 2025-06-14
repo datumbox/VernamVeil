@@ -10,17 +10,17 @@ for the BLAKE3 TBB (Threading Building Blocks) integration.
 import os
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from cffi import FFI
 
-from nphash._build_utils._config_builder import _BuildConfig, _get_build_config, _supports_flag
 from nphash._build_utils._blake3_builder import (
     _compile_blake3_simd_objects,
     _detect_and_compile_blake3_asm,
     _detect_blake3_simd_support,
     _ensure_blake3_sources,
 )
+from nphash._build_utils._config_builder import _get_build_config, _supports_flag
 
 __all__: list[str] = []
 
@@ -199,9 +199,7 @@ def _get_npblake3_ffi() -> FFI:
         blake3_extra_objects.extend(str(p) for p in asm_object_files)
 
     if config.simd_enabled:
-        supported_simd_features = _detect_blake3_simd_support(
-            config, blake3_specific_defines
-        )
+        supported_simd_features = _detect_blake3_simd_support(config, blake3_specific_defines)
         simd_features_to_compile = [
             feat
             for feat in supported_simd_features
