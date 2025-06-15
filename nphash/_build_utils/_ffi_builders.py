@@ -9,13 +9,38 @@ for the BLAKE3 TBB (Threading Building Blocks) integration.
 
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from cffi import FFI
 
+from nphash._build_utils._blake3_builder import (
+    _compile_blake3_simd_objects,
+    _detect_and_compile_blake3_asm,
+    _detect_blake3_simd_support,
+    _ensure_blake3_sources,
+)
 from nphash._build_utils._config_builder import _BuildConfig, _supports_flag
 
 __all__: list[str] = []
+
+
+def _set_source_and_print_details(
+    ffibuilder: FFI, module_name: str, source: str, **kwargs: Any
+) -> None:
+    """Print a summary of the build configuration and set the source for the CFFI module.
+
+    Args:
+        ffibuilder (FFI): The FFI instance to configure.
+        module_name (str): Name of the CFFI module.
+        source (str): Inline C source code.
+        **kwargs: Additional keyword arguments for FFI configuration.
+    """
+    print(f"\n--- Configuring CFFI module: {module_name} via set_source ---")
+    for key, value in kwargs.items():
+        print(f"  {key}: {value!r}")
+    print("-----------------------------------------------------------")
+
+    ffibuilder.set_source(module_name=module_name, source=source, **kwargs)
 
 
 def _get_c_source(path: Path) -> str:
@@ -90,12 +115,12 @@ class _build_ext_with_cpp11(_build_ext):
             self.compiler._compile = orig_compile
 
 
-def _get_bytesearch_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
+def _get_bytesearch_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _bytesearchffi module.
 
     Args:
-        config (_BuildConfig): The build configuration object.
-        nphash_dir (Path): Path to the nphash directory containing C sources/headers.
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for bytesearch.
@@ -109,13 +134,10 @@ def _get_bytesearch_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
         """
     )
 
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_bytesearchffi",
-        source="""
-            #include "bytesearch.h"
-            #include "bmh.h"
-        """,
-        sources=[str(nphash_dir / "c" / "bytesearch.c")],
+        source=_get_c_source(config.nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args
@@ -123,15 +145,16 @@ def _get_bytesearch_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
         extra_link_args=config.extra_link_args,
         library_dirs=config.library_dirs,
     )
+
     return ffibuilder
 
 
-def _get_npblake2b_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
+def _get_npblake2b_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npblake2bffi module.
 
     Args:
-        config (_BuildConfig): The build configuration object.
-        nphash_dir (Path): Path to the nphash directory containing C sources/headers.
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npblake2b.
@@ -143,37 +166,71 @@ def _get_npblake2b_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
         """
     )
 
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_npblake2bffi",
-        source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
+        source=_get_c_source(config.nphash_dir / "c" / "npblake2b.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,
         include_dirs=config.include_dirs,
         library_dirs=config.library_dirs,
     )
+
     return ffibuilder
 
 
-def _get_npblake3_ffi(
-    config: _BuildConfig,
-    blake3_header_dir: Path,
-    blake3_c_source_files: List[Path],
-    blake3_extra_objects: List[str],
-    blake3_specific_defines: List[str],
-) -> FFI:
+def _get_npblake3_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npblake3ffi module.
 
     Args:
-        config (_BuildConfig): The build configuration object.
-        blake3_header_dir (Path): Path to the BLAKE3 sources directory (for blake3.h).
-        blake3_c_source_files (List[Path]): List of absolute paths to BLAKE3 .c/.cpp source files.
-        blake3_extra_objects (List[str]): List of absolute paths to precompiled ASM/SIMD objects.
-        blake3_specific_defines (List[str]): List of BLAKE3 specific defines (e.g., -DBLAKE3_NO_SSE2).
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npblake3.
     """
+    nphash_dir = config.nphash_dir
+    blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
+    _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
+
+    # BLAKE3 C/C++ source files for FFI
+    blake3_c_source_files: list[Path] = []
+    core_blake3_c_files_names = ["blake3.c", "blake3_dispatch.c", "blake3_portable.c"]
+    if config.tbb_enabled:
+        core_blake3_c_files_names.append("blake3_tbb.cpp")
+
+    for fname in core_blake3_c_files_names:
+        blake3_c_source_files.append(blake3_source_dir / fname)
+
+    blake3_extra_objects: list[str] = []
+    blake3_specific_defines: list[str] = []
+    asm_implemented_flags: set[str] = set()
+
+    # BLAKE3 hardware acceleration detection and compilation
+    if config.asm_enabled:
+        asm_object_files, asm_implemented_flags = _detect_and_compile_blake3_asm(
+            config, blake3_source_dir, build_dir
+        )
+        blake3_extra_objects.extend(str(p) for p in asm_object_files)
+
+    if config.simd_enabled:
+        supported_simd_features = _detect_blake3_simd_support(config, blake3_specific_defines)
+        simd_features_to_compile = [
+            feat
+            for feat in supported_simd_features
+            if not (set(feat.flags) & asm_implemented_flags)
+        ]
+        simd_object_files = _compile_blake3_simd_objects(
+            config,
+            simd_features_to_compile,
+            blake3_source_dir,
+            build_dir,
+        )
+        blake3_extra_objects.extend(str(p) for p in simd_object_files)
+    elif config.platform_system == "Darwin":
+        blake3_specific_defines.append("-DBLAKE3_USE_NEON=0")
+
     ffibuilder = FFI()
     ffibuilder.cdef(
         # No const/restrict qualifiers here, as these files are mixed with C++.
@@ -205,29 +262,28 @@ def _get_npblake3_ffi(
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
-    # Convert absolute Path objects to strings for CFFI sources list
-    c_paths_blake3 = [str(p) for p in blake3_c_source_files]
-
-    ffibuilder.set_source(
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_npblake3ffi",
-        source='#include "npblake3.h"',
-        sources=c_paths_blake3,
+        source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
+        sources=blake3_c_source_files,
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=config.extra_link_args,
-        include_dirs=config.include_dirs + [str(blake3_header_dir)],
+        include_dirs=config.include_dirs + [str(blake3_source_dir)],
         library_dirs=config.library_dirs,
         extra_objects=blake3_extra_objects,
     )
+
     return ffibuilder
 
 
-def _get_npsha256_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
+def _get_npsha256_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npsha256ffi module.
 
     Args:
-        config (_BuildConfig): The build configuration object.
-        nphash_dir (Path): Path to the nphash directory containing C sources/headers.
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npsha256.
@@ -239,13 +295,15 @@ def _get_npsha256_ffi(config: _BuildConfig, nphash_dir: Path) -> FFI:
         """
     )
 
-    ffibuilder.set_source(
-        source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
+    _set_source_and_print_details(
+        ffibuilder,
         module_name="_npsha256ffi",
+        source=_get_c_source(config.nphash_dir / "c" / "npsha256.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,
         include_dirs=config.include_dirs,
         library_dirs=config.library_dirs,
     )
+
     return ffibuilder

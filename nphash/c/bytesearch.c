@@ -40,9 +40,16 @@ void *memmem(const void *haystack, size_t haystacklen, const void *needle, size_
 #include <stdlib.h>
 
 #include "bmh.h"
-#include "bytesearch.h"
 
 // Searches for the first occurrence of 'pattern' in 'text'. Returns the index or -1 if not found.
+// It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
+// Parameters:
+//   text: The text to search within.
+//   n: The length of the text.
+//   pattern: The pattern to search for.
+//   m: The length of the pattern.
+// Returns:
+//   The 0-based index of the first occurrence of the pattern in the text, or -1 if not found.
 ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m) {
     // We don't do the check here because on Python we handle it for all corner-cases.
     // if (m == 0 || n == 0 || m > n) return -1;
@@ -60,6 +67,17 @@ ptrdiff_t find(const unsigned char * restrict text, size_t n, const unsigned cha
 // Searches for all occurrences of 'pattern' in 'text'. It supports byte-like objects such as bytes, bytearray, and memoryview in Python.
 // Returns a dynamically allocated array of indices, and sets count_ptr.
 // Caller must free the returned array using the free_indices() function.
+// Parameters:
+//   text: The text to search within.
+//   n: The length of the text.
+//   pattern: The pattern to search for.
+//   m: The length of the pattern.
+//   count_ptr: Out-parameter, will be filled with the number of occurrences found.
+//   allow_overlap: If non-zero, allows overlapping occurrences of the pattern.
+// Returns:
+//   A dynamically allocated array of integers containing the 0-based starting
+//   indices of all occurrences. The caller is responsible for freeing this array
+//   using free_indices. Returns NULL if no occurrences are found or if memory allocation fails.
 size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m, size_t * restrict count_ptr, int allow_overlap) {
     *count_ptr = 0;
     // Not necessary as we check on Python side.

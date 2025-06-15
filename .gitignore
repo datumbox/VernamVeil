@@ -9,5 +9,6 @@ build/
 dist/
 docs-html/
 nphash/_*ffi.*
+nphash/build/
 reports/
 third_party/blake3/
