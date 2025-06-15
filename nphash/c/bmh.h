@@ -1,5 +1,5 @@
-#ifndef NPHASH_BMH_H
-#define NPHASH_BMH_H
+#ifndef BMH_H
+#define BMH_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -117,4 +117,4 @@ static inline ptrdiff_t bmh_search(const unsigned char * restrict text, ptrdiff_
     return -1; // No match found
 }
 
-#endif // NPHASH_BMH_H
+#endif // BMH_H
