@@ -17,20 +17,20 @@ __all__ = ["forge_plausible_fx"]
 
 def _find_obfuscated_decoy_message(
     cypher: VernamVeil,
-    decoy_message: bytes,
+    decoy_message: memoryview,
     target_len: int,
     max_attempts: int,
-) -> tuple[bytes, bytes, bytes]:
+) -> tuple[memoryview, bytes, bytes]:
     """Tries to produce an obfuscated version of the decoy message with the exact desired target length.
 
     Args:
         cypher (VernamVeil): The VernamVeil instance used for obfuscation.
-        decoy_message (bytes): The decoy message to obfuscate.
+        decoy_message (memoryview): The decoy message to obfuscate.
         target_len (int): The desired length of the obfuscated message.
         max_attempts (int): The maximum number of attempts to find a valid obfuscated message.
 
     Returns:
-        tuple[bytes, bytes, bytes]: A tuple containing the obfuscated message, the fake seed,
+        tuple[memoryview, bytes, bytes]: A tuple containing the obfuscated message, the fake seed,
         and the delimiter.
 
     Raises:
@@ -38,7 +38,6 @@ def _find_obfuscated_decoy_message(
     """
     cypher = copy.deepcopy(cypher)
     decoy_message_len = len(decoy_message)
-    decoy_message_view = memoryview(decoy_message)
 
     # Padding optimisation: adjust padding range based on the decoy message length
     # To expedite finding an obfuscated message of `target_len`, this section
@@ -85,11 +84,11 @@ def _find_obfuscated_decoy_message(
         shuffle_seed = cypher._hash(seed, [b"shuffle"])
 
         # Obfuscate the decoy message
-        obfuscated = cypher._obfuscate(decoy_message_view, shuffle_seed, delimiter)
+        obfuscated = cypher._obfuscate(decoy_message, shuffle_seed, delimiter)
 
         # Check if the obfuscated message has the desired length
         if len(obfuscated) == target_len:
-            return obfuscated.tobytes(), fake_seed, delimiter.tobytes()
+            return obfuscated, fake_seed, delimiter.tobytes()
 
     raise ValueError(
         f"Could not find obfuscated decoy of length {target_len} in {max_attempts} attempts. "
@@ -121,8 +120,8 @@ def _estimate_obfuscated_length(cypher: VernamVeil, message_len: int, pad_val: i
 
 def forge_plausible_fx(
     cypher: VernamVeil,
-    cyphertext: bytes,
-    decoy_message: bytes,
+    cyphertext: bytes | bytearray | memoryview,
+    decoy_message: bytes | bytearray | memoryview,
     max_obfuscate_attempts: int = 1_000,
 ) -> tuple[FX, bytes]:
     """Generates a fake keystream and seed to plausibly decrypt a cyphertext to a decoy message.
@@ -135,8 +134,8 @@ def forge_plausible_fx(
 
     Args:
         cypher (VernamVeil): The VernamVeil instance used for encryption.
-        cyphertext (bytes): The encrypted cyphertext.
-        decoy_message (bytes): The decoy message to forge the keystream for.
+        cyphertext (bytes or bytearray or memoryview): The encrypted cyphertext.
+        decoy_message (bytes or bytearray or memoryview): The decoy message to forge the keystream for.
         max_obfuscate_attempts (int): The maximum number of attempts to find a valid obfuscated decoy message.
             Defaults to 1,000.
 
@@ -146,6 +145,11 @@ def forge_plausible_fx(
     Raises:
         ValueError: If the decoy message cannot plausibly fit the cyphertext length given the cypher parameters.
     """
+    if not isinstance(cyphertext, memoryview):
+        cyphertext = memoryview(cyphertext)
+    if not isinstance(decoy_message, memoryview):
+        decoy_message = memoryview(decoy_message)
+
     # 1. Prepare a cypher with SIV and MAC off
     cypher = copy.deepcopy(cypher)
     cypher._siv_seed_initialisation = False
@@ -184,13 +188,11 @@ def forge_plausible_fx(
     # 5. Recover the keystream: keystream = cyphertext ^ obfuscated
     # We need to recover the chunk ranges for the obfuscated message to handle the case where
     # the chunk_size is not a multiple of block_size. This can lead to the fx sampling the wrong bytes.
-    view_cyphertext = memoryview(cyphertext)
-    view_obfuscated = memoryview(obfuscated)
     for start, end in cypher._generate_chunk_ranges(cyphertext_len):
         for block_start in range(start, end, block_size):
             block_end = block_start + block_size
-            ct_block = view_cyphertext[block_start:block_end]
-            obf_block = view_obfuscated[block_start:block_end]
+            ct_block = cyphertext[block_start:block_end]
+            obf_block = obfuscated[block_start:block_end]
             ks = bytes(a ^ b for a, b in zip(ct_block, obf_block))
 
             # Pad to block_size bytes if needed using random bytes
