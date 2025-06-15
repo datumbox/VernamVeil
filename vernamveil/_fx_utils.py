@@ -271,7 +271,7 @@ import numpy as np
 from vernamveil import FX, hash_numpy
 
 
-def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+def keystream_fn(i: np.ndarray, seed: bytes | bytearray) -> np.ndarray:
     # The secure default `fx` of the VernamVeil cypher.
     # Implements a standard keyed hash-based pseudorandom function (PRF) using {hash_name}.
     # The output is deterministically derived from the input index `i` and the secret `seed`.
@@ -369,7 +369,7 @@ def make_keystream_fn():
     weights = np.array([{", ".join(str(w) for w in weights)}], dtype=np.uint64)
     degrees = np.arange({degree + 1}, dtype=np.uint64)
 
-    def keystream_fn(i: np.ndarray, seed: bytes) -> np.ndarray:
+    def keystream_fn(i: np.ndarray, seed: bytes | bytearray) -> np.ndarray:
         # Implements a customisable fx function based on a {degree}-degree polynomial transformation of the index,
         # followed by a cryptographically secure keyed hash (BLAKE2b) output.
         # Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.
