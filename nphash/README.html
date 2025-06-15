@@ -1,0 +1,342 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Building the nphash C Library with build.py &mdash; VernamVeil  documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=2f4979e8" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.ico"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="VernamVeil: A Function-Based Stream Cypher" href="../README.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            VernamVeil
+              <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../bytesearch.html">Byte Search</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deniability_utils.html">Deniability Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../fx_utils.html">Fx Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../hash_utils.html">Hash Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../vernamveil.html">VernamVeil Class</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guides &amp; Implementation Notes:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Getting Started and Concepts</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">C Extension Build and Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hardware-acceleration-and-simd-support">Hardware Acceleration and SIMD Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation-steps">Installation Steps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-configuration">Advanced Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">VernamVeil</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Building the <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C Library with <code class="docutils literal notranslate"><span class="pre">build.py</span></code></li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/datumbox/VernamVeil/blob/main/docs/nphash/README.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="building-the-nphash-c-library-with-build-py">
+<h1>Building the <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C Library with <code class="docutils literal notranslate"><span class="pre">build.py</span></code><a class="headerlink" href="#building-the-nphash-c-library-with-build-py" title="Link to this heading"></a></h1>
+<p>This project provides an optional C extension called <code class="docutils literal notranslate"><span class="pre">nphash</span></code> to efficiently compute BLAKE2b, BLAKE3 and SHA-256 based hashes from Python. The Python method <code class="docutils literal notranslate"><span class="pre">hash_numpy</span></code> can be used in <code class="docutils literal notranslate"><span class="pre">fx</span></code> methods to quickly produce required keyed hashing in vectorised implementations. We also provide a <code class="docutils literal notranslate"><span class="pre">blake3</span></code> class, which offers a hashlib-style BLAKE3 hash object using the C backend. <strong>The <code class="docutils literal notranslate"><span class="pre">blake3</span></code> implementation is only available when the C extension is built.</strong></p>
+<p>In addition to hashing, the extension provides a fast byte search capability for efficiently finding all occurrences of a byte pattern within a buffer. This is exposed via the <code class="docutils literal notranslate"><span class="pre">find</span></code> and <code class="docutils literal notranslate"><span class="pre">find_all</span></code> methods in the C extension and is used internally by VernamVeil for pattern and delimiter detection in binary data. When imported, the <code class="docutils literal notranslate"><span class="pre">find</span></code> and <code class="docutils literal notranslate"><span class="pre">find_all</span></code> methods will automatically use the C extension for maximum performance if available, otherwise falling back to a pure Python implementation.</p>
+<p>The C and C++ code is compiled and wrapped for Python using the <a class="reference external" href="https://cffi.readthedocs.io/en/latest/">cffi</a> library.</p>
+<blockquote>
+<div><p><strong>Note:</strong> The C extension is optional. If it fails to build or is unavailable, VernamVeil will transparently fall back to a pure Python/NumPy implementation (with reduced performance).</p>
+</div></blockquote>
+<blockquote>
+<div><p><strong>Note:</strong> The <code class="docutils literal notranslate"><span class="pre">build.py</span></code> script will automatically download the required BLAKE3 C and C++ source files from the <a class="reference external" href="https://github.com/BLAKE3-team/BLAKE3">official BLAKE3 repository</a> if they are not already present locally.</p>
+</div></blockquote>
+<section id="hardware-acceleration-and-simd-support">
+<h2>Hardware Acceleration and SIMD Support<a class="headerlink" href="#hardware-acceleration-and-simd-support" title="Link to this heading"></a></h2>
+<p>The BLAKE3 implementation in this extension uses the official <a class="reference external" href="https://github.com/BLAKE3-team/BLAKE3/tree/master/c">BLAKE3 C/C++ codebase</a> and can automatically take advantage of hardware acceleration features for optimal performance. Specifically, BLAKE3 supports the following SIMD instruction sets, if available on your platform and enabled during build:</p>
+<ul class="simple">
+<li><p>SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64)</p></li>
+<li><p>NEON (on ARM)</p></li>
+<li><p>Hand-written assembly routines (where supported)</p></li>
+</ul>
+<p>These features are detected and enabled automatically by the build system. No manual configuration is required unless you wish to disable them (see below).</p>
+</section>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<p>Before building, ensure you have the following dependencies installed:</p>
+<ul class="simple">
+<li><p><strong>Python 3.10 or later</strong></p></li>
+<li><p><strong>pip</strong> (Python package manager)</p></li>
+<li><p><strong>gcc/g++</strong> (GNU Compiler Collection, including C++ support)<br />
+<em>or</em> <strong>Microsoft Visual Studio Build Tools</strong> (MSVC, for Windows)</p></li>
+<li><p><strong>OpenMP</strong> (usually included with gcc/g++)</p></li>
+<li><p><strong>OpenSSL development libraries</strong></p></li>
+<li><p><strong>TBB (Threading Building Blocks) development libraries</strong></p></li>
+<li><p><strong>cffi</strong> and <strong>numpy</strong> Python packages</p></li>
+</ul>
+<p>Supported platforms: Linux, macOS, and Windows (with suitable build tools).</p>
+</section>
+<section id="installation-steps">
+<h2>Installation Steps<a class="headerlink" href="#installation-steps" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Install system dependencies</strong></p>
+<p>On Ubuntu/Debian:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt-get<span class="w"> </span>update
+sudo<span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>build-essential<span class="w"> </span>g++<span class="w"> </span>libssl-dev<span class="w"> </span>libtbb-dev<span class="w"> </span>python3-dev
+</pre></div>
+</div>
+<p>On Fedora:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>gcc<span class="w"> </span>gcc-c++<span class="w"> </span>openssl-devel<span class="w"> </span>python3-devel<span class="w"> </span>tbb-devel
+</pre></div>
+</div>
+<p>On Mac (with Homebrew):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>install<span class="w"> </span>libomp<span class="w"> </span>openssl<span class="w"> </span>tbb
+</pre></div>
+</div>
+<p>On Windows (with vcpkg and Chocolatey):</p>
+<ol class="arabic">
+<li><p>Install <code class="docutils literal notranslate"><span class="pre">tbb</span></code> with <a class="reference external" href="https://github.com/microsoft/vcpkg">vcpkg</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/microsoft/vcpkg.git
+call<span class="w"> </span>.<span class="se">\v</span>cpkg<span class="se">\b</span>ootstrap-vcpkg.bat<span class="w"> </span>-disableMetrics
+call<span class="w"> </span>.<span class="se">\v</span>cpkg<span class="se">\v</span>cpkg.exe<span class="w"> </span>install<span class="w"> </span>tbb:x64-windows
+</pre></div>
+</div>
+</li>
+<li><p>Copy the TBB DLLs to your build directory (if needed):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>copy<span class="w"> </span>.<span class="se">\v</span>cpkg<span class="se">\i</span>nstalled<span class="se">\x</span><span class="m">64</span>-windows<span class="se">\b</span>in<span class="se">\t</span>bb*.dll<span class="w"> </span>nphash<span class="se">\</span>
+</pre></div>
+</div>
+</li>
+<li><p>Set the environment variables for include and lib paths (if needed for the current session):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">set</span><span class="w"> </span><span class="nv">INCLUDE</span><span class="o">=</span>%CD%<span class="se">\v</span>cpkg<span class="se">\i</span>nstalled<span class="se">\x</span><span class="m">64</span>-windows<span class="se">\i</span>nclude<span class="p">;</span>%INCLUDE%
+<span class="nb">set</span><span class="w"> </span><span class="nv">LIB</span><span class="o">=</span>%CD%<span class="se">\v</span>cpkg<span class="se">\i</span>nstalled<span class="se">\x</span><span class="m">64</span>-windows<span class="se">\l</span>ib<span class="p">;</span>%LIB%
+</pre></div>
+</div>
+</li>
+<li><p>Install OpenSSL and Visual Studio 2022 Build Tools with Chocolatey:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>choco<span class="w"> </span>install<span class="w"> </span>openssl<span class="w"> </span>visualstudio2022buildtools<span class="w"> </span>--no-progress<span class="w"> </span>-y
+</pre></div>
+</div>
+<p>This installs the required compiler and assembler (ml64) for building assembly files on Windows.</p>
+</li>
+<li><p>Open a Developer Command Prompt for VS 2022, or run the following command to set up the build environment in your terminal (replace the path if you installed Visual Studio elsewhere):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>call<span class="w"> </span><span class="s2">&quot;C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat&quot;</span>
+</pre></div>
+</div>
+<p>This step is required to enable the Microsoft assembler (ml64) and compiler for building the C extension with assembly files.</p>
+</li>
+</ol>
+</li>
+<li><p><strong>Install Python dependencies</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>cffi<span class="w"> </span>numpy
+</pre></div>
+</div>
+</li>
+<li><p><strong>Build the C extension</strong></p>
+<p>Run the following command in the project directory (where <code class="docutils literal notranslate"><span class="pre">build.py</span></code> is located):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build.py
+</pre></div>
+</div>
+<p>This will compile the C code and generate libraries named <code class="docutils literal notranslate"><span class="pre">_bytesearchffi.*.so</span></code>, <code class="docutils literal notranslate"><span class="pre">_npblake2bffi.*.so</span></code>, <code class="docutils literal notranslate"><span class="pre">_npblake3ffi.*.so</span></code>  and <code class="docutils literal notranslate"><span class="pre">_npsha256ffi.*.so</span></code> (the exact filenames depend on your platform and Python version).</p>
+</li>
+<li><p><strong>Reinstall the library</strong></p>
+<p>Following successful compilation, the C extension reinstall the <code class="docutils literal notranslate"><span class="pre">vernamveil</span></code> package to ensure the new C extension is used. Execute the following from the root of the project:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="advanced-configuration">
+<h2>Advanced Configuration<a class="headerlink" href="#advanced-configuration" title="Link to this heading"></a></h2>
+<p>By default, the build enables all available hardware and threading acceleration for optimal performance. This includes features for BLAKE3 hashing and the choice of algorithm for byte searching.</p>
+<p>The BLAKE3 implementation benefits from:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://uxlfoundation.github.io/oneTBB/">oneAPI Threading Building Blocks (oneTBB)</a> for multi-threaded hashing.</p></li>
+<li><p>SIMD (Single Instruction, Multiple Data) acceleration via C intrinsics (SSE/AVX/NEON).</p></li>
+<li><p>Hand-written assembly acceleration (platform-specific .S/.asm files).</p></li>
+</ul>
+<p>For byte searching, by default we use our custom Boyer-Moore-Horspool (BMH) implementation, which is fast, consistent and portable. However, you can opt to use the <code class="docutils literal notranslate"><span class="pre">memmem</span></code> if preferred.</p>
+<p>If you encounter issues installing dependencies for these features, or wish to use alternative algorithms for specific functionalities, you can disable or change them individually:</p>
+<ul>
+<li><p><strong>Disable TBB (multithreading) for BLAKE3:</strong></p>
+<ul>
+<li><p>Using an environment variable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NPBLAKE3_NO_TBB</span><span class="o">=</span><span class="m">1</span>
+python<span class="w"> </span>build.py
+</pre></div>
+</div>
+</li>
+<li><p>Or using a command-line flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build.py<span class="w"> </span>--no-tbb
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p><strong>Disable SIMD C acceleration (SSE/AVX/NEON) for BLAKE3:</strong></p>
+<ul>
+<li><p>Using an environment variable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NPBLAKE3_NO_SIMD</span><span class="o">=</span><span class="m">1</span>
+python<span class="w"> </span>build.py
+</pre></div>
+</div>
+</li>
+<li><p>Or using a command-line flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build.py<span class="w"> </span>--no-simd
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p><strong>Disable assembly acceleration for BLAKE3:</strong></p>
+<ul>
+<li><p>Using an environment variable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">NPBLAKE3_NO_ASM</span><span class="o">=</span><span class="m">1</span>
+python<span class="w"> </span>build.py
+</pre></div>
+</div>
+</li>
+<li><p>Or using a command-line flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build.py<span class="w"> </span>--no-asm
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p><strong>Use <code class="docutils literal notranslate"><span class="pre">memmem</span></code> instead of BMH for byte searching:</strong></p>
+<ul>
+<li><p>Using an environment variable:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">BYTESEARCH_NO_BMH</span><span class="o">=</span><span class="m">1</span>
+python<span class="w"> </span>build.py
+</pre></div>
+</div>
+</li>
+<li><p>Or using a command-line flag:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build.py<span class="w"> </span>--no-bmh
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+</ul>
+<p>If any of these are set, the build will adjust the corresponding features. <strong>Note:</strong> Disabling acceleration features is not recommended unless necessary, as it will reduce performance for the affected operations.</p>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<p>To confirm that the C extension is compiled and being used by VernamVeil, you can check the internal boolean <code class="docutils literal notranslate"><span class="pre">_HAS_C_MODULE</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil._imports</span><span class="w"> </span><span class="kn">import</span> <span class="n">_HAS_C_MODULE</span>
+<span class="c1"># True if the C extension is available and in use, False otherwise.</span>
+</pre></div>
+</div>
+<p>After building, you can use the extension from Python code:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">blake3</span><span class="p">,</span> <span class="n">find</span><span class="p">,</span> <span class="n">find_all</span><span class="p">,</span> <span class="n">hash_numpy</span>
+<span class="c1"># The `blake3` class provides a hashlib-style BLAKE3 hash object using the C backend.</span>
+<span class="c1"># The `find` and `find_all` methods will use the C extension for fast byte search if available, otherwise a pure Python fallback.</span>
+<span class="c1"># The `hash_numpy` will use the C extension if available, otherwise a pure NumPy fallback. All BLAKE2b, BLAKE3 and SHA-256 are supported via the C extension.</span>
+</pre></div>
+</div>
+<p>If the C extension is not built or importable, <code class="docutils literal notranslate"><span class="pre">find</span></code>, <code class="docutils literal notranslate"><span class="pre">find_all</span></code> and <code class="docutils literal notranslate"><span class="pre">hash_numpy</span></code> will transparently fall back to slower pure Python/NumPy implementations. No code changes are needed.</p>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h2>
+<ul>
+<li><p>If you change the C code, rerun <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">build.py</span></code> to rebuild the extension. Reinstall the package afterwards.</p></li>
+<li><p>If you encounter errors about missing OpenMP or OpenSSL, ensure the development libraries are installed as shown above.</p></li>
+<li><p><strong>Apple Silicon (M1/M2/M3) macOS users:</strong> If you see linker warnings about missing <code class="docutils literal notranslate"><span class="pre">x86_64</span></code> architecture or universal/fat binaries, set the following environment variable before building to ensure the build targets only your native architecture:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">ARCHFLAGS</span><span class="o">=</span>-arch<span class="w"> </span>arm64
+python<span class="w"> </span>build.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>macOS users:</strong> If you encounter an error like <code class="docutils literal notranslate"><span class="pre">[SSL:</span> <span class="pre">CERTIFICATE_VERIFY_FAILED]</span> <span class="pre">certificate</span> <span class="pre">verify</span> <span class="pre">failed:</span> <span class="pre">unable</span> <span class="pre">to</span> <span class="pre">get</span> <span class="pre">local</span> <span class="pre">issuer</span> <span class="pre">certificate</span></code> when building or downloading sources, run the <code class="docutils literal notranslate"><span class="pre">Install</span> <span class="pre">Certificates.command</span></code> script that comes with your Python installation. For example, in your terminal:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>/Applications/Python<span class="se">\ </span>&lt;your-version&gt;/Install<span class="se">\ </span>Certificates.command
+</pre></div>
+</div>
+<p>Replace <code class="docutils literal notranslate"><span class="pre">&lt;your-version&gt;</span></code> with your installed Python version (e.g., <code class="docutils literal notranslate"><span class="pre">3.10</span></code>). This will install the required root certificates for SSL verification.</p>
+</li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../README.html" class="btn btn-neutral float-left" title="VernamVeil: A Function-Based Stream Cypher" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vasilis Vryniotis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

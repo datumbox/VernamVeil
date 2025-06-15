@@ -1,0 +1,287 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VernamVeil Class &mdash; VernamVeil  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=2f4979e8" />
+
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="VernamVeil: A Function-Based Stream Cypher" href="README.html" />
+    <link rel="prev" title="Hash Utilities" href="hash_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            VernamVeil
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="bytesearch.html">Byte Search</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deniability_utils.html">Deniability Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fx_utils.html">Fx Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hash_utils.html">Hash Utilities</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">VernamVeil Class</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#vernamveil.VernamVeil"><code class="docutils literal notranslate"><span class="pre">VernamVeil</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.VernamVeil.decode"><code class="docutils literal notranslate"><span class="pre">VernamVeil.decode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.VernamVeil.encode"><code class="docutils literal notranslate"><span class="pre">VernamVeil.encode()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.VernamVeil.get_initial_seed"><code class="docutils literal notranslate"><span class="pre">VernamVeil.get_initial_seed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.VernamVeil.process_file"><code class="docutils literal notranslate"><span class="pre">VernamVeil.process_file()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guides &amp; Implementation Notes:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">Getting Started and Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nphash/README.html">C Extension Build and Usage</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">VernamVeil</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">VernamVeil Class</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/datumbox/VernamVeil/blob/main/docs/vernamveil.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="vernamveil-class">
+<h1>VernamVeil Class<a class="headerlink" href="#vernamveil-class" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="vernamveil.VernamVeil">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">vernamveil.</span></span><span class="sig-name descname"><span class="pre">VernamVeil</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delimiter_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(5,</span> <span class="pre">15)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">decoy_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">siv_seed_initialisation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auth_encrypt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'blake2b'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.VernamVeil" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_Cypher</span></code></p>
+<p>VernamVeil is a modular, symmetric stream cypher.</p>
+<p>Inspired by One-Time Pad principles, it features customisable keystream generation, synthetic IV seed initialisation,
+stateful seed evolution for avalanche effects, authenticated encryption, and layered message obfuscation (chunk
+shuffling, padding, decoy injection). Supports vectorised operations (NumPy) and optional C-backed hashing for
+performance. Designed for educational and experimental use.</p>
+<p>Initialise the VernamVeil encryption cypher with configurable parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fx</strong> (<a class="reference internal" href="fx_utils.html#vernamveil.FX" title="vernamveil.FX"><em>FX</em></a>) – A callable object that generates keystream bytes. This function is critical for the
+encryption process and should be carefully designed to ensure cryptographic security.</p></li>
+<li><p><strong>chunk_size</strong> (<em>int</em>) – Size of message chunks. Defaults to 32.</p></li>
+<li><p><strong>delimiter_size</strong> (<em>int</em>) – The delimiter size in bytes used for separating chunks; must be
+at least 4. Defaults to 8.</p></li>
+<li><p><strong>padding_range</strong> (<em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em>) – Range for padding length before and after
+chunks. Defaults to (5, 15).</p></li>
+<li><p><strong>decoy_ratio</strong> (<em>float</em>) – Proportion of decoy chunks to insert. Must not be negative. Defaults to 0.1.</p></li>
+<li><p><strong>siv_seed_initialisation</strong> (<em>bool</em>) – Enables synthetic IV seed initialisation based on the message to
+resist seed reuse. Defaults to True.</p></li>
+<li><p><strong>auth_encrypt</strong> (<em>bool</em>) – Enables authenticated encryption with integrity check. Defaults to True.</p></li>
+<li><p><strong>hash_name</strong> (<em>Literal</em><em>[</em><em>&quot;blake2b&quot;</em><em>, </em><em>&quot;blake3&quot;</em><em>, </em><em>&quot;sha256&quot;</em><em>]</em>) – Hash function to use (“blake2b”, “blake3” or “sha256”)
+for keyed hashing and HMAC. The blake3 is only available if the C extension is installed. Defaults to “blake2b”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If <cite>chunk_size</cite> is less than 8.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>delimiter_size</cite> is less than 4.</p></li>
+<li><p><strong>TypeError</strong> – If <cite>padding_range</cite> is not a tuple of two integers.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>padding_range</cite> values are negative.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>padding_range</cite> values are not in ascending order.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>decoy_ratio</cite> is negative.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>hash_name</cite> is not “blake2b”, “blake3” or “sha256”.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.VernamVeil.decode">
+<span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cyphertext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.VernamVeil.decode" title="Link to this definition"></a></dt>
+<dd><p>Decrypt an encoded message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">memoryview</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code> | <code class="xref py py-class docutils literal notranslate"><span class="pre">bytearray</span></code>]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>cyphertext</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>memoryview</em>) – Encrypted and obfuscated message.</p></li>
+<li><p><strong>seed</strong> (<em>bytes</em><em> or </em><em>bytearray</em>) – Initial seed for decryption.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Decrypted message and final seed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[memoryview, bytes or bytearray]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the authentication tag does not match.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.VernamVeil.encode">
+<span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.VernamVeil.encode" title="Link to this definition"></a></dt>
+<dd><p>Encrypt a message.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code>[<code class="xref py py-class docutils literal notranslate"><span class="pre">memoryview</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code> | <code class="xref py py-class docutils literal notranslate"><span class="pre">bytearray</span></code>]</span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>message</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>memoryview</em>) – Message to encode.</p></li>
+<li><p><strong>seed</strong> (<em>bytes</em><em> or </em><em>bytearray</em>) – Initial seed for encryption.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Encrypted message and final seed.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple[memoryview, bytes or bytearray]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the delimiter appears in the message.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.VernamVeil.get_initial_seed">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_initial_seed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">64</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.VernamVeil.get_initial_seed" title="Link to this definition"></a></dt>
+<dd><p>Generate a cryptographically secure initial random seed.</p>
+<p>This method uses the <cite>secrets</cite> module to generate a random sequence of bytes
+suitable for cryptographic use. It returns a byte string of the specified length.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>num_bytes</strong> (<em>int</em>) – The number of bytes to generate for the seed.
+Defaults to 64 bytes if not provided.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A random byte string of the specified length.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bytes</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>TypeError</strong> – If <cite>num_bytes</cite> is not an integer.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>num_bytes</cite> is not a positive integer.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.VernamVeil.process_file">
+<span class="sig-name descname"><span class="pre">process_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1048576</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">read_queue_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">write_queue_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress_callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.VernamVeil.process_file" title="Link to this definition"></a></dt>
+<dd><p>Processes a file or stream in blocks using the provided Cypher for encryption or decryption.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>mode</strong> (<em>Literal</em><em>[</em><em>&quot;encode&quot;</em><em>, </em><em>&quot;decode&quot;</em><em>]</em>) – Operation mode (“encode” for encryption, “decode” for decryption).</p></li>
+<li><p><strong>input_file</strong> (<em>str</em><em> or </em><em>Path</em><em> or </em><em>IO</em><em>[</em><em>bytes</em><em>]</em>) – Path or file-like object for input.</p></li>
+<li><p><strong>output_file</strong> (<em>str</em><em> or </em><em>Path</em><em> or </em><em>IO</em><em>[</em><em>bytes</em><em>]</em>) – Path or file-like object for output.</p></li>
+<li><p><strong>seed</strong> (<em>bytes</em>) – Initial seed for processing.</p></li>
+<li><p><strong>buffer_size</strong> (<em>int</em>) – Bytes to read at a time. Defaults to <cite>1024 * 1024</cite> (1MB).</p></li>
+<li><p><strong>read_queue_size</strong> (<em>int</em>) – Maximum number of data blocks buffered in the
+queue between the IO reader thread and the main processing thread. Defaults to 4.</p></li>
+<li><p><strong>write_queue_size</strong> (<em>int</em>) – Maximum number of data blocks buffered in the
+queue between the main processing thread and the IO writer thread. Defaults to 4.</p></li>
+<li><p><strong>progress_callback</strong> (<em>Callable</em><em>, </em><em>optional</em>) – Callback for progress reporting.
+Receives two arguments: <cite>bytes_processed</cite> and <cite>total_size</cite>. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ValueError</strong> – If <cite>mode</cite> is not “encode” or “decode”.</p></li>
+<li><p><strong>TypeError</strong> – If <cite>buffer_size</cite>, <cite>read_queue_size</cite>, or <cite>write_queue_size</cite> is not an integer.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>buffer_size</cite>, <cite>read_queue_size</cite>, or <cite>write_queue_size</cite> is not a positive integer.</p></li>
+<li><p><strong>exception</strong> – If an unexpected error occurs in the reader or writer threads.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="hash_utils.html" class="btn btn-neutral float-left" title="Hash Utilities" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="README.html" class="btn btn-neutral float-right" title="VernamVeil: A Function-Based Stream Cypher" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vasilis Vryniotis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,335 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hash Utilities &mdash; VernamVeil  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=2f4979e8" />
+
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="VernamVeil Class" href="vernamveil.html" />
+    <link rel="prev" title="Fx Utilities" href="fx_utils.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            VernamVeil
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="bytesearch.html">Byte Search</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deniability_utils.html">Deniability Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fx_utils.html">Fx Utilities</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Hash Utilities</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#vernamveil.blake3"><code class="docutils literal notranslate"><span class="pre">blake3</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.block_size"><code class="docutils literal notranslate"><span class="pre">blake3.block_size</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.copy"><code class="docutils literal notranslate"><span class="pre">blake3.copy()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.digest"><code class="docutils literal notranslate"><span class="pre">blake3.digest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.digest_size"><code class="docutils literal notranslate"><span class="pre">blake3.digest_size</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.hexdigest"><code class="docutils literal notranslate"><span class="pre">blake3.hexdigest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.name"><code class="docutils literal notranslate"><span class="pre">blake3.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil.blake3.update"><code class="docutils literal notranslate"><span class="pre">blake3.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#vernamveil.fold_bytes_to_uint64"><code class="docutils literal notranslate"><span class="pre">fold_bytes_to_uint64()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#vernamveil.hash_numpy"><code class="docutils literal notranslate"><span class="pre">hash_numpy()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="vernamveil.html">VernamVeil Class</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guides &amp; Implementation Notes:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">Getting Started and Concepts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nphash/README.html">C Extension Build and Usage</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">VernamVeil</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Hash Utilities</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/datumbox/VernamVeil/blob/main/docs/hash_utils.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="hash-utilities">
+<h1>Hash Utilities<a class="headerlink" href="#hash-utilities" title="Link to this heading"></a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="vernamveil.blake3">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">vernamveil.</span></span><span class="sig-name descname"><span class="pre">blake3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">b''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.blake3" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A hashlib-style BLAKE3 hash object using the C backend.</p>
+<p>This class provides a BLAKE3 hash object with a hashlib-like interface, using the C backend for fast hashing.
+It accumulates data via update() calls and processes all chunks in C upon digest().</p>
+<p>Initialise a BLAKE3 hash object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>memoryview</em>) – Initial data to hash. Defaults to an empty byte string.</p></li>
+<li><p><strong>key</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>memoryview</em><em>, </em><em>optional</em>) – Optional key for keyed hashing. If None, no key is used.</p></li>
+<li><p><strong>length</strong> (<em>int</em>) – Desired output length in bytes. Default is 32 bytes.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="vernamveil.blake3.block_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">block_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#vernamveil.blake3.block_size" title="Link to this definition"></a></dt>
+<dd><p>The size of the internal block used for hashing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>64 bytes, which is the standard block size for BLAKE3.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.blake3.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.blake3.copy" title="Link to this definition"></a></dt>
+<dd><p>Return a copy of the current blake3 hash object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#vernamveil.blake3" title="vernamveil._hash_utils.blake3"><code class="xref py py-class docutils literal notranslate"><span class="pre">blake3</span></code></a></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new blake3 object with the same state as the current one.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#vernamveil.blake3" title="vernamveil.blake3">blake3</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.blake3.digest">
+<span class="sig-name descname"><span class="pre">digest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.blake3.digest" title="Link to this definition"></a></dt>
+<dd><p>Compute the BLAKE3 hash of the accumulated data with optional keying and length.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytearray</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>length</strong> (<em>int</em><em>, </em><em>optional</em>) – Desired output length in bytes. If None, uses the default length set during initialisation.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The BLAKE3 hash digest of the accumulated data, optionally keyed and of specified length.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bytearray</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>RuntimeError</strong> – If the C-backed BLAKE3 module is not available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="vernamveil.blake3.digest_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">digest_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#vernamveil.blake3.digest_size" title="Link to this definition"></a></dt>
+<dd><p>The size of the hash output in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>32 bytes by default, can be set during initialisation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.blake3.hexdigest">
+<span class="sig-name descname"><span class="pre">hexdigest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.blake3.hexdigest" title="Link to this definition"></a></dt>
+<dd><p>Compute the BLAKE3 hash of the accumulated data and return it as a hexadecimal string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>length</strong> (<em>int</em><em>, </em><em>optional</em>) – Desired output length in bytes. If None, uses the default length set during initialisation.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The BLAKE3 hash digest of the accumulated data as a hexadecimal string.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="vernamveil.blake3.name">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#vernamveil.blake3.name" title="Link to this definition"></a></dt>
+<dd><p>The name of the hash algorithm.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The name of the hash algorithm, which is “blake3”.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="vernamveil.blake3.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.blake3.update" title="Link to this definition"></a></dt>
+<dd><p>Update the hash object with additional data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></span></p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>data</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em> or </em><em>memoryview</em>) – Data to add to the hash.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vernamveil.fold_bytes_to_uint64">
+<span class="sig-prename descclassname"><span class="pre">vernamveil.</span></span><span class="sig-name descname"><span class="pre">fold_bytes_to_uint64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hashes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fold_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'view'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.fold_bytes_to_uint64" title="Link to this definition"></a></dt>
+<dd><p>Fold each row of a 2D uint8 hash output into a uint64 integer (big-endian).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>hashes</strong> (<em>np.ndarray</em><em>[</em><em>tuple</em><em>[</em><em>int</em><em>, </em><em>int</em><em>]</em><em>, </em><em>np.dtype</em><em>[</em><em>np.uint8</em><em>]</em><em>]</em>) – 2D array of shape (n, H) where H &gt;= 8.</p></li>
+<li><p><strong>fold_type</strong> (<em>Literal</em><em>[</em><em>&quot;full&quot;</em><em>, </em><em>&quot;view&quot;</em><em>]</em>) – Folding strategy.
+“view”: Fastest; reinterprets the first 8 bytes as uint64.
+“full”: Slower; folds all bytes in the row using bitwise operations.
+Default is “view”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>1D array of length n, each element is the folded uint64 value of the corresponding row.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[tuple[int], np.dtype[np.uint64]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the input array is not 2D or has less than 8 columns.</p></li>
+<li><p><strong>ValueError</strong> – If fold_type is not ‘full’ or ‘view’.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vernamveil.hash_numpy">
+<span class="sig-prename descclassname"><span class="pre">vernamveil.</span></span><span class="sig-name descname"><span class="pre">hash_numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'blake2b'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hash_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vernamveil.hash_numpy" title="Link to this definition"></a></dt>
+<dd><p>Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.</p>
+<p>If no seed is provided, the index is hashed directly.</p>
+<p>This function optionally uses cffi to call a custom C library, which wraps an optimised C implementation
+(with OpenMP and OpenSSL) for efficient, parallelised hashing from Python. If the C module isn’t available
+a NumPy fallback is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>i</strong> (<em>np.ndarray</em><em>[</em><em>tuple</em><em>[</em><em>int</em><em>]</em><em>, </em><em>np.dtype</em><em>[</em><em>np.uint64</em><em>]</em><em>]</em>) – NumPy array of indices (dtype should be unsigned 64-bit integer).</p></li>
+<li><p><strong>seed</strong> (<em>bytes</em><em> or </em><em>bytearray</em><em>, </em><em>optional</em>) – The seed bytes are prepended to the index. If None, hashes only the index.</p></li>
+<li><p><strong>hash_name</strong> (<em>Literal</em><em>[</em><em>&quot;blake2b&quot;</em><em>, </em><em>&quot;blake3&quot;</em><em>, </em><em>&quot;sha256&quot;</em><em>]</em>) – Hash function to use (“blake2b”, “blake3” or “sha256”). The
+blake3 is only available if the C extension is installed. Defaults to “blake2b”.</p></li>
+<li><p><strong>hash_size</strong> (<em>int</em><em>, </em><em>optional</em>) – Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
+and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 2D array of shape (n, H) where H is the hash output size in
+bytes. Each row contains the full hash output for the corresponding input.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>np.ndarray[tuple[int, int], np.dtype[np.uint8]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the hash_size is not 64 for blake2b, larger than 0 for blake3 or 32 for sha256.</p></li>
+<li><p><strong>ValueError</strong> – If a hash algorithm is not supported.</p></li>
+<li><p><strong>ValueError</strong> – If <cite>hash_name</cite> is “blake3” but the C extension is not available.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="fx_utils.html" class="btn btn-neutral float-left" title="Fx Utilities" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="vernamveil.html" class="btn btn-neutral float-right" title="VernamVeil Class" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vasilis Vryniotis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
