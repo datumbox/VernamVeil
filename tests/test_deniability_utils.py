@@ -178,8 +178,6 @@ class TestDeniabilityUtils(unittest.TestCase):
         num_repeats = size // len(decoy_base_phrase) + 1
         large_decoy_message = (decoy_base_phrase * num_repeats)[:size]
 
-        # Using a larger chunk size for large files can improve performance
-        # and reduce the number of chunks/padding segments.
         self._run_end_to_end_deniability_disk_io_test(
             large_secret_message,
             large_decoy_message,
