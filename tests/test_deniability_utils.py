@@ -181,10 +181,10 @@ class TestDeniabilityUtils(unittest.TestCase):
         self._run_end_to_end_deniability_disk_io_test(
             large_secret_message,
             large_decoy_message,
-            chunk_size=256 * 1024,
+            chunk_size=512 * 1024,
             delimiter_size=64,
             vectorise=True,
-            max_obfuscate_attempts=1000,
+            max_obfuscate_attempts=10000,
         )
 
     def test_deniability_with_otpfx(self):
