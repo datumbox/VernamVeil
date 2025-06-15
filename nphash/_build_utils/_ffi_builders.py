@@ -20,7 +20,7 @@ from nphash._build_utils._blake3_builder import (
     _detect_blake3_simd_support,
     _ensure_blake3_sources,
 )
-from nphash._build_utils._config_builder import _get_build_config, _supports_flag
+from nphash._build_utils._config_builder import _BuildConfig, _supports_flag
 
 __all__: list[str] = []
 
@@ -116,18 +116,16 @@ class _build_ext_with_cpp11(_build_ext):
             self.compiler._compile = orig_compile
 
 
-def _get_bytesearch_ffi() -> FFI:
+def _get_bytesearch_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _bytesearchffi module.
+
+    Args:
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for bytesearch.
     """
-    config = _get_build_config(None)
-
-    nphash_dir = Path(__file__).parent.parent.resolve()
-    build_dir = nphash_dir / "build"
-    build_dir.mkdir(parents=True, exist_ok=True)
-
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -137,11 +135,10 @@ def _get_bytesearch_ffi() -> FFI:
         """
     )
 
-    nphash_dir = Path(__file__).parent.parent.resolve()
     _set_source_and_print_details(
         ffibuilder,
         module_name="_bytesearchffi",
-        source=_get_c_source(nphash_dir / "c" / "bytesearch.c"),
+        source=_get_c_source(config.nphash_dir / "c" / "bytesearch.c"),
         include_dirs=config.include_dirs,
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args
@@ -153,16 +150,16 @@ def _get_bytesearch_ffi() -> FFI:
     return ffibuilder
 
 
-def _get_npblake2b_ffi() -> FFI:
+def _get_npblake2b_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npblake2bffi module.
+
+    Args:
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npblake2b.
     """
-    config = _get_build_config(None)
-
-    nphash_dir = Path(__file__).parent.parent.resolve()
-
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -173,7 +170,7 @@ def _get_npblake2b_ffi() -> FFI:
     _set_source_and_print_details(
         ffibuilder,
         module_name="_npblake2bffi",
-        source=_get_c_source(nphash_dir / "c" / "npblake2b.c"),
+        source=_get_c_source(config.nphash_dir / "c" / "npblake2b.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,
@@ -184,18 +181,17 @@ def _get_npblake2b_ffi() -> FFI:
     return ffibuilder
 
 
-def _get_npblake3_ffi() -> FFI:
+def _get_npblake3_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npblake3ffi module.
+
+    Args:
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npblake3.
     """
-    config = _get_build_config()
-
-    nphash_dir = Path(__file__).parent.parent.resolve()
-    build_dir = nphash_dir / "build"
-    build_dir.mkdir(parents=True, exist_ok=True)
-
+    nphash_dir = config.nphash_dir
     blake3_source_dir = nphash_dir.parent / "third_party" / "blake3"
     _ensure_blake3_sources(blake3_source_dir, version="1.8.2")
 
@@ -286,16 +282,16 @@ def _get_npblake3_ffi() -> FFI:
     return ffibuilder
 
 
-def _get_npsha256_ffi() -> FFI:
+def _get_npsha256_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
     """Creates and configures the FFI builder for the _npsha256ffi module.
+
+    Args:
+        config (_BuildConfig): The build configuration.
+        build_dir (Path): The directory to place the compiled files
 
     Returns:
         FFI: The configured CFFI FFI instance for npsha256.
     """
-    config = _get_build_config(None)
-
-    nphash_dir = Path(__file__).parent.parent.resolve()
-
     ffibuilder = FFI()
     ffibuilder.cdef(
         """
@@ -305,8 +301,8 @@ def _get_npsha256_ffi() -> FFI:
 
     _set_source_and_print_details(
         ffibuilder,
-        source=_get_c_source(nphash_dir / "c" / "npsha256.c"),
         module_name="_npsha256ffi",
+        source=_get_c_source(config.nphash_dir / "c" / "npsha256.c"),
         libraries=config.libraries_c,
         extra_compile_args=config.extra_compile_args,
         extra_link_args=config.extra_link_args,

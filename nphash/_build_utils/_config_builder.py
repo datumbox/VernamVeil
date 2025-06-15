@@ -67,6 +67,15 @@ class _BuildConfig(NamedTuple):
     libraries_c: list[str]
     libraries_cpp: list[str]
 
+    @property
+    def nphash_dir(self) -> Path:
+        """Get the root directory of the nphash package.
+
+        Returns:
+            Path: The absolute path to the nphash package root directory.
+        """
+        return Path(__file__).parent.parent.resolve()
+
 
 def _detect_compiler() -> str:
     """Detect the compiler being used.
