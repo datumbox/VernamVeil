@@ -36,7 +36,40 @@ def _find_obfuscated_decoy_message(
     Raises:
         ValueError: If a valid obfuscated decoy of the desired length cannot be found within the maximum attempts.
     """
-    decoy_view = memoryview(decoy_message)
+    cypher = copy.deepcopy(cypher)
+    decoy_message_len = len(decoy_message)
+    decoy_message_view = memoryview(decoy_message)
+
+    # Padding optimisation: adjust padding range based on the decoy message length
+    # To expedite finding an obfuscated message of `target_len`, this section
+    # calculates the average padding (`P_avg`) required per segment. It then
+    # narrows the `cypher`'s padding range to `(floor(P_avg), ceil(P_avg))`,
+    # clamped within the original range, to guide the random padding generation.
+    # This is an internal optimisation on a cypher copy and maintains plausibility.
+
+    # The number of padding segments (`pad_count`) is derived from the difference in
+    # estimated lengths when using a padding value of 1 versus 0, avoiding changes to
+    # the method's signature.
+    zeropadding_len = _estimate_obfuscated_length(cypher, decoy_message_len, 0)
+    pad_count = _estimate_obfuscated_length(cypher, decoy_message_len, 1) - zeropadding_len
+
+    # The remaining length to achieve the target length
+    missing_len = target_len - zeropadding_len
+
+    if pad_count > 0 and missing_len > 0:
+        # Calculate potential new padding range based on average padding value
+        P_avg = missing_len / pad_count
+        P_floor = int(P_avg)
+        P_ceil = int(math.ceil(P_avg))
+
+        # Clamp these values to be within the original padding range
+        P_floor = max(cypher._padding_range[0], P_floor)
+        P_ceil = min(cypher._padding_range[1], P_ceil)
+
+        # Apply the new range only if it's valid (floor <= ceil) after clamping.
+        if P_floor <= P_ceil:
+            cypher._padding_range = (P_floor, P_ceil)
+
     for _ in range(max_attempts):
         # Generate random fake seed
         fake_seed = cypher.get_initial_seed()
@@ -52,7 +85,7 @@ def _find_obfuscated_decoy_message(
         shuffle_seed = cypher._hash(seed, [b"shuffle"])
 
         # Obfuscate the decoy message
-        obfuscated = cypher._obfuscate(decoy_view, shuffle_seed, delimiter)
+        obfuscated = cypher._obfuscate(decoy_message_view, shuffle_seed, delimiter)
 
         # Check if the obfuscated message has the desired length
         if len(obfuscated) == target_len:
