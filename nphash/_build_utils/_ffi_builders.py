@@ -7,7 +7,6 @@ specific compiler flags for features like OpenMP and C++11, particularly
 for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
 
-import os
 from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 from typing import Any
@@ -263,14 +262,11 @@ def _get_npblake3_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
         if define not in blake3_compile_args:
             blake3_compile_args.append(define)
 
-    # Convert Path objects to relative strings for CFFI sources list
-    c_paths_blake3 = [os.path.relpath(p, build_dir) for p in blake3_c_source_files]
-
     _set_source_and_print_details(
         ffibuilder,
         module_name="_npblake3ffi",
         source=_get_c_source(nphash_dir / "c" / "npblake3.c"),
-        sources=c_paths_blake3,
+        sources=blake3_c_source_files,
         libraries=config.libraries_cpp if config.tbb_enabled else config.libraries_c,
         extra_compile_args=blake3_compile_args,
         extra_link_args=config.extra_link_args,
