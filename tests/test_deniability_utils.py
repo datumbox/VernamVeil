@@ -58,16 +58,25 @@ class TestDeniabilityUtils(unittest.TestCase):
         """Produce a string name for the test combo."""
         return f"chunk{chunk_size}_delim{delimiter_size}_pad{padding_range}_decoy{decoy_ratio}"
 
-    def test_end_to_end_deniability_disk_io(self):
-        """End-to-end test: store/load all artifacts and verify deniability."""
-        chunk_size = 64
-        delimiter_size = 8
-        padding_range = (5, 20)
-        decoy_ratio = 0.1
+    def _run_end_to_end_deniability_disk_io_test(
+        self,
+        secret_message,
+        decoy_message,
+        chunk_size=64,
+        delimiter_size=8,
+        padding_range=(5, 20),
+        decoy_ratio=0.1,
+        max_obfuscate_attempts=50000,
+        vectorise=False,
+    ):
+        """Helper utility to run end-to-end deniability test with disk I/O."""
+        if vectorise:
+            if not _HAS_NUMPY:
+                self.skipTest("Numpy is required for vectorised FX but is not available.")
 
-        real_fx = generate_default_fx(vectorise=False)
+        real_fx = generate_default_fx(vectorise=vectorise)
         real_seed = VernamVeil.get_initial_seed()
-        secret_message = b"Sensitive data: the launch code is 12345!"
+
         cypher = VernamVeil(
             real_fx,
             chunk_size=chunk_size,
@@ -79,13 +88,9 @@ class TestDeniabilityUtils(unittest.TestCase):
         )
         cyphertext, _ = cypher.encode(secret_message, real_seed)
 
-        decoy_message = (
-            b"This message is totally real and not at all a decoy... "
-            b"There is nothing worth seeing here, move along!!! "
-        )
         try:
             plausible_fx, fake_seed = forge_plausible_fx(
-                cypher, cyphertext, decoy_message, max_obfuscate_attempts=50000
+                cypher, cyphertext, decoy_message, max_obfuscate_attempts=max_obfuscate_attempts
             )
         except ValueError as e:
             msg = str(e)
@@ -154,6 +159,35 @@ class TestDeniabilityUtils(unittest.TestCase):
 
             self.assertEqual(real_out, secret_message)
             self.assertEqual(decoy_out, decoy_message)
+
+    def test_end_to_end_deniability_disk_io_standard_messages(self):
+        """Test end-to-end deniability with disk I/O using standard small messages."""
+        secret_message = b"Sensitive data: the launch code is 12345!"
+        decoy_message = (
+            b"This message is totally real and not at all a decoy... "
+            b"There is nothing worth seeing here, move along!!! "
+        )
+        self._run_end_to_end_deniability_disk_io_test(secret_message, decoy_message)
+
+    def test_end_to_end_deniability_disk_io_large_messages(self):
+        """Test end-to-end deniability with disk I/O using large messages."""
+        size = 5 * 1024 * 1024
+        large_secret_message = VernamVeil.get_initial_seed(size)
+
+        decoy_base_phrase = b"nothing to see here "
+        num_repeats = size // len(decoy_base_phrase) + 1
+        large_decoy_message = (decoy_base_phrase * num_repeats)[:size]
+
+        # Using a larger chunk size for large files can improve performance
+        # and reduce the number of chunks/padding segments.
+        self._run_end_to_end_deniability_disk_io_test(
+            large_secret_message,
+            large_decoy_message,
+            chunk_size=256 * 1024,
+            delimiter_size=64,
+            vectorise=True,
+            max_obfuscate_attempts=1000,
+        )
 
     def test_deniability_with_otpfx(self):
         """Test deniability works when the real_fx is OTPFX."""
