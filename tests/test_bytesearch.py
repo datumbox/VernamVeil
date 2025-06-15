@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from vernamveil._bytesearch import find, find_all
-from vernamveil._types import _HAS_C_MODULE, _HAS_NUMPY, np
+from vernamveil._imports import _HAS_C_MODULE, _HAS_NUMPY, np
 
 
 class TestByteSearch(unittest.TestCase):
@@ -18,16 +18,16 @@ class TestByteSearch(unittest.TestCase):
     def _run_find(self, haystack, needle, has_c_module, start=0, end=None):
         """Utility to run find with or without C module."""
         with (
-            patch("vernamveil._types._HAS_C_MODULE", has_c_module),
             patch("vernamveil._bytesearch._HAS_C_MODULE", has_c_module),
+            patch("vernamveil._imports._HAS_C_MODULE", has_c_module),
         ):
             return find(haystack, needle, start, end)
 
     def _run_find_all(self, haystack, needle, has_c_module):
         """Utility to run find_all with or without C module."""
         with (
-            patch("vernamveil._types._HAS_C_MODULE", has_c_module),
             patch("vernamveil._bytesearch._HAS_C_MODULE", has_c_module),
+            patch("vernamveil._imports._HAS_C_MODULE", has_c_module),
         ):
             return find_all(haystack, needle)
 

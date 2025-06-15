@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from vernamveil._cli import main
 from vernamveil._fx_utils import OTPFX
-from vernamveil._types import _HAS_C_MODULE
+from vernamveil._imports import _HAS_C_MODULE
 from vernamveil._vernamveil import VernamVeil
 
 

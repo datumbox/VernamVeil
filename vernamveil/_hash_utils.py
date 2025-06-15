@@ -6,11 +6,8 @@ This module provides fast, optionally C-accelerated hashing functions for use in
 import hashlib
 from typing import Literal
 
-from vernamveil._types import (
+from vernamveil._imports import (
     _HAS_C_MODULE,
-)
-from vernamveil._types import _HashType as HashType
-from vernamveil._types import (
     _npblake2bffi,
     _npblake3ffi,
     _npsha256ffi,
@@ -210,7 +207,7 @@ def fold_bytes_to_uint64(
 def hash_numpy(
     i: "np.ndarray[tuple[int], np.dtype[np.uint64]]",
     seed: bytes | bytearray | None = None,
-    hash_name: HashType = "blake2b",
+    hash_name: Literal["blake2b", "blake3", "sha256"] = "blake2b",
     hash_size: int | None = None,
 ) -> "np.ndarray[tuple[int, int], np.dtype[np.uint8]]":
     """Compute a 2D NumPy array of uint8 by applying a hash function to each index, optionally using a seed as a key.
@@ -224,8 +221,8 @@ def hash_numpy(
     Args:
         i (np.ndarray[tuple[int], np.dtype[np.uint64]]): NumPy array of indices (dtype should be unsigned 64-bit integer).
         seed (bytes or bytearray, optional): The seed bytes are prepended to the index. If None, hashes only the index.
-        hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256"). The blake3 is only available
-            if the C extension is installed. Defaults to "blake2b".
+        hash_name (Literal["blake2b", "blake3", "sha256"]): Hash function to use ("blake2b", "blake3" or "sha256"). The
+            blake3 is only available if the C extension is installed. Defaults to "blake2b".
         hash_size (int, optional): Size of the hash output in bytes. Should be 64 for blake2b, larger than 0 for blake3
             and 32 for sha256. If None, the default size for the selected hash algorithm is used. Defaults to None.
 

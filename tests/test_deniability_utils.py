@@ -5,7 +5,7 @@ from pathlib import Path
 
 from vernamveil._deniability_utils import forge_plausible_fx
 from vernamveil._fx_utils import OTPFX, generate_default_fx, load_fx_from_file
-from vernamveil._types import _HAS_NUMPY
+from vernamveil._imports import _HAS_NUMPY
 from vernamveil._vernamveil import VernamVeil
 
 

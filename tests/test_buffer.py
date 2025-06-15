@@ -1,7 +1,7 @@
 import unittest
 
 from vernamveil._buffer import _Buffer
-from vernamveil._types import _HAS_NUMPY, np
+from vernamveil._imports import _HAS_NUMPY, np
 
 
 class TestBuffer(unittest.TestCase):

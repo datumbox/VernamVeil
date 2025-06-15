@@ -16,8 +16,7 @@ from vernamveil._bytesearch import find, find_all
 from vernamveil._cypher import _Cypher
 from vernamveil._fx_utils import FX
 from vernamveil._hash_utils import blake3, fold_bytes_to_uint64, hash_numpy
-from vernamveil._types import _HashType as HashType
-from vernamveil._types import np
+from vernamveil._imports import np
 
 __all__ = ["VernamVeil"]
 
@@ -40,7 +39,7 @@ class VernamVeil(_Cypher):
         decoy_ratio: float = 0.1,
         siv_seed_initialisation: bool = True,
         auth_encrypt: bool = True,
-        hash_name: HashType = "blake2b",
+        hash_name: Literal["blake2b", "blake3", "sha256"] = "blake2b",
     ) -> None:
         """Initialise the VernamVeil encryption cypher with configurable parameters.
 
@@ -56,8 +55,8 @@ class VernamVeil(_Cypher):
             siv_seed_initialisation (bool): Enables synthetic IV seed initialisation based on the message to
                 resist seed reuse. Defaults to True.
             auth_encrypt (bool): Enables authenticated encryption with integrity check. Defaults to True.
-            hash_name (HashType): Hash function to use ("blake2b", "blake3" or "sha256") for keyed hashing
-                and HMAC. The blake3 is only available if the C extension is installed.  Defaults to "blake2b".
+            hash_name (Literal["blake2b", "blake3", "sha256"]): Hash function to use ("blake2b", "blake3" or "sha256")
+                for keyed hashing and HMAC. The blake3 is only available if the C extension is installed. Defaults to "blake2b".
 
         Raises:
             ValueError: If `chunk_size` is less than 8.

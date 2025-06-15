@@ -11,7 +11,7 @@ from typing import IO, Callable, Literal
 from vernamveil._buffer import _Buffer
 from vernamveil._bytesearch import find
 from vernamveil._fx_utils import FX
-from vernamveil._types import np
+from vernamveil._imports import np
 
 __all__: list[str] = []
 

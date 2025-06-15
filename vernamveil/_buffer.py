@@ -5,7 +5,7 @@ bytearray or NumPy array buffers, supporting pre-allocation and optimised
 extend operations.
 """
 
-from vernamveil._types import np
+from vernamveil._imports import np
 
 __all__: list[str] = []
 
@@ -147,7 +147,8 @@ class _Buffer:
 
         Args:
             start (int): The starting index (inclusive) of the data to keep, relative to the buffer.
-            end (int | None): The ending index (exclusive) of the data to keep. If None, keeps up to the buffer's capacity.
+            end (int, optional): The ending index (exclusive) of the data to keep. If None, keeps up to
+                the buffer's capacity.
 
         Raises:
             ValueError: If `start` or `end` are negative, out of bounds, or if `end` < `start`.
