@@ -212,11 +212,14 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
         )
         compile_args += [
             "-std=c99",
-            "-Xpreprocessor",  # For OpenMP on macOS with Clang
+            "-Xpreprocessor",
             "-fopenmp",
             "-O3",
-            min_version_flag,
+            "-mtune=native",
+            "-march=native",
+            "-funroll-loops",
             "-DNDEBUG",
+            min_version_flag,
         ]
         extra_link_args += ["-lomp", min_version_flag]
 
@@ -271,8 +274,9 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
                 "/O2",
                 "/DNDEBUG",
                 "/EHsc",
+                "/GL",
             ]
-            extra_link_args += []
+            extra_link_args += ["/LTCG"]
             # Check some possible dependency install locations
             openssl_base_dirs = [
                 Path(p)
@@ -315,8 +319,13 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
             "-fomit-frame-pointer",
             "-ftree-vectorize",
             "-fvisibility=hidden",
+            "-fno-semantic-interposition",
+            "-fno-plt",
+            "-ffunction-sections",
+            "-fdata-sections",
             "-Wl,-O1",
             "-Wl,--as-needed",
+            "-Wl,--gc-sections",
             # "-D_FORTIFY_SOURCE=2",
             # "-fstack-protector-strong",
         ]:
