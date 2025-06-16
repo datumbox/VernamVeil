@@ -454,7 +454,7 @@ See `vernamveil encode --help` and `vernamveil decode --help` for all available 
 - **Compact Implementation**: The core cypher implementation (`_vernamveil.py`) is about 200 lines of code, excluding comments, documentation and empty lines.
 - **External Dependencies**: Built using only Python's standard library, with NumPy being optional for vectorisation.
 - **Optional C/C++ Module for Fast Hashing and Byte Search**: An optional C/C++ module (`nphash`) is provided, built using [cffi](https://cffi.readthedocs.io/), which enables fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays, and also provides efficient byte search utilities for internal use. BLAKE3 support is exclusive to this extension and benefits from hardware acceleration for optimal performance. Specifically, BLAKE3 uses the [official implementation](https://github.com/BLAKE3-team/BLAKE3) and can utilise SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64), and NEON (on ARM), as well as hand-written assembly, where supported by your hardware and compiler. These acceleration features are detected and enabled automatically during the build process. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, or MSVC) are required to build it. See the [`nphash` README](nphash/README.md) for further details.
-- **Tested with**: Python 3.10 and NumPy 2.3.
+- **Tested with**: Python 3.13 and NumPy 2.3.
 
 ### 🔧 Installation
 

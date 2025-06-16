@@ -24,7 +24,7 @@ These features are detected and enabled automatically by the build system. No ma
 
 Before building, ensure you have the following dependencies installed:
 
-- **Python 3.10 or later**
+- **Python 3.13 or later**
 - **pip** (Python package manager)
 - **gcc/g++** (GNU Compiler Collection, including C++ support)  
   _or_ **Microsoft Visual Studio Build Tools** (MSVC, for Windows)
@@ -199,4 +199,4 @@ If the C extension is not built or importable, `find`, `find_all` and `hash_nump
    ```bash
    /Applications/Python\ <your-version>/Install\ Certificates.command
    ```
-  Replace `<your-version>` with your installed Python version (e.g., `3.10`). This will install the required root certificates for SSL verification.
+  Replace `<your-version>` with your installed Python version (e.g., `3.13`). This will install the required root certificates for SSL verification.
