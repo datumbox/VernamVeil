@@ -321,8 +321,11 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
             "-fvisibility=hidden",
             "-fno-semantic-interposition",
             "-fno-plt",
+            "-ffunction-sections",
+            "-fdata-sections",
             "-Wl,-O1",
             "-Wl,--as-needed",
+            "-Wl,--gc-sections",
             # "-D_FORTIFY_SOURCE=2",
             # "-fstack-protector-strong",
         ]:
