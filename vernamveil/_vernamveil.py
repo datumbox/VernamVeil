@@ -103,6 +103,7 @@ class VernamVeil(_Cypher):
         else:
             self._HASH_METHOD = partial(hashlib.new, hash_name)
         self._HASH_LENGTH = self._HASH_METHOD().digest_size
+        self._256POWM = 256**self._delimiter_size
 
     def __str__(self) -> str:
         """Return a string representation of the VernamVeil instance.
@@ -528,7 +529,12 @@ class VernamVeil(_Cypher):
         delimiter, seed = self._generate_delimiter(seed)
 
         # Delimiter conflict check
-        if find(message, delimiter) != -1:
+        # The number of possible starting positions for an m-byte delimiter within an n-byte message is k = n - m + 1 (for n >= m).
+        # The probability that the delimiter matches a specific m-byte segment of the message (at a given position) is p = (1/256)**m
+        # The probability that the delimiter appears in any of the k positions is P_conflict = 1 - (1 - p)^k = 1 - (1 - (1/256)^m)^(n - m + 1)
+        # For very small values of p (e.g., m >= 4), this probability can be approximated by the binomial expansion: P_conflict_approx = (n - m + 1) / 256^m
+        P_conflict_approx = max(len(message) - self._delimiter_size + 1, 0) / self._256POWM
+        if P_conflict_approx > 0.000001 and find(message, delimiter) != -1:
             raise ValueError(
                 "The delimiter appears in the message. Consider increasing the delimiter size."
             )

@@ -137,6 +137,7 @@ class TestVernamVeil(unittest.TestCase):
         """Test that encoding fails if the delimiter appears in the message."""
         cypher = VernamVeil(generate_default_fx())
         cypher._delimiter_size = 1  # override to force a delimiter size of 1 byte
+        cypher._256POWM = 256
         message = bytes(range(256))  # Message contains every possible byte value
         with self.assertRaises(ValueError) as ctx:
             cypher.encode(message, self.initial_seed)
