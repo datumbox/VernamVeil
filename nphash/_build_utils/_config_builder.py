@@ -320,6 +320,7 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
             "-ftree-vectorize",
             "-fvisibility=hidden",
             "-fno-semantic-interposition",
+            "-fno-plt",
             "-Wl,-O1",
             "-Wl,--as-needed",
             # "-D_FORTIFY_SOURCE=2",
