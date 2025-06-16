@@ -21,11 +21,11 @@ dev = [
     "myst_parser>=4.0",
     "pydocstyle>=6.3",
     "sphinx>=8.1",
-    "sphinx-autodoc-typehints>=3.0",
+    "sphinx-autodoc-typehints>=3.2",
     "sphinx_rtd_theme>=3.0",
 ]
 numpy = [
-    "numpy>=2.2"
+    "numpy>=2.3"
 ]
 cffi = [
     "cffi>=1.17"
@@ -35,7 +35,7 @@ cffi = [
 vernamveil = "vernamveil._cli:main"
 
 [build-system]
-requires = ["setuptools>=68.1", "wheel"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
