@@ -10,11 +10,13 @@ Usage:
 This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256ffi extension modules, which can be imported from Python code.
 """
 
-import distutils.command.build_ext
 import os
 import tempfile
-from distutils.dist import Distribution
 from pathlib import Path
+from typing import Callable, cast
+
+import setuptools.command.build_ext
+from setuptools.dist import Distribution
 
 from nphash._build_utils._config_builder import _get_build_config
 from nphash._build_utils._ffi_builders import (
@@ -52,37 +54,38 @@ def main() -> None:
         ffibuilder_sha256 = _get_npsha256_ffi(config, build_dir)
 
         if config.tbb_enabled:
-            # Patch distutils' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
+            # Patch setuptools' build_ext to ensure -std=c++11 is added only for .cpp files during CFFI builds.
             # This is required for BLAKE3/TBB on macOS, and avoids breaking C builds.
             # Using setattr avoids mypy errors and keeps the patch local to this build process.
-            setattr(distutils.command.build_ext, "build_ext", _build_ext_with_cpp11)
+            setattr(setuptools.command.build_ext, "build_ext", _build_ext_with_cpp11)
 
         # Compile FFI Modules with target and temp dir
         print("Compiling CFFI extensions...")
 
         dist = Distribution()
-        build_ext_cmd = distutils.command.build_ext.build_ext(dist)
+        build_ext_cmd = setuptools.command.build_ext.build_ext(dist)
         build_ext_cmd.initialize_options()
+        get_ext_filename = cast(Callable[[str], str], build_ext_cmd.get_ext_filename)
 
         # Compile the CFFI extensions
         ffibuilder_bytesearch.compile(
             tmpdir=str(build_dir),
-            target=str(nphash_dir / build_ext_cmd.get_ext_filename("_bytesearchffi")),
+            target=str(nphash_dir / get_ext_filename("_bytesearchffi")),
             verbose=True,
         )
         ffibuilder_blake2b.compile(
             tmpdir=str(build_dir),
-            target=str(nphash_dir / build_ext_cmd.get_ext_filename("_npblake2bffi")),
+            target=str(nphash_dir / get_ext_filename("_npblake2bffi")),
             verbose=True,
         )
         ffibuilder_npblake3.compile(
             tmpdir=str(build_dir),
-            target=str(nphash_dir / build_ext_cmd.get_ext_filename("_npblake3ffi")),
+            target=str(nphash_dir / get_ext_filename("_npblake3ffi")),
             verbose=True,
         )
         ffibuilder_sha256.compile(
             tmpdir=str(build_dir),
-            target=str(nphash_dir / build_ext_cmd.get_ext_filename("_npsha256ffi")),
+            target=str(nphash_dir / get_ext_filename("_npsha256ffi")),
             verbose=True,
         )
 

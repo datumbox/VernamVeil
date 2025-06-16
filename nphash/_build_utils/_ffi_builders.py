@@ -1,17 +1,17 @@
 """Compiler utilities for building CFFI extensions for the nphash library.
 
 This module provides specialised CFFI (C Foreign Function Interface) setup
-functions and a custom distutils build_ext command. These components are
+functions and a custom setuptools build_ext command. These components are
 designed to correctly compile C and C++ sources, including those requiring
 specific compiler flags for features like OpenMP and C++11, particularly
 for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
 
-from distutils.command.build_ext import build_ext as _build_ext
 from pathlib import Path
 from typing import Any
 
 from cffi import FFI
+from setuptools.command.build_ext import build_ext as _build_ext
 
 from nphash._build_utils._blake3_builder import (
     _compile_blake3_simd_objects,
