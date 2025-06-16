@@ -22,7 +22,8 @@ dev = [
     "pydocstyle>=6.3",
     "sphinx>=8.1",
     "sphinx-autodoc-typehints>=3.0",
-    "sphinx_rtd_theme>=3.0"
+    "sphinx_rtd_theme>=3.0",
+    "types-setuptools>=80.9"
 ]
 numpy = [
     "numpy>=2.2"
