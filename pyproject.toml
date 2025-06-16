@@ -29,7 +29,8 @@ numpy = [
     "numpy>=2.3"
 ]
 cffi = [
-    "cffi>=1.17"
+    "cffi>=1.17",
+    "setuptools>=80.9"
 ]
 
 [project.scripts]
