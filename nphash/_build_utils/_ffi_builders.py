@@ -8,10 +8,10 @@ for the BLAKE3 TBB (Threading Building Blocks) integration.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cffi import FFI
-from setuptools.command.build_ext import build_ext as _build_ext
+from setuptools.command.build_ext import build_ext
 
 from nphash._build_utils._blake3_builder import (
     _compile_blake3_simd_objects,
@@ -22,6 +22,19 @@ from nphash._build_utils._blake3_builder import (
 from nphash._build_utils._config_builder import _BuildConfig, _supports_flag
 
 __all__: list[str] = []
+
+
+if TYPE_CHECKING:
+    # Fixing mypy error by defining a dummy _BuildExtBase class
+
+    class _BuildExtBase:
+        compiler: Any
+
+        def build_extensions(self) -> None:
+            pass
+
+else:
+    _BuildExtBase = build_ext
 
 
 def _set_source_and_print_details(
@@ -56,7 +69,7 @@ def _get_c_source(path: Path) -> str:
         return f.read()
 
 
-class _build_ext_with_cpp11(_build_ext):
+class _build_ext_with_cpp11(_BuildExtBase):
     """Custom build_ext command that ensures C++11 support for .cpp files.
 
     This class overrides the default build_ext command to add the -std=c++11 flag

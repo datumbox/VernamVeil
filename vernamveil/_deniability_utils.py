@@ -52,10 +52,10 @@ def _find_obfuscated_decoy_message(
     zeropadding_len = _estimate_obfuscated_length(cypher, decoy_message_len, 0)
     pad_count = _estimate_obfuscated_length(cypher, decoy_message_len, 1) - zeropadding_len
 
-    # The remaining length to achieve the target length
-    missing_len = target_len - zeropadding_len
-
     if pad_count > 0:
+        # The remaining length to achieve the target length
+        missing_len = target_len - zeropadding_len
+
         # Calculate potential new padding range based on average padding value
         P_avg = missing_len / pad_count
         P_floor = int(P_avg)
