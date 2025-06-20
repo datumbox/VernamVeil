@@ -19,14 +19,17 @@ __all__: list[str] = []
 class _Cypher(ABC):
     """Abstract base class for cyphers; provides utils that are common to all subclasses."""
 
-    def __init__(self, fx: FX) -> None:
+    def __init__(self, fx: FX, siv_seed_initialisation: bool) -> None:
         """Initialise a cypher instance.
 
         Args:
             fx (FX): A callable object that generates keystream bytes. This function is critical for the
                 encryption process and should be carefully designed to ensure cryptographic security.
+            siv_seed_initialisation (bool): Enables synthetic IV seed initialisation based on the message to
+                resist seed reuse
         """
         self._fx = fx
+        self._siv_seed_initialisation = siv_seed_initialisation
 
     @abstractmethod
     def _generate_delimiter(self, seed: bytes | bytearray) -> tuple[memoryview, bytes | bytearray]:
@@ -231,6 +234,7 @@ class _Cypher(ABC):
         reader_thread.start()
         writer_thread.start()
 
+        original_siv_seed_initialisation = self._siv_seed_initialisation
         try:
             # Generate the initial block delimiter
             current_seed = self._hash(seed, [b"block_delimiter"])
@@ -260,6 +264,7 @@ class _Cypher(ABC):
                         # Wrap in a vectorised memoryview
                         block = np.frombuffer(block, dtype=np.uint8).data
                     processed_block, current_seed = self.encode(block, current_seed)
+                    self._siv_seed_initialisation = False  # Disable SIV after the first block
 
                     # Write the processed block to the output file
                     if not queue_put(write_q, processed_block):
@@ -303,6 +308,7 @@ class _Cypher(ABC):
 
                         # Decode the complete block
                         processed_block, current_seed = self.decode(complete_block, current_seed)
+                        self._siv_seed_initialisation = False  # Disable SIV after the first block
                         if not queue_put(write_q, processed_block):
                             break
 
@@ -333,6 +339,9 @@ class _Cypher(ABC):
             exception_queue.put(main_exc)
             raise
         finally:
+            # Restore the original SIV seed initialisation state
+            self._siv_seed_initialisation = original_siv_seed_initialisation
+
             # Wait for threads to finish
             if reader_thread.is_alive():
                 reader_thread.join()
