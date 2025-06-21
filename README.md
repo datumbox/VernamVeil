@@ -477,14 +477,16 @@ If you want to use fast vectorised key stream functions, install with both `nump
 
 ## 🚦 Benchmarks: VernamVeil vs AES-256-CBC
 
-VernamVeil is competitive with OpenSSL's AES-256-CBC in terms of speed. As both cyphers can leverage hardware acceleration (AES via the AES-NI instruction set, and VernamVeil via SIMD instructions for its hashing component), the exact benchmarks vary significantly from machine to machine. On an Apple MacBook Pro with an M1 Max chip, VernamVeil is about 36% faster for encoding than AES-256-CBC but 40% slower for decoding. The slower decryption speed is because AES-256-CBC can be fully parallelised during decryption. In contrast, VernamVeil's stateful seed evolution creates a dependency chain between data blocks, making its decryption process inherently sequential. Furthermore, these benchmarks test VernamVeil with all its security features enabled (Authenticated Encryption, Synthetic IV, and Obfuscation), whereas the AES-256-CBC comparison performs raw, unauthenticated encryption. The focus is therefore on benchmarking VernamVeil's default secure configuration, not on a direct feature-for-feature comparison. The following benchmarks compare VernamVeil (using its recommended configuration: NumPy vectorisation, C extension enabled, with `generate_keyed_hash_fx` and `blake3` hashing) to OpenSSL's AES-256-CBC on the same machine.
+VernamVeil is competitive with OpenSSL's AES-256-CBC in terms of speed. As both cyphers leverage hardware acceleration, the exact benchmarks vary significantly from machine to machine. On an Apple MacBook Pro with an M1 Max chip, VernamVeil is about 15% faster. Note that our benchmarks test VernamVeil with all its default security features enabled (Authenticated Encryption, Synthetic IV, and Obfuscation), whereas AES-256-CBC performs raw, unauthenticated encryption.
 
 ### 📊 Summary
 
-| Algorithm    | Encode Time | Decode Time |
-|--------------|-------------|-------------|
-| VernamVeil   | 1.119 s     | 1.328 s     |
-| AES-256-CBC  | 1.760 s     | 0.950 s     |
+The following benchmarks compare VernamVeil (NumPy vectorisation, C extension enabled, and `blake3` hashing) to OpenSSL's AES-256-CBC on the same machine. The tests were run on a 1GB random file, measuring the time taken for encoding and decoding operations.
+
+| Algorithm    | Encode Time | Decode Time | Total Time |
+|--------------|-------------|-------------|------------|
+| VernamVeil   | 1.119 s     | 1.220 s     | 2.339 s    |
+| AES-256-CBC  | 1.760 s     | 0.950 s     | 2.710 s    |
 
 ### ‍💻 Benchmark Setup
 
@@ -499,21 +501,21 @@ openssl rand -hex 32 > key.hex
 openssl rand -hex 16 > iv.hex
 ```
 
-### 🐢 VernamVeil (Vectorised + C extension + Keyed Hash `fx` using BLAKE3)
+### 🐇 VernamVeil (Vectorised + C extension + Keyed Hash `fx` using BLAKE3)
 
 **Encoding:**
 ```bash
-vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.hex --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 32 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
+vernamveil encode --infile /tmp/original.bin --outfile /tmp/output.enc --fx-file fx.py --seed-file seed.hex --buffer-size 134217728 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
 _Time: 1.119s_
 
 **Decoding:**
 ```bash
-vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.hex --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 32 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
+vernamveil decode --infile /tmp/output.enc --outfile /tmp/output.dec --fx-file fx.py --seed-file seed.hex --buffer-size 136349200 --chunk-size 1048576 --delimiter-size 64 --padding-range 100 200 --decoy-ratio 0.01 --hash-name blake3 --verbosity info
 ```
-_Time: 1.328s_
+_Time: 1.220s_
 
-### 🐇 AES-256-CBC (OpenSSL)
+### 🐢 AES-256-CBC (OpenSSL)
 
 **Encoding:**
 ```bash

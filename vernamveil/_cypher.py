@@ -160,24 +160,6 @@ class _Cypher(ABC):
         infile = _open_if_path(input_file, "rb")
         outfile = _open_if_path(output_file, "wb")
 
-        # Progress tracking setup
-        total_size = 0
-        bytes_processed = 0
-        try:
-            if hasattr(infile, "fileno"):
-                fileno = infile.fileno()
-                if not os.isatty(fileno):
-                    file_stat = os.fstat(fileno)
-                    if stat.S_ISREG(file_stat.st_mode):
-                        total_size = file_stat.st_size
-        except Exception:
-            pass  # Not a regular file or can't determine size
-
-        if total_size <= 0:
-            progress_callback = None
-        elif progress_callback is not None:
-            progress_callback(0, total_size)
-
         # Reader and Writer threads used for asynchronous IO
         read_q: queue.Queue[bytes | bytearray | memoryview] = queue.Queue(maxsize=read_queue_size)
         write_q: queue.Queue[bytes | bytearray | memoryview] = queue.Queue(maxsize=write_queue_size)
@@ -233,6 +215,24 @@ class _Cypher(ABC):
         writer_thread = threading.Thread(target=writer_thread_func, daemon=True)
         reader_thread.start()
         writer_thread.start()
+
+        # Progress tracking setup
+        total_size = 0
+        bytes_processed = 0
+        try:
+            if hasattr(infile, "fileno"):
+                fileno = infile.fileno()
+                if not os.isatty(fileno):
+                    file_stat = os.fstat(fileno)
+                    if stat.S_ISREG(file_stat.st_mode):
+                        total_size = file_stat.st_size
+        except Exception:
+            pass  # Not a regular file or can't determine size
+
+        if total_size <= 0:
+            progress_callback = None
+        elif progress_callback is not None:
+            progress_callback(0, total_size)
 
         original_siv_seed_initialisation = self._siv_seed_initialisation
         try:
