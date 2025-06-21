@@ -1,0 +1,706 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VernamVeil: A Function-Based Stream Cypher &mdash; VernamVeil  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=2f4979e8" />
+
+  
+    <link rel="shortcut icon" href="_static/favicon.ico"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Building the nphash C Library with build.py" href="nphash/README.html" />
+    <link rel="prev" title="VernamVeil Class" href="vernamveil.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            VernamVeil
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="bytesearch.html">Byte Search</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deniability_utils.html">Deniability Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fx_utils.html">Fx Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hash_utils.html">Hash Utilities</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vernamveil.html">VernamVeil Class</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guides &amp; Implementation Notes:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started and Concepts</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">🚀 Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overview">🔎 Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#why-vernamveil">💡 Why VernamVeil?</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cryptographic-characteristics">✨ Cryptographic Characteristics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#caveats-best-practices">⚠️ Caveats &amp; Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">📝 Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#encrypting-and-decrypting-multiple-messages">✉️ Encrypting and Decrypting Multiple Messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#encrypting-and-decrypting-files">📂 Encrypting and Decrypting Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#how-to-design-a-custom-fx">🧪 How to Design a Custom <code class="docutils literal notranslate"><span class="pre">fx</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a-more-robust-keyed-hash-based-scalar-fx-not-cryptographically-standard">🧠 A more robust, Keyed Hash-based scalar <code class="docutils literal notranslate"><span class="pre">fx</span></code> (not cryptographically standard)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-fast-version-of-the-above-fx-that-uses-numpy-vectorisation-and-the-nphash-c-module">🏎️ A fast version of the above <code class="docutils literal notranslate"><span class="pre">fx</span></code> that uses NumPy vectorisation and the <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-cryptographically-strong-keyed-hash-blake2b-fx-vectorised-c-accelerated">🛡️ A cryptographically strong Keyed Hash BLAKE2b <code class="docutils literal notranslate"><span class="pre">fx</span></code> (vectorised &amp; C-accelerated)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-cryptographically-strong-and-fast-hash-blake3-fx-only-available-with-c-acceleration">🏁️ A cryptographically strong and Fast Hash BLAKE3 <code class="docutils literal notranslate"><span class="pre">fx</span></code> (only available with C-acceleration)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#one-time-pad-otp-mode">🎲 One-Time Pad (OTP) Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#provided-fx-utilities">🧰 Provided <code class="docutils literal notranslate"><span class="pre">fx</span></code> Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plausible-deniability-utilities">🕵️ Plausible Deniability Utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-interface-cli">🖥️ Command-Line Interface (CLI)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#features">⚙️ Features</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#usage">💻 Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#file-handling">🗄️ File Handling</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#technical-details">🛠️ Technical Details</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#installation">🔧 Installation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#fast-vectorised-fx-functions">⚡ Fast Vectorised <code class="docutils literal notranslate"><span class="pre">fx</span></code> Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#benchmarks-vernamveil-vs-aes-256-cbc">🚦 Benchmarks: VernamVeil vs AES-256-CBC</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#summary">📊 Summary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#benchmark-setup">‍💻 Benchmark Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#vernamveil-vectorised-c-extension-keyed-hash-fx-using-blake3">🐇 VernamVeil (Vectorised + C extension + Keyed Hash <code class="docutils literal notranslate"><span class="pre">fx</span></code> using BLAKE3)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#aes-256-cbc-openssl">🐢 AES-256-CBC (OpenSSL)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#documentation">📚 Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#contributing">🤝 Contributing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#copyright-license">📄 Copyright &amp; License</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nphash/README.html">C Extension Build and Usage</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">VernamVeil</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">VernamVeil: A Function-Based Stream Cypher</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/datumbox/VernamVeil/blob/main/docs/README.md" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <picture>
+  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" media="(prefers-color-scheme: light)">
+  <source srcset="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo-dark.png" media="(prefers-color-scheme: dark)">
+  <img src="https://raw.githubusercontent.com/datumbox/VernamVeil/main/docs/logo.png" alt="VernamVeil Logo">
+</picture>
+<section id="vernamveil-a-function-based-stream-cypher">
+<h1>VernamVeil: A Function-Based Stream Cypher<a class="headerlink" href="#vernamveil-a-function-based-stream-cypher" title="Link to this heading"></a></h1>
+<p><a class="reference external" href="https://github.com/datumbox/VernamVeil/actions"><img alt="CI" src="https://github.com/datumbox/VernamVeil/actions/workflows/ci.yml/badge.svg?branch=main" /></a> <a class="reference external" href="https://datumbox.github.io/VernamVeil/"><img alt="Docs" src="https://img.shields.io/badge/docs-online-brightgreen.svg" /></a> <a class="reference external" href="https://github.com/datumbox/VernamVeil/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/datumbox/VernamVeil?color=brightgreen" /></a></p>
+<hr class="docutils" />
+<blockquote>
+<div><p>⚠️ <strong>DISCLAIMER:</strong> This is an educational encryption prototype and <strong>not</strong> meant for real-world use. It has <strong>not</strong> been audited or reviewed by cryptography experts, and <strong>should not</strong> be used to store, transmit, or protect sensitive data.</p>
+</div></blockquote>
+<section id="quick-start">
+<h2>🚀 Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<p>Minimal Installation (without vectorisation or C extension support):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>.
+</pre></div>
+</div>
+<p>Minimal Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">FX</span><span class="p">,</span> <span class="n">VernamVeil</span>
+
+
+<span class="c1"># Step 1: Define a custom key stream function; remember to store this securely</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">keystream_fn</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="c1"># Simple cryptographically safe fx; see below for more examples</span>
+    <span class="n">hasher</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">blake2b</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">hasher</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">hasher</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+
+<span class="n">fx</span> <span class="o">=</span> <span class="n">FX</span><span class="p">(</span><span class="n">keystream_fn</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="c1"># Step 2: Generate a random initial seed for encryption</span>
+<span class="n">initial_seed</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="o">.</span><span class="n">get_initial_seed</span><span class="p">()</span>  <span class="c1"># remember to store this securely</span>
+
+<span class="c1"># Step 3: Encrypt and decrypt a single message</span>
+<span class="n">cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span>
+<span class="n">encrypted</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;Hello!&quot;</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+<span class="n">decrypted</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">encrypted</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="overview">
+<h2>🔎 Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p><strong>VernamVeil</strong> is an experimental cypher inspired by the <strong>One-Time Pad (OTP)</strong> developed in Python. The name honours <strong>Gilbert Vernam</strong>, who is credited with the theoretical foundation of the OTP.</p>
+<p>Instead of using a static key, VernamVeil allows the key to be represented by a function <code class="docutils literal notranslate"><span class="pre">fx(i:</span> <span class="pre">int</span> <span class="pre">|</span> <span class="pre">np.ndarray,</span> <span class="pre">seed:</span> <span class="pre">bytes</span> <span class="pre">|</span> <span class="pre">bytearray)</span> <span class="pre">-&gt;</span> <span class="pre">bytes</span> <span class="pre">|</span> <span class="pre">np.ndarray</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">i</span></code>: the index of the block of bytes in the message; a scalar integer or a 1D uint64 NumPy array with a continuous enumeration for vectorised operations.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">seed</span></code>: a byte string that provides context and state; should be kept secret.</p></li>
+<li><p><strong>Output</strong>: bytes or a 2D uint8 NumPy array representing the key stream values.</p></li>
+</ul>
+<p><em>Note: <code class="docutils literal notranslate"><span class="pre">numpy</span></code> is an optional but highly recommended dependency, used to accelerate vectorised operations when available.</em></p>
+<p>This approach enables novel forms of key generation, especially for those who enjoy playing with maths and code. While this is not a secure implementation by cryptographic standards, it offers a fun and flexible way to experiment with function-based encryption. If you’re curious about how encryption works, or just want to mess with maths and code in a cool way, this project is a fun starting point. For more information, read the accompanying <a class="reference external" href="https://blog.datumbox.com/vernamveil-a-fresh-take-on-function-based-encryption/">blog post</a>.</p>
+</section>
+<hr class="docutils" />
+<section id="why-vernamveil">
+<h2>💡 Why VernamVeil?<a class="headerlink" href="#why-vernamveil" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Function-based keystreams for enhanced flexibility</strong>: Unlike traditional cyphers that rely on fixed-size keys, VernamVeil allows the keystream to be generated by a user-defined function (<code class="docutils literal notranslate"><span class="pre">fx</span></code>). This enables the creation of arbitrarily long, non-repeating keystreams, provided that the function and seed combination allows it.</p></li>
+<li><p><strong>Modular design for cryptographic experimentation</strong>: VernamVeil’s architecture makes it easy to swap in different cryptographic primitives and keystream generation strategies. This modularity supports experimentation with various secure pseudorandom functions, hash-based constructions, or even true one-time pad keystreams, while encouraging the use of well-established cryptographic techniques.</p></li>
+<li><p><strong>Inspired by the One-Time Pad (OTP)</strong>: VernamVeil supports an OTP mode when provided with a truly random, externally sourced keystream. The One-Time Pad offers strong cryptographic guarantees if, and only if, it is implemented correctly: the cypher is bug-free, the keystream is truly random, at least as long as the message, used only once, and kept completely secret.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="cryptographic-characteristics">
+<h2>✨ Cryptographic Characteristics<a class="headerlink" href="#cryptographic-characteristics" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Function-Based, Symmetric Cypher with OTP Support</strong>: VernamVeil uses a user-defined function <code class="docutils literal notranslate"><span class="pre">fx</span></code> and an <code class="docutils literal notranslate"><span class="pre">initial_seed</span></code> (both secret) to dynamically generate the key stream. This approach is symmetric: identical secrets and encryption configuration are required for both encryption and decryption, making the process fully reversible. VernamVeil also offers the <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> callable wrapper that allows it to operate in one-time pad (OTP) mode when provided with a truly random, externally sourced keystream.</p></li>
+<li><p><strong>Synthetic IV Seed Initialisation, Stateful Seed Evolution &amp; Avalanche Effects</strong>: Instead of a traditional nonce, the first internal seed is derived using a Synthetic IV computed as a keyed hash of the user-provided initial seed, the full plaintext, and the current timestamp (inspired by <a class="reference external" href="https://datatracker.ietf.org/doc/html/rfc5297">RFC 5297</a>). For each chunk, the seed is further evolved by key-hashing the previous seed with the chunk’s plaintext, maintaining state between operations. This hash-based seed refreshing ensures each keystream is unique, prevents keystream reuse, provides resilience against seed reuse and deterministic output, and produces an avalanche effect: small changes in input result in large, unpredictable changes in output. Including the current timestamp in the SIV ensures each encryption produces a unique keystream, making output non-deterministic and providing resilience against accidental seed reuse, even for identical messages and seeds. The scheme does not allow backward derivation of seeds, if a current seed is leaked, past messages remain secure (backward secrecy is preserved).</p></li>
+<li><p><strong>Message Obfuscation, Zero Metadata &amp; Authenticated Encryption</strong>: The cypher injects decoy chunks, pads real chunks with dummy bytes, and shuffles output to obscure chunk boundaries, complicating cryptanalysis methods such as traffic analysis or block boundary detection. Chunk delimiters are randomly generated, encrypted, and not exposed; block delimiters are randomly generated and refreshed for every block. The cyphertext contains no embedded metadata, minimising the risk of attackers identifying recurring patterns or structural information. All encryption details are deterministically recovered from the <code class="docutils literal notranslate"><span class="pre">fx</span></code>, except for the configuration parameters (e.g., chunk and delimiter sizes) which must be provided and matched exactly during decryption, or the MAC check will fail. During encryption, Message Authentication is enforced using a standard encrypt-then-MAC (EtM) construction. During decryption verification-before-decryption is used to detect tampering and prevent padding oracle-style issues.</p></li>
+<li><p><strong>Modular &amp; Configurable Keystream Design</strong>: The <code class="docutils literal notranslate"><span class="pre">fx</span></code> function can be swapped to explore different styles of pseudorandom generation, including custom PRNGs, cryptographic hashes or OTP. The implementation also allows full adjustment of configuration, offering flexibility to tailor encryption to specific needs.</p></li>
+<li><p><strong>Vectorisation &amp; Optional C-backed Fast Hashing</strong>: All operations are vectorised using <code class="docutils literal notranslate"><span class="pre">numpy</span></code> when <code class="docutils literal notranslate"><span class="pre">vectorise=True</span></code>, with a slower pure Python fallback available. For even faster vectorised <code class="docutils literal notranslate"><span class="pre">fx</span></code> functions, an optional C module (<code class="docutils literal notranslate"><span class="pre">nphash</span></code>) can be compiled (with <code class="docutils literal notranslate"><span class="pre">cffi</span></code> and system dependencies), enabling high-performance BLAKE2b, BLAKE3 and SHA-256 hashing for NumPy-based key stream generation. BLAKE3, in particular, is only available via this extension and benefits from hardware acceleration, including SIMD and assembly optimisations where supported. This is supported both in user-defined <code class="docutils literal notranslate"><span class="pre">fx</span></code> methods and automatically by helpers like <code class="docutils literal notranslate"><span class="pre">generate_default_fx</span></code>. See <a class="reference internal" href="nphash/README.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">nphash/README.md</span></code></span></a> for details.</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="caveats-best-practices">
+<h2>⚠️ Caveats &amp; Best Practices<a class="headerlink" href="#caveats-best-practices" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Not Secure for Real Use</strong>: This is an educational tool and experimental toy, not production-ready cryptography.</p></li>
+<li><p><strong>Use Strong <code class="docutils literal notranslate"><span class="pre">fx</span></code> Functions</strong>: The entire system’s unpredictability hinges on the entropy and behaviour of your <code class="docutils literal notranslate"><span class="pre">fx</span></code>. Avoid anything guessable or biased and the use of periodic mathematical functions which can lead to predictable or repeating outputs.</p></li>
+<li><p><strong>Use Secure Seeds &amp; Avoid Reuse</strong>: Generate initial seeds using the provided <code class="docutils literal notranslate"><span class="pre">VernamVeil.get_initial_seed()</span></code> method which is cryptographically safe. Treat each <code class="docutils literal notranslate"><span class="pre">initial_seed</span></code> as a one-time-use context and use a fresh initial seed for every encode/decode session. During the same session, the API returns the next seed you should use for the following call.</p></li>
+<li><p><strong>True One-Time Pad Support</strong>: If you use the <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> callable wrapper with a truly random keystream (generated from a physical entropy source), VernamVeil can be configured to operate as an One-Time Pad cypher. The keystream must be at least as long as the message, used only once, and never reused for any other message. Generating such keystreams is challenging in practice; pseudo-random generators (including cryptographically secure ones) do not provide the same guarantees as a true one-time pad.</p></li>
+<li><p><strong>Message Ordering &amp; Replay</strong>: VernamVeil is designed to be nonce-free by evolving the seed with each message or chunk, ensuring keystream uniqueness as long as each session uses a distinct <code class="docutils literal notranslate"><span class="pre">initial_seed</span></code>. The Synthetic IV mechanism, by incorporating the current timestamp, ensures each cyphertext is unique even for identical messages and seeds, and specifically provides resilience against accidental seed reuse for the first message. However, the cypher itself does not guarantee full replay protection or enforce message ordering; these must be handled by the application. For strict anti-replay or ordering requirements, implement explicit mechanisms (such as sequence numbers or nonces) at a higher layer.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="examples">
+<h2>📝 Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h2>
+<section id="encrypting-and-decrypting-multiple-messages">
+<h3>✉️ Encrypting and Decrypting Multiple Messages<a class="headerlink" href="#encrypting-and-decrypting-multiple-messages" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">VernamVeil</span><span class="p">,</span> <span class="n">generate_default_fx</span>
+
+
+<span class="c1"># Step 1: Generate a custom fx using the helper</span>
+<span class="n">fx</span> <span class="o">=</span> <span class="n">generate_default_fx</span><span class="p">()</span>  <span class="c1"># remember to store fx.source_code securely</span>
+
+<span class="c1"># Step 2: Generate a random initial seed for encryption</span>
+<span class="n">initial_seed</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="o">.</span><span class="n">get_initial_seed</span><span class="p">()</span>  <span class="c1"># remember to store this securely</span>
+
+<span class="c1"># Step 3: Initialise VernamVeil with the custom fx and parameters</span>
+<span class="n">cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">fx</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">decoy_ratio</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Encrypt multiple messages in one session</span>
+<span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;This is a secret message!&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;another one&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;and another one&quot;</span>
+<span class="p">]</span>
+<span class="n">encrypted</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="n">initial_seed</span>
+<span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">messages</span><span class="p">:</span>
+    <span class="c1"># Each message evolves the seed for the next one</span>
+    <span class="n">enc</span><span class="p">,</span> <span class="n">seed</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span> <span class="n">seed</span><span class="p">)</span>
+    <span class="n">encrypted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">enc</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Decrypt multiple messages in one session</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="n">initial_seed</span>
+<span class="k">for</span> <span class="n">original</span><span class="p">,</span> <span class="n">enc</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">messages</span><span class="p">,</span> <span class="n">encrypted</span><span class="p">):</span>
+    <span class="c1"># Each message evolves the seed for the next one</span>
+    <span class="n">dec</span><span class="p">,</span> <span class="n">seed</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">enc</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">dec</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span> <span class="o">==</span> <span class="n">original</span>
+</pre></div>
+</div>
+</section>
+<section id="encrypting-and-decrypting-files">
+<h3>📂 Encrypting and Decrypting Files<a class="headerlink" href="#encrypting-and-decrypting-files" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">VernamVeil</span><span class="p">,</span> <span class="n">generate_default_fx</span>
+
+
+<span class="c1"># Step 1: Generate a custom fx using the helper</span>
+<span class="n">fx</span> <span class="o">=</span> <span class="n">generate_default_fx</span><span class="p">()</span>  <span class="c1"># remember to store fx.source_code securely</span>
+
+<span class="c1"># Step 2: Generate a random initial seed for encryption</span>
+<span class="n">initial_seed</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="o">.</span><span class="n">get_initial_seed</span><span class="p">()</span>  <span class="c1"># remember to store this securely</span>
+
+<span class="c1"># Step 3: Initialise VernamVeil with the custom fx and parameters</span>
+<span class="n">cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">fx</span><span class="p">,</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">decoy_ratio</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+
+<span class="c1"># Step 4: Encrypt a file</span>
+<span class="n">cypher</span><span class="o">.</span><span class="n">process_file</span><span class="p">(</span><span class="s2">&quot;encode&quot;</span><span class="p">,</span> <span class="s2">&quot;plain.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;encrypted.dat&quot;</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+
+<span class="c1"># Step 5: Decrypt the file</span>
+<span class="n">cypher</span><span class="o">.</span><span class="n">process_file</span><span class="p">(</span><span class="s2">&quot;decode&quot;</span><span class="p">,</span> <span class="s2">&quot;encrypted.dat&quot;</span><span class="p">,</span> <span class="s2">&quot;decrypted.txt&quot;</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p><strong>Note:</strong>
+The <code class="docutils literal notranslate"><span class="pre">process_file</span></code> method uses background threads and queues to perform asynchronous I/O for both reading and writing, enabling efficient processing of large files without blocking the main thread.</p>
+</div></blockquote>
+</section>
+</section>
+<hr class="docutils" />
+<section id="how-to-design-a-custom-fx">
+<h2>🧪 How to Design a Custom <code class="docutils literal notranslate"><span class="pre">fx</span></code><a class="headerlink" href="#how-to-design-a-custom-fx" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p>⚠️ <strong>Warning: Designing cryptographic functions is difficult and risky</strong></p>
+<p>Creating your own cryptographic methods is a major undertaking, and even small mistakes can introduce severe vulnerabilities. The greatest weakness of this cypher is that it allows users to supply their own <code class="docutils literal notranslate"><span class="pre">fx</span></code> functions: a non-expert can easily “shoot themselves in the foot” by designing a function that is predictable, biased, or otherwise insecure, potentially making the encryption trivial to break. This project is strictly educational and not intended for real-world security. The following section provides some basic principles for designing <code class="docutils literal notranslate"><span class="pre">fx</span></code> functions, but it is not a comprehensive guide to cryptographic engineering.</p>
+</div></blockquote>
+<p>When creating your own key stream function (<code class="docutils literal notranslate"><span class="pre">fx</span></code>), it is essential to follow best practices to ensure the unpredictability and security of your cypher. Poorly designed functions can introduce vulnerabilities, bias, or even make the encryption reversible by attackers. Use the following guidelines:</p>
+<ul class="simple">
+<li><p><strong>Uniform &amp; Non-Constant Output</strong>: Your <code class="docutils literal notranslate"><span class="pre">fx</span></code> should produce diverse, unpredictable outputs for different input indices. Avoid constant, biased, low-entropy, or periodic mathematical functions. The distribution of outputs should be as uniform as possible. Use a standard cryptographic pseudorandom function (PRF) before returning the output.</p></li>
+<li><p><strong>Seed Sensitivity</strong>: The output of <code class="docutils literal notranslate"><span class="pre">fx</span></code> must depend on the secret seed. Changing the seed should result in completely different outputs.</p></li>
+<li><p><strong>Type Correctness</strong>: The function must return a <code class="docutils literal notranslate"><span class="pre">bytes</span></code> or a NumPy <code class="docutils literal notranslate"><span class="pre">uint8</span></code> array in vectorised mode.</p></li>
+<li><p><strong>Determinism</strong>: <code class="docutils literal notranslate"><span class="pre">fx</span></code> must be deterministic for the same inputs. Do not use external state or randomness inside your function.</p></li>
+<li><p><strong>Avoid Data-Dependent Branching or Timing</strong>: Do not introduce data-dependent branching or timing in your <code class="docutils literal notranslate"><span class="pre">fx</span></code>, as this can lead to side-channel attacks.</p></li>
+<li><p><strong>Performance</strong>: Complex or slow <code class="docutils literal notranslate"><span class="pre">fx</span></code> functions will slow down encryption and decryption. Test performance if speed is important for your use case.</p></li>
+</ul>
+<p><strong>Recommended approach:</strong>
+Apply a unique transformation to the input index using a function that incorporates constant but randomly sampled parameters to make each <code class="docutils literal notranslate"><span class="pre">fx</span></code> instance unpredictable. Then, combine the result with the secret seed using a cryptographically secure keyed hash method or HMAC. This ensures your keystream is both unpredictable and securely bound to your secret.</p>
+<p><strong>Always test your custom <code class="docutils literal notranslate"><span class="pre">fx</span></code></strong> with the provided <code class="docutils literal notranslate"><span class="pre">check_fx_sanity</span></code> utility before using it for encryption. Note that this method only performs very basic checks and cannot guarantee cryptographic security; it may catch common mistakes, but passing all checks does not mean your function is secure.</p>
+<p>Below we provide some example <code class="docutils literal notranslate"><span class="pre">fx</span></code> methods to illustrate these principles in practice:</p>
+<section id="a-more-robust-keyed-hash-based-scalar-fx-not-cryptographically-standard">
+<h3>🧠 A more robust, Keyed Hash-based scalar <code class="docutils literal notranslate"><span class="pre">fx</span></code> (not cryptographically standard)<a class="headerlink" href="#a-more-robust-keyed-hash-based-scalar-fx-not-cryptographically-standard" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">FX</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">keystream_fn</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="c1"># Implements a customisable fx function based on a 10-degree polynomial transformation of the index,</span>
+    <span class="c1"># followed by a cryptographically secure keyed hash (BLAKE2b) output.</span>
+    <span class="c1"># Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.</span>
+    <span class="c1"># The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="p">[</span><span class="mi">24242</span><span class="p">,</span> <span class="mi">68652</span><span class="p">,</span> <span class="mi">77629</span><span class="p">,</span> <span class="mi">55585</span><span class="p">,</span> <span class="mi">32284</span><span class="p">,</span> <span class="mi">78741</span><span class="p">,</span> <span class="mi">70249</span><span class="p">,</span> <span class="mi">39611</span><span class="p">,</span> <span class="mi">54080</span><span class="p">,</span> <span class="mi">73198</span><span class="p">,</span> <span class="mi">12426</span><span class="p">]</span>
+
+    <span class="c1"># Transform index i using a polynomial function to introduce uniqueness on fx</span>
+    <span class="n">current_pow</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">weights</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">result</span> <span class="o">+</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">current_pow</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFFFFFFFFFF</span>
+        <span class="n">current_pow</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_pow</span> <span class="o">*</span> <span class="n">i</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFFFFFFFFFFFFFFFF</span>
+
+    <span class="c1"># Hash using BLAKE2b</span>
+    <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">blake2b</span><span class="p">(</span><span class="n">i</span><span class="o">.</span><span class="n">to_bytes</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;big&quot;</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">()</span>
+
+
+<span class="n">fx</span> <span class="o">=</span> <span class="n">FX</span><span class="p">(</span><span class="n">keystream_fn</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="a-fast-version-of-the-above-fx-that-uses-numpy-vectorisation-and-the-nphash-c-module">
+<h3>🏎️ A fast version of the above <code class="docutils literal notranslate"><span class="pre">fx</span></code> that uses NumPy vectorisation and the <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C module<a class="headerlink" href="#a-fast-version-of-the-above-fx-that-uses-numpy-vectorisation-and-the-nphash-c-module" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">FX</span><span class="p">,</span> <span class="n">hash_numpy</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">keystream_fn</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="c1"># Implements a customisable fx function based on a 10-degree polynomial transformation of the index,</span>
+    <span class="c1"># followed by a cryptographically secure keyed hash (BLAKE2b) output.</span>
+    <span class="c1"># Note: The security of `fx` relies entirely on the secrecy of the seed and the strength of the keyed hash.</span>
+    <span class="c1"># The polynomial transformation adds uniqueness to each fx instance but does not contribute additional entropy.</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">24242</span><span class="p">,</span> <span class="mi">68652</span><span class="p">,</span> <span class="mi">77629</span><span class="p">,</span> <span class="mi">55585</span><span class="p">,</span> <span class="mi">32284</span><span class="p">,</span> <span class="mi">78741</span><span class="p">,</span> <span class="mi">70249</span><span class="p">,</span> <span class="mi">39611</span><span class="p">,</span> <span class="mi">54080</span><span class="p">,</span> <span class="mi">73198</span><span class="p">,</span> <span class="mi">12426</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span>
+
+    <span class="c1"># Transform index i using a polynomial function to introduce uniqueness on fx</span>
+    <span class="c1"># Compute all powers: shape (len(i), degree + 1)</span>
+    <span class="n">powers</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="o">.</span><span class="n">outer</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">))</span>
+
+    <span class="c1"># Weighted sum (polynomial evaluation)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">powers</span><span class="p">,</span> <span class="n">weights</span><span class="p">)</span>
+
+    <span class="c1"># Hash using BLAKE2b</span>
+    <span class="k">return</span> <span class="n">hash_numpy</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="s2">&quot;blake2b&quot;</span><span class="p">)</span>  <span class="c1"># uses C module if available, else NumPy fallback</span>
+
+
+<span class="n">fx</span> <span class="o">=</span> <span class="n">FX</span><span class="p">(</span><span class="n">keystream_fn</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="a-cryptographically-strong-keyed-hash-blake2b-fx-vectorised-c-accelerated">
+<h3>🛡️ A cryptographically strong Keyed Hash BLAKE2b <code class="docutils literal notranslate"><span class="pre">fx</span></code> (vectorised &amp; C-accelerated)<a class="headerlink" href="#a-cryptographically-strong-keyed-hash-blake2b-fx-vectorised-c-accelerated" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">FX</span><span class="p">,</span> <span class="n">hash_numpy</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">keystream_fn</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="c1"># The secure default `fx` of the VernamVeil cypher.</span>
+    <span class="c1"># Implements a standard keyed hash-based pseudorandom function (PRF) using BLAKE2b.</span>
+    <span class="c1"># The output is deterministically derived from the input index `i` and the secret `seed`.</span>
+    <span class="c1"># Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.</span>
+
+    <span class="c1"># Hash using BLAKE2b</span>
+    <span class="k">return</span> <span class="n">hash_numpy</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="s2">&quot;blake2b&quot;</span><span class="p">)</span>  <span class="c1"># uses C module if available, else NumPy fallback</span>
+
+
+<span class="n">fx</span> <span class="o">=</span> <span class="n">FX</span><span class="p">(</span><span class="n">keystream_fn</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="a-cryptographically-strong-and-fast-hash-blake3-fx-only-available-with-c-acceleration">
+<h3>🏁️ A cryptographically strong and Fast Hash BLAKE3 <code class="docutils literal notranslate"><span class="pre">fx</span></code> (only available with C-acceleration)<a class="headerlink" href="#a-cryptographically-strong-and-fast-hash-blake3-fx-only-available-with-c-acceleration" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">FX</span><span class="p">,</span> <span class="n">hash_numpy</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">keystream_fn</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="c1"># Implements a standard keyed hash-based pseudorandom function (PRF) using BLAKE3.</span>
+    <span class="c1"># BLAKE3 is only available when the C extension is installed, and benefits from hardware acceleration</span>
+    <span class="c1"># (SIMD and assembly) for maximum performance.</span>
+    <span class="c1"># The output is deterministically derived from the input index `i` and the secret `seed`.</span>
+    <span class="c1"># Security relies entirely on the secrecy of the seed and the cryptographic strength of the keyed hash.</span>
+
+    <span class="c1"># Hash using BLAKE3</span>
+    <span class="k">return</span> <span class="n">hash_numpy</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="s2">&quot;blake3&quot;</span><span class="p">,</span> <span class="n">hash_size</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>  <span class="c1"># requires the C module</span>
+
+
+<span class="n">fx</span> <span class="o">=</span> <span class="n">FX</span><span class="p">(</span><span class="n">keystream_fn</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="one-time-pad-otp-mode">
+<h2>🎲 One-Time Pad (OTP) Mode<a class="headerlink" href="#one-time-pad-otp-mode" title="Link to this heading"></a></h2>
+<p>VernamVeil can operate as a one-time pad (OTP) cypher when provided with a truly random keystream. By supplying a keystream of random bytes (generated from a physical entropy source) through the <code class="docutils literal notranslate"><span class="pre">fx</span></code> interface, VernamVeil achieves the properties of an OTP: the keystream must be at least as long as the message, used only once, and never reused for any other message. Note that pseudo-random generators, including cryptographically secure ones, do not provide the same guarantees as a true one-time pad.</p>
+<p>To facilitate OTP mode, VernamVeil provides the <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> utility. <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> is a callable wrapper that allows you to use an externally generated, truly random keystream as a drop-in replacement for a function-based <code class="docutils literal notranslate"><span class="pre">fx</span></code>. You provide a list of random byte blocks (each of a fixed size), and <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> ensures these are used sequentially as the keystream during encryption and decryption.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">OTPFX</span><span class="p">,</span> <span class="n">VernamVeil</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_true_random_bytes</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+    <span class="c1"># Replace with a function that returns n bytes from a true random source.</span>
+    <span class="c1"># For real OTP, use a true random source (e.g., hardware RNG, quantum RNG, etc.)</span>
+    <span class="c1"># Using `secrets` or `os.urandom` is not truly random and does not provide the same guarantees.</span>
+    <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">()</span>
+
+<span class="c1"># Prepare a keystream of random blocks</span>
+<span class="n">block_size</span> <span class="o">=</span> <span class="mi">64</span>
+<span class="n">keystream</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_true_random_bytes</span><span class="p">(</span><span class="n">block_size</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">)]</span>
+
+<span class="c1"># Create a cypher with the OTPFX instance</span>
+<span class="n">fx</span> <span class="o">=</span> <span class="n">OTPFX</span><span class="p">(</span><span class="n">keystream</span><span class="p">,</span> <span class="n">block_size</span><span class="o">=</span><span class="n">block_size</span><span class="p">,</span> <span class="n">vectorise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">fx</span><span class="p">)</span>
+
+<span class="c1"># Encrypt a message as per usual</span>
+<span class="n">initial_seed</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="o">.</span><span class="n">get_initial_seed</span><span class="p">()</span>  <span class="c1"># remember to store this securely</span>
+<span class="n">encrypted_message</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="sa">b</span><span class="s2">&quot;some message&quot;</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+
+<span class="c1"># Optionally clip the keystream to the used portion</span>
+<span class="n">fx</span><span class="o">.</span><span class="n">keystream</span> <span class="o">=</span> <span class="n">fx</span><span class="o">.</span><span class="n">keystream</span><span class="p">[:</span><span class="n">fx</span><span class="o">.</span><span class="n">position</span><span class="p">]</span>  <span class="c1"># remember to store this securely</span>
+
+<span class="c1"># Reset the pointer for decryption</span>
+<span class="n">fx</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># Decrypt the message</span>
+<span class="n">decrypted_message</span> <span class="o">=</span> <span class="n">cypher</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted_message</span><span class="p">,</span> <span class="n">initial_seed</span><span class="p">)</span>
+
+</pre></div>
+</div>
+<p><strong>Note:</strong> The keystream must be truly random, at least as long as the message, and never reused. Reusing a keystream completely breaks the security of OTP encryption.</p>
+<blockquote>
+<div><p><strong>Warning:</strong>
+Do <strong>not</strong> use or test your <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> instance (e.g., by calling it or running sanity checks) before actual encryption or decryption. Any use will consume part of the keystream, which cannot be recovered, and will cause decryption to fail. Always use a fresh, unused <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> instance for each encryption/decryption operation or reset its <code class="docutils literal notranslate"><span class="pre">fx.position</span></code> to <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+</div></blockquote>
+</section>
+<hr class="docutils" />
+<section id="provided-fx-utilities">
+<h2>🧰 Provided <code class="docutils literal notranslate"><span class="pre">fx</span></code> Utilities<a class="headerlink" href="#provided-fx-utilities" title="Link to this heading"></a></h2>
+<p>VernamVeil includes helper tools to make working with key stream functions easier:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OTPFX</span></code>: A callable wrapper for using externally generated, one-time-pad keystreams as a drop-in replacement for function-based <code class="docutils literal notranslate"><span class="pre">fx</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">check_fx_sanity</span></code>: Runs basic sanity checks on your custom <code class="docutils literal notranslate"><span class="pre">fx</span></code> to ensure it produces diverse and seed-sensitive outputs.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">generate_keyed_hash_fx</span></code> (same as <code class="docutils literal notranslate"><span class="pre">generate_default_fx</span></code>): Generates a deterministic <code class="docutils literal notranslate"><span class="pre">fx</span></code> function that applies a specified hash algorithm (e.g., BLAKE2b, BLAKE3 or SHA-256) directly to the index and seed. The seed is the only secret key but the keyed hash is a cryptographically strong and proven <code class="docutils literal notranslate"><span class="pre">fx</span></code>. Supports both scalar and vectorised (NumPy) modes. This is the recommended secure default <code class="docutils literal notranslate"><span class="pre">fx</span></code> for the VernamVeil cypher. The BLAKE3 option is only available with the C extension.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">generate_polynomial_fx</span></code>: Generates a random <code class="docutils literal notranslate"><span class="pre">fx</span></code> function that first transforms the index using a polynomial with random weights, then applies keyed hashing (BLAKE2b) for cryptographic output. Supports both scalar and vectorised (NumPy) modes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">load_fx_from_file</span></code>: Loads a custom <code class="docutils literal notranslate"><span class="pre">fx</span></code> function from a Python file. This is useful for testing and validating your own implementations. It uses <code class="docutils literal notranslate"><span class="pre">importlib</span></code> internally to import the <code class="docutils literal notranslate"><span class="pre">fx</span></code>. <strong>Never use this with files from untrusted sources, as it can run arbitrary code on your system.</strong></p></li>
+</ul>
+<p>These utilities help you prototype and validate your own key stream functions before using them in encryption.</p>
+<p>Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_default_fx</span><span class="p">,</span> <span class="n">check_fx_sanity</span>
+
+<span class="c1"># Generate a vectorised fx function</span>
+<span class="n">fx</span> <span class="o">=</span> <span class="n">generate_default_fx</span><span class="p">(</span><span class="n">vectorise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Show the generated function&#39;s source code</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Generated fx source code:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fx</span><span class="o">.</span><span class="n">source_code</span><span class="p">)</span>
+
+<span class="c1"># Check if the generated fx passes basic sanity checks</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;mysecretseed&quot;</span>
+<span class="n">num_samples</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">passed</span> <span class="o">=</span> <span class="n">check_fx_sanity</span><span class="p">(</span><span class="n">fx</span><span class="p">,</span> <span class="n">seed</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sanity check passed:&quot;</span><span class="p">,</span> <span class="n">passed</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="plausible-deniability-utilities">
+<h2>🕵️ Plausible Deniability Utilities<a class="headerlink" href="#plausible-deniability-utilities" title="Link to this heading"></a></h2>
+<p>Plausible deniability in cryptography enables users to plausibly claim that an encrypted message contains different content from its true meaning. This is especially valuable in situations where an adversary may compel a user to reveal keys or decrypt sensitive data. By constructing alternative cryptographic parameters (such as a fake <code class="docutils literal notranslate"><span class="pre">fx</span></code> function and seed) the user can make the cyphertext decrypt to an innocuous decoy message, while the genuine message remains secure and undisclosed.</p>
+<p>Here is an example of Forging a Decoy Decryption:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">vernamveil</span><span class="w"> </span><span class="kn">import</span> <span class="n">VernamVeil</span><span class="p">,</span> <span class="n">generate_default_fx</span><span class="p">,</span> <span class="n">forge_plausible_fx</span>
+
+<span class="c1"># Original cypher and encryption</span>
+<span class="n">fx</span> <span class="o">=</span> <span class="n">generate_default_fx</span><span class="p">()</span>
+<span class="n">real_cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">fx</span><span class="p">,</span> <span class="n">padding_range</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">decoy_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+<span class="n">secret_message</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;Top secret!&quot;</span>
+<span class="n">seed</span> <span class="o">=</span> <span class="n">real_cypher</span><span class="o">.</span><span class="n">get_initial_seed</span><span class="p">()</span>
+<span class="n">cyphertext</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">real_cypher</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">secret_message</span><span class="p">,</span> <span class="n">seed</span><span class="p">)</span>
+
+<span class="c1"># Decoy message to plausibly reveal</span>
+<span class="n">decoy</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;This is a harmless message. Nothing to see here. Look away!&quot;</span>
+
+<span class="c1"># Forge plausible fx and seed</span>
+<span class="n">plausible_fx</span><span class="p">,</span> <span class="n">fake_seed</span> <span class="o">=</span> <span class="n">forge_plausible_fx</span><span class="p">(</span><span class="n">real_cypher</span><span class="p">,</span> <span class="n">cyphertext</span><span class="p">,</span> <span class="n">decoy</span><span class="p">)</span>
+
+<span class="c1"># Use the forged fx and seed to decrypt the cyphertext to the decoy</span>
+<span class="c1"># Note: The SIV and MAC must be turned off for this to work.</span>
+<span class="n">decoy_cypher</span> <span class="o">=</span> <span class="n">VernamVeil</span><span class="p">(</span><span class="n">plausible_fx</span><span class="p">,</span> <span class="n">padding_range</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span> <span class="n">chunk_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">decoy_ratio</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                          <span class="n">siv_seed_initialisation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">auth_encrypt</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">revealed</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">decoy_cypher</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">cyphertext</span><span class="p">,</span> <span class="n">fake_seed</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">revealed</span><span class="p">)</span>  <span class="c1"># b&#39;This is a harmless message. Nothing to see here. Look away!&#39;</span>
+</pre></div>
+</div>
+<p>This approach allows you to demonstrate that a given cyphertext could plausibly contain a harmless message, providing a credible alternative explanation under duress, while the original secret remains protected.</p>
+</section>
+<hr class="docutils" />
+<section id="command-line-interface-cli">
+<h2>🖥️ Command-Line Interface (CLI)<a class="headerlink" href="#command-line-interface-cli" title="Link to this heading"></a></h2>
+<p>VernamVeil provides a convenient CLI for file encryption and decryption. The CLI supports both encoding (encryption) and decoding (decryption) operations, allowing you to specify custom key stream functions (<code class="docutils literal notranslate"><span class="pre">fx</span></code>) and seeds, or have them generated automatically.</p>
+<section id="features">
+<h3>⚙️ Features<a class="headerlink" href="#features" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Encrypt and decrypt files or streams</strong> using a user-defined or auto-generated <code class="docutils literal notranslate"><span class="pre">fx</span></code> function and seed represented in hex.</p></li>
+<li><p><strong>Auto-generate <code class="docutils literal notranslate"><span class="pre">fx.py</span></code> and <code class="docutils literal notranslate"><span class="pre">seed.hex</span></code></strong> during encoding if not provided; these files are saved in the current working directory.</p></li>
+<li><p><strong>Custom <code class="docutils literal notranslate"><span class="pre">fx</span></code> and seed support</strong>: Supply your own <code class="docutils literal notranslate"><span class="pre">fx.py</span></code> and <code class="docutils literal notranslate"><span class="pre">seed.hex</span></code> for both encoding and decoding.</p></li>
+<li><p><strong>Configurable parameters</strong>: Adjust chunk size, delimiter size, padding, decoy ratio, and more. Set <code class="docutils literal notranslate"><span class="pre">--verbosity</span> <span class="pre">info</span></code> to see progress information (off by default).</p></li>
+<li><p><strong>Sanity checks</strong>: Optionally verify that your <code class="docutils literal notranslate"><span class="pre">fx</span></code> function is suitable for cryptographic use. These checks are automatically skipped for <code class="docutils literal notranslate"><span class="pre">OTPFX</span></code> to avoid consuming the keystream.</p></li>
+</ul>
+</section>
+<section id="usage">
+<h3>💻 Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Encrypt a file with auto-generated fx and seed</span>
+vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>plain.txt<span class="w"> </span>--outfile<span class="w"> </span>encrypted.dat
+
+<span class="c1"># Encrypt a file with a custom fx function and seed</span>
+vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>plain.txt<span class="w"> </span>--outfile<span class="w"> </span>encrypted.dat<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex
+
+<span class="c1"># Decrypt a file (requires the same fx and seed used for encryption)</span>
+vernamveil<span class="w"> </span>decode<span class="w"> </span>--infile<span class="w"> </span>encrypted.dat<span class="w"> </span>--outfile<span class="w"> </span>decrypted.txt<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex
+
+<span class="c1"># Encrypt and Decrypt from stdin to stdout (using - or omitting the argument)</span>
+vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>-<span class="w"> </span>--outfile<span class="w"> </span>-<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex<span class="w"> </span>&lt;<span class="w"> </span>plain.txt<span class="w"> </span>&gt;<span class="w"> </span>encrypted.dat
+vernamveil<span class="w"> </span>decode<span class="w"> </span>--infile<span class="w"> </span>-<span class="w"> </span>--outfile<span class="w"> </span>-<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex<span class="w"> </span>&lt;<span class="w"> </span>encrypted.dat<span class="w"> </span>&gt;<span class="w"> </span>decrypted.txt
+
+<span class="c1"># Enable sanity check for fx and seed during encryption</span>
+vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>plain.txt<span class="w"> </span>--outfile<span class="w"> </span>encrypted.dat<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex<span class="w"> </span>--check-sanity
+</pre></div>
+</div>
+<blockquote>
+<div><p>⚠️ <strong>Warning: CLI Parameter Consistency</strong></p>
+<p>When decoding, you <strong>must</strong> use the exact same parameters (such as <code class="docutils literal notranslate"><span class="pre">--chunk-size</span></code>, <code class="docutils literal notranslate"><span class="pre">--delimiter-size</span></code>, <code class="docutils literal notranslate"><span class="pre">--padding-range</span></code>, <code class="docutils literal notranslate"><span class="pre">--decoy-ratio</span></code>, <code class="docutils literal notranslate"><span class="pre">--siv-seed-initialisation</span></code>, <code class="docutils literal notranslate"><span class="pre">--auth-encrypt</span></code> and <code class="docutils literal notranslate"><span class="pre">--hash-name</span></code>) as you did during encoding.</p>
+<p>For example, the following will <strong>fail</strong> with a <code class="docutils literal notranslate"><span class="pre">Authentication</span> <span class="pre">failed:</span> <span class="pre">MAC</span> <span class="pre">tag</span> <span class="pre">mismatch.</span></code> error because the <code class="docutils literal notranslate"><span class="pre">--chunk-size</span></code> parameter differs between encoding and decoding:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>plain.txt<span class="w"> </span>--outfile<span class="w"> </span>encrypted.dat<span class="w"> </span>--chunk-size<span class="w"> </span><span class="m">2048</span>
+vernamveil<span class="w"> </span>decode<span class="w"> </span>--infile<span class="w"> </span>encrypted.dat<span class="w"> </span>--outfile<span class="w"> </span>decrypted.txt<span class="w"> </span>--chunk-size<span class="w"> </span><span class="m">1024</span><span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex
+</pre></div>
+</div>
+<p><strong>Always use identical parameters for both encoding and decoding.</strong> Any mismatch will result in decryption failure. The only exception is the <code class="docutils literal notranslate"><span class="pre">--buffer-size</span></code> parameter, which can be different for encoding and decoding.</p>
+</div></blockquote>
+</section>
+<section id="file-handling">
+<h3>🗄️ File Handling<a class="headerlink" href="#file-handling" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>For both <code class="docutils literal notranslate"><span class="pre">--infile</span></code> and <code class="docutils literal notranslate"><span class="pre">--outfile</span></code>, passing <code class="docutils literal notranslate"><span class="pre">-</span></code> or omitting the argument means <code class="docutils literal notranslate"><span class="pre">stdin</span></code>/<code class="docutils literal notranslate"><span class="pre">stdout</span></code> will be used. This allows for piping and streaming data directly.</p></li>
+<li><p>When encoding <strong>without</strong> <code class="docutils literal notranslate"><span class="pre">--fx-file</span></code> or <code class="docutils literal notranslate"><span class="pre">--seed-file</span></code>, the CLI generates <code class="docutils literal notranslate"><span class="pre">fx.py</span></code> and <code class="docutils literal notranslate"><span class="pre">seed.hex</span></code> in the current working directory. The absolute paths to these files are displayed after generation. <strong>Store these files securely</strong>; they are required for decryption.</p></li>
+<li><p>When decoding, you <strong>must</strong> provide both <code class="docutils literal notranslate"><span class="pre">--fx-file</span></code> and <code class="docutils literal notranslate"><span class="pre">--seed-file</span></code> pointing to the originals used for encryption.</p></li>
+<li><p>For safety, the CLI will <strong>not overwrite</strong> existing output files, <code class="docutils literal notranslate"><span class="pre">fx.py</span></code>, or <code class="docutils literal notranslate"><span class="pre">seed.hex</span></code>. If these files already exist, you must delete or rename them manually before running the command. Overwrite protection does <strong>not</strong> apply when outputting to <code class="docutils literal notranslate"><span class="pre">stdout</span></code>.</p></li>
+</ul>
+<blockquote>
+<div><p>⚠️ <strong>Warning: Binary Output to Terminals</strong></p>
+<p>If you use <code class="docutils literal notranslate"><span class="pre">-</span></code> or omit <code class="docutils literal notranslate"><span class="pre">--outfile</span></code>, the output will be written to <code class="docutils literal notranslate"><span class="pre">stdout</span></code> in binary mode. Writing binary data directly to a terminal may corrupt your session. Only redirect binary output to files or pipes, not to an interactive terminal.</p>
+</div></blockquote>
+<p>See <code class="docutils literal notranslate"><span class="pre">vernamveil</span> <span class="pre">encode</span> <span class="pre">--help</span></code> and <code class="docutils literal notranslate"><span class="pre">vernamveil</span> <span class="pre">decode</span> <span class="pre">--help</span></code> for all available options.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="technical-details">
+<h2>🛠️ Technical Details<a class="headerlink" href="#technical-details" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Compact Implementation</strong>: The core cypher implementation (<code class="docutils literal notranslate"><span class="pre">_vernamveil.py</span></code>) is about 200 lines of code, excluding comments, documentation and empty lines.</p></li>
+<li><p><strong>External Dependencies</strong>: Built using only Python’s standard library, with NumPy being optional for vectorisation.</p></li>
+<li><p><strong>Optional C/C++ Module for Fast Hashing and Byte Search</strong>: An optional C/C++ module (<code class="docutils literal notranslate"><span class="pre">nphash</span></code>) is provided, built using <a class="reference external" href="https://cffi.readthedocs.io/">cffi</a>, which enables fast BLAKE2b, BLAKE3, and SHA-256 keyed hashing for NumPy arrays, and also provides efficient byte search utilities for internal use. BLAKE3 support is exclusive to this extension and benefits from hardware acceleration for optimal performance. Specifically, BLAKE3 uses the <a class="reference external" href="https://github.com/BLAKE3-team/BLAKE3">official implementation</a> and can utilise SIMD instruction sets such as SSE2, SSE4.1, AVX2, AVX512F, AVX512VL (on x86_64), and NEON (on ARM), as well as hand-written assembly, where supported by your hardware and compiler. These acceleration features are detected and enabled automatically during the build process. The extension includes both C and C++ code (the C++ component is from the BLAKE3 project), so both a C and a C++ compiler (for example, gcc, g++, or MSVC) are required to build it. See the <a class="reference internal" href="nphash/README.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">nphash</span></code> README</span></a> for further details.</p></li>
+<li><p><strong>Tested with</strong>: Python 3.10 and NumPy 2.2.5.</p></li>
+</ul>
+<section id="installation">
+<h3>🔧 Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h3>
+<p>To install the library with all optional dependencies (development tools, NumPy for vectorisation, and cffi for the C module):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">.</span><span class="p">[</span><span class="n">dev</span><span class="p">,</span><span class="n">numpy</span><span class="p">,</span><span class="n">cffi</span><span class="p">]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">[dev]</span></code> extra installs development and testing dependencies.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">[numpy]</span></code> extra enables fast vectorised operations.</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">[cffi]</span></code> extra is required for building the <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C extension for accelerated BLAKE2b, BLAKE3 and SHA-256 in NumPy-based <code class="docutils literal notranslate"><span class="pre">fx</span></code> functions. <strong>You need to compile the C extension afterwards. See below.</strong></p></li>
+</ul>
+</section>
+<section id="fast-vectorised-fx-functions">
+<h3>⚡ Fast Vectorised <code class="docutils literal notranslate"><span class="pre">fx</span></code> Functions<a class="headerlink" href="#fast-vectorised-fx-functions" title="Link to this heading"></a></h3>
+<p>If you want to use fast vectorised key stream functions, install with both <code class="docutils literal notranslate"><span class="pre">numpy</span></code> and <code class="docutils literal notranslate"><span class="pre">cffi</span></code> enabled. The included <code class="docutils literal notranslate"><span class="pre">nphash</span></code> C module provides high-performance BLAKE2b, BLAKE3, and SHA-256 keyed hash implementations for NumPy arrays, which are automatically used by <code class="docutils literal notranslate"><span class="pre">generate_default_fx(vectorise=True)</span></code> when available. BLAKE3 is only available via the C extension and is hardware-accelerated for maximum speed. If the extension is not present, a slower pure NumPy fallback is used (excluding BLAKE3).</p>
+<p><strong>To use the C extension you must build it from source.</strong> For more details, see <a class="reference internal" href="nphash/README.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">nphash/README.md</span></code></span></a>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="benchmarks-vernamveil-vs-aes-256-cbc">
+<h2>🚦 Benchmarks: VernamVeil vs AES-256-CBC<a class="headerlink" href="#benchmarks-vernamveil-vs-aes-256-cbc" title="Link to this heading"></a></h2>
+<p>VernamVeil is competitive with OpenSSL’s AES-256-CBC in terms of speed. As both cyphers leverage hardware acceleration, the exact benchmarks vary significantly from machine to machine. On an Apple MacBook Pro with an M1 Max chip, VernamVeil is about 15% faster. Note that our benchmarks test VernamVeil with all its default security features enabled (Authenticated Encryption, Synthetic IV, and Obfuscation), whereas AES-256-CBC performs raw, unauthenticated encryption.</p>
+<section id="summary">
+<h3>📊 Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h3>
+<p>The following benchmarks compare VernamVeil (NumPy vectorisation, C extension enabled, and <code class="docutils literal notranslate"><span class="pre">blake3</span></code> hashing) to OpenSSL’s AES-256-CBC on the same machine. The tests were run on a 1GB random file, measuring the time taken for encoding and decoding operations.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Algorithm</p></th>
+<th class="head"><p>Encode Time</p></th>
+<th class="head"><p>Decode Time</p></th>
+<th class="head"><p>Total Time</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>VernamVeil</p></td>
+<td><p>1.119 s</p></td>
+<td><p>1.220 s</p></td>
+<td><p>2.339 s</p></td>
+</tr>
+<tr class="row-odd"><td><p>AES-256-CBC</p></td>
+<td><p>1.760 s</p></td>
+<td><p>0.950 s</p></td>
+<td><p>2.710 s</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="benchmark-setup">
+<h3>‍💻 Benchmark Setup<a class="headerlink" href="#benchmark-setup" title="Link to this heading"></a></h3>
+<p><strong>1. Create a 1GB random file:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>dd<span class="w"> </span><span class="k">if</span><span class="o">=</span>/dev/urandom<span class="w"> </span><span class="nv">of</span><span class="o">=</span>/tmp/original.bin<span class="w"> </span><span class="nv">bs</span><span class="o">=</span>1M<span class="w"> </span><span class="nv">count</span><span class="o">=</span><span class="m">1024</span><span class="w"> </span><span class="nv">status</span><span class="o">=</span>progress
+</pre></div>
+</div>
+<p><strong>2. Generate a random 256-bit key and IV for AES-256-CBC:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="w"> </span>&gt;<span class="w"> </span>key.hex
+openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">16</span><span class="w"> </span>&gt;<span class="w"> </span>iv.hex
+</pre></div>
+</div>
+</section>
+<section id="vernamveil-vectorised-c-extension-keyed-hash-fx-using-blake3">
+<h3>🐇 VernamVeil (Vectorised + C extension + Keyed Hash <code class="docutils literal notranslate"><span class="pre">fx</span></code> using BLAKE3)<a class="headerlink" href="#vernamveil-vectorised-c-extension-keyed-hash-fx-using-blake3" title="Link to this heading"></a></h3>
+<p><strong>Encoding:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vernamveil<span class="w"> </span>encode<span class="w"> </span>--infile<span class="w"> </span>/tmp/original.bin<span class="w"> </span>--outfile<span class="w"> </span>/tmp/output.enc<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex<span class="w"> </span>--buffer-size<span class="w"> </span><span class="m">134217728</span><span class="w"> </span>--chunk-size<span class="w"> </span><span class="m">1048576</span><span class="w"> </span>--delimiter-size<span class="w"> </span><span class="m">64</span><span class="w"> </span>--padding-range<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="m">200</span><span class="w"> </span>--decoy-ratio<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span>--hash-name<span class="w"> </span>blake3<span class="w"> </span>--verbosity<span class="w"> </span>info
+</pre></div>
+</div>
+<p><em>Time: 1.119s</em></p>
+<p><strong>Decoding:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>vernamveil<span class="w"> </span>decode<span class="w"> </span>--infile<span class="w"> </span>/tmp/output.enc<span class="w"> </span>--outfile<span class="w"> </span>/tmp/output.dec<span class="w"> </span>--fx-file<span class="w"> </span>fx.py<span class="w"> </span>--seed-file<span class="w"> </span>seed.hex<span class="w"> </span>--buffer-size<span class="w"> </span><span class="m">136349200</span><span class="w"> </span>--chunk-size<span class="w"> </span><span class="m">1048576</span><span class="w"> </span>--delimiter-size<span class="w"> </span><span class="m">64</span><span class="w"> </span>--padding-range<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="m">200</span><span class="w"> </span>--decoy-ratio<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span>--hash-name<span class="w"> </span>blake3<span class="w"> </span>--verbosity<span class="w"> </span>info
+</pre></div>
+</div>
+<p><em>Time: 1.220s</em></p>
+</section>
+<section id="aes-256-cbc-openssl">
+<h3>🐢 AES-256-CBC (OpenSSL)<a class="headerlink" href="#aes-256-cbc-openssl" title="Link to this heading"></a></h3>
+<p><strong>Encoding:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">time</span><span class="w"> </span>openssl<span class="w"> </span>enc<span class="w"> </span>-aes-256-cbc<span class="w"> </span>-in<span class="w"> </span>/tmp/original.bin<span class="w"> </span>-out<span class="w"> </span>/tmp/output.enc<span class="w"> </span>-K<span class="w"> </span><span class="k">$(</span>cat<span class="w"> </span>key.hex<span class="k">)</span><span class="w"> </span>-iv<span class="w"> </span><span class="k">$(</span>cat<span class="w"> </span>iv.hex<span class="k">)</span><span class="w"> </span>-pbkdf2
+</pre></div>
+</div>
+<p><em>Time: 1.760s</em></p>
+<p><strong>Decoding:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">time</span><span class="w"> </span>openssl<span class="w"> </span>enc<span class="w"> </span>-d<span class="w"> </span>-aes-256-cbc<span class="w"> </span>-in<span class="w"> </span>/tmp/output.enc<span class="w"> </span>-out<span class="w"> </span>/tmp/output.dec<span class="w"> </span>-K<span class="w"> </span><span class="k">$(</span>cat<span class="w"> </span>key.hex<span class="k">)</span><span class="w"> </span>-iv<span class="w"> </span><span class="k">$(</span>cat<span class="w"> </span>iv.hex<span class="k">)</span><span class="w"> </span>-pbkdf2
+</pre></div>
+</div>
+<p><em>Time: 0.950s</em></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="documentation">
+<h2>📚 Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h2>
+<p>Full API and usage docs are available at: <a class="reference external" href="https://datumbox.github.io/VernamVeil/">https://datumbox.github.io/VernamVeil/</a></p>
+</section>
+<hr class="docutils" />
+<section id="contributing">
+<h2>🤝 Contributing<a class="headerlink" href="#contributing" title="Link to this heading"></a></h2>
+<p>Contributions, bug reports, and feature requests are welcome! Please open an issue or pull request on <a class="reference external" href="https://github.com/datumbox/VernamVeil">GitHub</a>.</p>
+</section>
+<hr class="docutils" />
+<section id="copyright-license">
+<h2>📄 Copyright &amp; License<a class="headerlink" href="#copyright-license" title="Link to this heading"></a></h2>
+<p>Copyright (C) 2025 <a class="reference external" href="http://blog.datumbox.com/author/bbriniotis/">Vasilis Vryniotis</a>.</p>
+<p>The code is licensed under the <a class="reference external" href="https://github.com/datumbox/VernamVeil/blob/main/LICENSE">Apache License, Version 2.0</a>.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="vernamveil.html" class="btn btn-neutral float-left" title="VernamVeil Class" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="nphash/README.html" class="btn btn-neutral float-right" title="Building the nphash C Library with build.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Vasilis Vryniotis.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
