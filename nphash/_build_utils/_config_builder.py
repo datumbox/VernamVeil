@@ -291,7 +291,16 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
             for ssl_dir in openssl_base_dirs:
                 if ssl_dir.exists():
                     include_dirs.append(ssl_dir / "include")
-                    library_dirs.append(ssl_dir / "lib")
+                    lib_dir = ssl_dir / "lib"
+                    library_dirs.append(lib_dir)
+                    # OpenSSL 3.x (slproweb) places .lib files in subdirectories
+                    for sub in [
+                        lib_dir / "VC" / "x64" / "MD",
+                        lib_dir / "VC" / "x64" / "MT",
+                        lib_dir / "VC" / "static",
+                        lib_dir / "VC",
+                    ]:
+                        library_dirs.append(sub)
                     break
 
             if tbb_enabled:
