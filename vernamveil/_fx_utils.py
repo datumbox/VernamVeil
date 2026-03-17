@@ -410,7 +410,7 @@ def make_keystream_fn():
             current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
         # Hash using BLAKE2b
-        return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
+        return hashlib.blake2b(result.to_bytes(8, "big"), key=seed).digest()
 
     return keystream_fn
 """
