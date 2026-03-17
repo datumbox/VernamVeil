@@ -139,13 +139,11 @@ def _get_bytesearch_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
         FFI: The configured CFFI FFI instance for bytesearch.
     """
     ffibuilder = FFI()
-    ffibuilder.cdef(
-        """
+    ffibuilder.cdef("""
         size_t* find_all(const unsigned char * restrict text, size_t n, const unsigned char * restrict pattern, size_t m, size_t * restrict count_ptr, int allow_overlap);
         void free_indices(size_t *indices_ptr);
         ptrdiff_t find(const unsigned char *text, size_t n, const unsigned char *pattern, size_t m);
-        """
-    )
+        """)
 
     _set_source_and_print_details(
         ffibuilder,
@@ -173,11 +171,9 @@ def _get_npblake2b_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
         FFI: The configured CFFI FFI instance for npblake2b.
     """
     ffibuilder = FFI()
-    ffibuilder.cdef(
-        """
+    ffibuilder.cdef("""
         void numpy_blake2b(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
-        """
-    )
+        """)
 
     _set_source_and_print_details(
         ffibuilder,
@@ -302,11 +298,9 @@ def _get_npsha256_ffi(config: _BuildConfig, build_dir: Path) -> FFI:
         FFI: The configured CFFI FFI instance for npsha256.
     """
     ffibuilder = FFI()
-    ffibuilder.cdef(
-        """
+    ffibuilder.cdef("""
         void numpy_sha256(const uint64_t* restrict arr, const size_t n, const char* restrict seed, const size_t seedlen, uint8_t* restrict out);
-        """
-    )
+        """)
 
     _set_source_and_print_details(
         ffibuilder,
