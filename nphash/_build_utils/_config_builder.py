@@ -44,6 +44,7 @@ class _BuildConfig(NamedTuple):
         library_dirs (list[str]): List of library directories for CFFI.
         libraries_c (list[str]): C libraries to link against.
         libraries_cpp (list[str]): C++ libraries to link against.
+        runtime_dll_dirs (list[str]): Directories containing runtime DLLs to copy next to built extensions (Windows only).
     """
 
     # Feature toggles
@@ -66,6 +67,7 @@ class _BuildConfig(NamedTuple):
     library_dirs: list[str]
     libraries_c: list[str]
     libraries_cpp: list[str]
+    runtime_dll_dirs: list[str]
 
     @property
     def nphash_dir(self) -> Path:
@@ -190,6 +192,7 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
     libraries_cpp: list[str] = []
     compile_args: list[str] = []
     extra_link_args: list[str] = []
+    runtime_dll_dirs: list[Path] = []
 
     if platform_system == "Linux":
         libraries_c += ["ssl", "crypto", "gomp"]
@@ -291,7 +294,18 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
             for ssl_dir in openssl_base_dirs:
                 if ssl_dir.exists():
                     include_dirs.append(ssl_dir / "include")
-                    library_dirs.append(ssl_dir / "lib")
+                    lib_dir = ssl_dir / "lib"
+                    library_dirs.append(lib_dir)
+                    # OpenSSL 3.x (slproweb) places .lib files in subdirectories
+                    for sub in [
+                        lib_dir / "VC" / "x64" / "MD",
+                        lib_dir / "VC" / "x64" / "MT",
+                        lib_dir / "VC" / "static",
+                        lib_dir / "VC",
+                    ]:
+                        library_dirs.append(sub)
+                    # Record the bin directory for runtime DLL copying
+                    runtime_dll_dirs.append(ssl_dir / "bin")
                     break
 
             if tbb_enabled:
@@ -338,6 +352,7 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
     # Convert Path objects to absolute string paths for CFFI and consistency
     final_include_dirs = [str(p.resolve()) for p in include_dirs if p.is_dir()]
     final_library_dirs = [str(p.resolve()) for p in library_dirs if p.is_dir()]
+    final_runtime_dll_dirs = [str(p.resolve()) for p in runtime_dll_dirs if p.is_dir()]
 
     return _BuildConfig(
         tbb_enabled=tbb_enabled,
@@ -355,4 +370,5 @@ def _get_build_config(argv: list[str] | None = None) -> _BuildConfig:
         library_dirs=final_library_dirs,
         libraries_c=libraries_c,
         libraries_cpp=libraries_cpp,
+        runtime_dll_dirs=final_runtime_dll_dirs,
     )
