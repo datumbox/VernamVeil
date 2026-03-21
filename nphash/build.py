@@ -11,6 +11,7 @@ This will generate the _bytesearchffi, _npblake2bffi, _npblake3ffi and _npsha256
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Callable, cast
@@ -88,6 +89,18 @@ def main() -> None:
             target=str(nphash_dir / get_ext_filename("_npsha256ffi")),
             verbose=True,
         )
+
+        # Copy runtime DLLs next to the built extensions (Windows only)
+        if config.runtime_dll_dirs:
+            dll_patterns = ["libssl*.dll", "libcrypto*.dll"]
+            for dll_dir in config.runtime_dll_dirs:
+                dll_dir_path = Path(dll_dir)
+                for pattern in dll_patterns:
+                    for dll in dll_dir_path.glob(pattern):
+                        dest = nphash_dir / dll.name
+                        if not dest.exists():
+                            shutil.copy2(dll, dest)
+                            print(f"Copied runtime DLL: {dll} -> {dest}")
 
         print("All CFFI extensions compiled successfully.")
 
