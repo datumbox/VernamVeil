@@ -198,7 +198,7 @@ def keystream_fn(i: int, seed: bytes) -> bytes:
         current_pow = (current_pow * i) & 0xFFFFFFFFFFFFFFFF
 
     # Hash using BLAKE2b
-    return hashlib.blake2b(i.to_bytes(8, "big"), key=seed).digest()
+    return hashlib.blake2b(result.to_bytes(8, "big"), key=seed).digest()
 
 
 fx = FX(keystream_fn, block_size=64, vectorise=False)
