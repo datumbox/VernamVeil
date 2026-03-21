@@ -1,0 +1,19 @@
+/* Hide only the project title text, keep logo visible */
+.wy-side-nav-search .icon-home {
+    font-size: 0 !important;
+}
+
+.wy-side-nav-search .icon-home img {
+    font-size: initial !important;
+    width: auto;
+    height: auto;
+}
+
+.wy-side-nav-search {
+    background-color: #eaeaea !important;
+}
+
+.wy-side-nav-search > a.icon img.logo {
+  margin-top: 0px !important;
+  padding-top: 0px !important;
+}
